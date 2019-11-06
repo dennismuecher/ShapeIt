@@ -36,4 +36,14 @@ DerivedData/
 ### Xcode Patch ###
 **/xcshareddata/WorkspaceSettings.xcsettings
 
+ShapeIt1.0/BlindTest6/
+ShapeIt1.0/Dicebox/
+ShapeIt1.0/Ge_test/
+ShapeIt1.0/FirstGenerationFiles/
+ShapeIt1.0/RawFiles/
+
+
+
+
+
 # End of https://www.gitignore.io/api/xcode
