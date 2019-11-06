@@ -1,0 +1,503 @@
+#include "../Include/ShapeMatrix.h"
+#include "../Source/ShapeFitFunction.C"
+
+ShapeMatrix::ShapeMatrix(ShapeSetting* setting) {
+    sett = setting;
+    openMatrix();
+    BrowseRootFile();
+    //clear fit parameter vectors
+ 
+}
+
+//cleaning up before new "ShapeIt" run (but not while running different iterations during bin size and sliding window variation)
+
+void ShapeMatrix::Reset() {
+    width1.clear();
+    width2.clear();
+    allgamma1.clear();
+    allgamma2.clear();
+}
+
+TH2* ShapeMatrix::GetInputMatrix (string title) {
+    inputMatrix->SetTitle(title.c_str());
+    return inputMatrix;
+}
+
+void ShapeMatrix::openMatrix(){
+    dataFile = new TFile(sett->dataFileName.c_str(),"read");
+}
+
+void ShapeMatrix::SetMatrix(int mNr) {
+
+    dataFile->GetObject(matrixName[mNr-1].c_str(), inputMatrix);
+    //inputMatrix->SetTitle(sett->dataFileName.c_str());
+    sett->matrixName = matrixName[mNr-1];
+
+    //create diagonalized projections
+    Diag();
+
+}
+
+//convert energy to bin in projection histo for X
+double ShapeMatrix::energyToBinX (double e) {
+    TAxis *xaxis = diag->GetXaxis();
+    return ( xaxis->FindBin(e) );
+}
+
+//convert bin to energy for X
+double ShapeMatrix::binToEnergyX (double bin) {
+    TAxis *xaxis = diag->GetXaxis();
+    return ( xaxis->GetBinCenter(bin) );
+}
+
+//convert energy to bin in projection histo for Y
+double ShapeMatrix::energyToBinY (double e) {
+    TAxis *yaxis = diag->GetYaxis();
+    return ( yaxis->FindBin(e) );
+}
+
+//convert bin to energy for Y
+double ShapeMatrix::binToEnergyY (double bin) {
+   TAxis *yaxis = diagEx->GetYaxis();
+    return ( yaxis->GetBinCenter(bin) );
+}
+
+//returns the projection of diagonalized matrix for bin bbin
+TH1D* ShapeMatrix::GetDiagEx(int bbin, string title) {
+    if (bbin <= sett->nOfBins) {
+        char name[50];
+        char title[50];
+        sprintf(name,"diag_bin%d",bbin);
+        sprintf(title,"projection %d - %d ",(int) ybins[bbin-1], (int) ybins[bbin]);
+        //adapt binning to actual energy range: gamma ray energy cannot be higher than ybins[bbin]
+        float_t xBinSize = inputMatrix->GetXaxis()->GetBinWidth(1);
+        int histBin = (int) ( ybins[bbin] - eMin_y ) / xBinSize;
+        delete gROOT->FindObject(name);
+        TH1D* hist = new TH1D(name,title,histBin,eMin_y, ybins[bbin]);
+        hist = diagEx->ProjectionX(name,bbin,bbin,"o");
+        if (sett->mode == 2) {
+            FitGauss(hist, bbin, 0);
+            FitGauss(hist, bbin, 1);
+        }
+        //hist->SetTitle(title.c_str());
+        return hist;
+    }
+    else
+        return NULL;
+}
+
+//background integration and filling of net integral vector
+void ShapeMatrix::IntegrateBg() {
+    integral1Bg.clear();
+    integral2Bg.clear();
+    integral1Net.clear();
+    integral2Net.clear();
+    
+    double a1, a2;
+    //background integration for level 1
+    int integBin[4];
+    for (int i =0; i < 4; i++) {
+        integBin[i] = energyToBinX(sett->bgEne[0][i]);
+    }
+    for (int i = 0; i < sett->nOfBins; i++) {
+        //left region
+        a1 =diagEx->Integral(integBin[0],integBin[1], i+1, i+1);
+        //right region
+        a2 =diagEx->Integral(integBin[2],integBin[3], i+1, i+1);
+        integral1Bg.push_back((a1+a2)/2);
+    }
+    
+    //background integration for level 2
+    for (int i =0; i < 4; i++) {
+        integBin[i] = energyToBinX(sett->bgEne[1][i]);
+    }
+    for (int i = 0; i < sett->nOfBins; i++) {
+        //left region
+        a1 =diagEx->Integral(integBin[0],integBin[1], i+1, i+1);
+        //right region
+        a2 =diagEx->Integral(integBin[2],integBin[3], i+1, i+1);
+        integral2Bg.push_back((a1+a2)/2);
+        if (sett->verbose)
+            std::cout <<"Background Integral of bin " <<i+1 <<" are: " <<integral1Bg[i] << " " <<integral2Bg[i] <<std::endl;
+        
+    }
+}
+
+void ShapeMatrix::Integrate() {
+    integral1.clear();
+    integral2.clear();
+    int integBin[4];
+    for (int i =0; i < 4; i++) {
+        integBin[i] = energyToBinX(sett->levEne[i]);
+        if (sett->verbose)
+            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
+    }
+    for (int i = 0; i < sett->nOfBins; i++) {
+        integral1.push_back(diagEx->Integral(integBin[0],integBin[1], i+1, i+1) );
+        integral2.push_back(diagEx->Integral(integBin[2],integBin[3], i+1, i+1) );
+        if (sett->verbose)
+            std::cout <<"Integral of bin " <<i+1 <<" is: " <<integral1[i] << " " <<integral2[i] <<std::endl;
+    }
+}
+
+void ShapeMatrix::IntegrateSquare() {
+    integral1Square.clear();
+    integral2Square.clear();
+    int integBin[4];
+    for (int i =0; i < 4; i++) {
+        integBin[i] = energyToBinX(sett->levEne[i]);
+        if (sett->verbose)
+            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
+    }
+    for (int i = 0; i < sett->nOfBins; i++) {
+        integral1Square.push_back(diagExSquare->Integral(integBin[0],integBin[1], i+1, i+1) );
+        integral2Square.push_back(diagExSquare->Integral(integBin[2],integBin[3], i+1, i+1) );
+        if (sett->verbose)
+            std::cout <<"Square Integral of bin " <<i+1 <<" is: " <<integral1Square[i] << " " <<integral2Square[i] <<std::endl;
+    }
+}
+void ShapeMatrix::IntegrateCube() {
+    integral1Cube.clear();
+    integral2Cube.clear();
+    int integBin[4];
+    for (int i =0; i < 4; i++) {
+        integBin[i] = energyToBinX(sett->levEne[i]);
+        if (sett->verbose)
+            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
+    }
+    for (int i = 0; i < sett->nOfBins; i++) {
+        integral1Cube.push_back(diagExCube->Integral(integBin[0],integBin[1], i+1, i+1) );
+        integral2Cube.push_back(diagExCube->Integral(integBin[2],integBin[3], i+1, i+1) );
+        if (sett->verbose)
+            std::cout <<"Cube Integral of bin " <<i+1 <<" is: " <<integral1Cube[i] << " " <<integral2Cube[i] <<std::endl;
+    }
+}
+
+//determines the peak areas using autofit
+void ShapeMatrix::FitIntegral(){
+    //clearing all previous results
+    fit_integral1.clear();
+    fit_integral2.clear();
+    fit_integral1Bg.clear();
+    fit_integral2Bg.clear();
+    fit_integral1Net.clear();
+    fit_integral2Net.clear();
+   
+    //normalization of integral to bin width
+    double integral_norm = ( eMax_x - eMin_x) / bins;
+    //level 1
+    for (int i = 0; i < sett->nOfBins; i++) {
+        if (integral1[i] == 0) {
+            fit_integral1.push_back(0);
+            fit_integral1Bg.push_back(0);
+            fit_integral1Net.push_back(0);
+            width1.push_back(0);
+            allgamma1.push_back(0);
+        }
+        else {
+            //Gauss fit
+            FitGauss(diagEx->ProjectionX("fit",i+1,i+1,"o"), i, 0);
+            
+            //integration
+            double integral_tot =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]) / integral_norm;
+            //double integral_tot =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]);
+            
+            fit_integral1.push_back(integral_tot);
+            //integral of background, only: setting amplitude of Gauss to zero
+            fit_result[0]->FixParameter(3,0);
+            double integral_bg =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]) / integral_norm;
+            fit_integral1Bg.push_back(integral_bg);
+            fit_integral1Net.push_back(integral_tot - integral_bg);
+            
+            //store fit result and corresponding gamma ray energy
+            if (fit_integral1Net[i] >= sett->minCounts) {
+                width1.push_back(TMath::Abs(fit_result[0]->GetParameter(5)));
+                allgamma1.push_back(integral1Square[i] /integral1Cube[i]);
+            }
+            
+            if (sett->verbose)
+                std::cout <<"Autofit results for level 1 in bin " << i <<"(tot, bg, net): " <<integral_tot <<" " <<integral_bg <<" " <<fit_integral1Net[i] <<std::endl;
+        }
+    }
+    //level 2
+    for (int i = 0; i < sett->nOfBins; i++) {
+        if (integral2[i] == 0) {
+            fit_integral2.push_back(0);
+            fit_integral2Bg.push_back(0);
+            fit_integral2Net.push_back(0);
+            width2.push_back(0);
+            allgamma2.push_back(0);
+        }
+        else {
+            //Gauss fit
+            FitGauss(diagEx->ProjectionX("fit",i+1,i+1,"o"), i, 1);
+            
+           
+            
+            //integration
+            double integral_tot =fit_result[1]->Integral(sett->levEne[2], sett->levEne[3]) / integral_norm;
+            fit_integral2.push_back(integral_tot);
+            //integral of background, only: setting amplitude of Gauss to zero
+            fit_result[1]->FixParameter(3,0);
+            double integral_bg =fit_result[1]->Integral(sett->levEne[2], sett->levEne[3]) / integral_norm;
+            fit_integral2Bg.push_back(integral_bg);
+            fit_integral2Net.push_back(integral_tot - integral_bg);
+            
+            if (fit_integral2Net[i] >= sett->minCounts) {
+                //store fit result and corresponding gamma ray energy
+                width2.push_back(TMath::Abs(fit_result[1]->GetParameter(5)));
+                allgamma2.push_back(integral2Square[i] /integral2Cube[i]);
+            }
+                
+            if (sett->verbose)
+                std::cout <<"Autofit results for level 2 in bin " << i <<"(tot, bg, net): " <<integral_tot <<" " <<integral_bg <<" " <<fit_integral2Net[i] <<std::endl;
+        }
+        
+    }
+    
+}
+
+//performs a gauss fit to histo of bin "bin" for level 1 (level =0) or level 2 (level =1)
+void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
+    char name[20];
+    
+    //background regions
+    double bgRange[4];
+    for (int i =0; i <4; i++)
+        bgRange[i] = sett->bgEne[level][i];
+    
+    //peak region
+    double peakRange[2];
+    peakRange[0] = sett->levEne[2*level];
+    peakRange[1] = sett->levEne[2*level+1];
+    
+    //peak energy
+    double p = ( sett->levEne[2*level] + sett->levEne[2*level + 1] )/2;
+
+    //initital guess for sigma: 1/6th of width of integration range
+    double dp = ( sett->levEne[2*level+1] - sett->levEne[2*level] )/6;
+
+    //define fit function and set ranges
+    ShapeFitFunction *fitfunc = new ShapeFitFunction();
+    fitfunc->SetPeakRanges(peakRange);
+    fitfunc->SetBgRanges(bgRange);
+    
+    //TF1 object for the fit
+    sprintf(name,"fit_level%d_bin%d",level+1, bin);
+    fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
+    fit_result[level]->SetLineColor(6);
+
+    //get bin content at peak and bgRange[1] as starting value for fit amplitude
+    double amplitude_init = histo->GetBinContent(energyToBinX(p));
+    double amplitude_init_bg = histo->GetBinContent(energyToBinX(bgRange[1]));
+    
+    //set initial fit values
+    fit_result[level]->SetParameter(1, 0);
+    fit_result[level]->SetParameter(2, amplitude_init_bg);
+    fit_result[level]->SetParameter(3, amplitude_init );
+    fit_result[level]->SetParameter(4, p);
+    fit_result[level]->SetParameter(5, dp);
+    
+    //do linear background
+    fit_result[level]->FixParameter(0,0);
+    
+    //set fit boundaries
+    fit_result[level]->SetParLimits(3,0.01*amplitude_init, 100*amplitude_init);
+    fit_result[level]->SetParLimits(4, peakRange[0], peakRange[1]);
+
+    fit_result[level]->SetParLimits(5, 0.5*dp, 2*dp);
+
+    //if doFitWidth is set, fix width according to calibration
+    if (sett->doWidthCal)
+    {
+        double eGamma = 0;
+        if (level == 0 && integral1Cube[bin] > 0)
+            eGamma = integral1Square[bin] /integral1Cube[bin];
+        if (level == 1 && integral2Cube[bin] > 0)
+            eGamma = integral2Square[bin] /integral2Cube[bin];
+        double widthFix = sett->widthCal[level][1] * eGamma + sett->widthCal[level][0];
+        if (!(eGamma == 0)) {
+            //fit_result[level]->FixParameter(5, widthFix);
+            fit_result[level]->SetParameter(5, widthFix);
+            fit_result[level]->SetParLimits(5, widthFix-5, widthFix +5);
+            
+        }
+    }
+    
+    //perform fit
+    sprintf(name,"fit_level%d_bin%d",level+1, bin);
+    if (level == 0)
+        histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+    else
+        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+
+}
+
+
+void ShapeMatrix::Diag(){
+
+    double MeV = sett->MeV;
+    XNum  = inputMatrix->GetNbinsX();
+    YNum  = inputMatrix->GetNbinsY();
+    
+    // binning used for the diagonal histograms is the x-binning, as this usually is the higher binned axis (gamma ray energy is usually higher binned compared to excitaiton energy)
+    bins=XNum;
+    
+    if (sett->verbose) {
+        std::cout <<"\nNumber of x bins in matrix: "<< XNum <<endl;
+        std::cout <<"\nNumber of y bins in matrix: "<< YNum <<endl;
+    }
+
+    eMax_x  =  ( inputMatrix->GetXaxis()->GetBinCenter(XNum) * MeV) + (inputMatrix->GetXaxis()->GetBinWidth(XNum) * MeV /2 ) ;
+    eMax_y  =  ( inputMatrix->GetYaxis()->GetBinCenter(YNum) * MeV) + (inputMatrix->GetYaxis()->GetBinWidth(YNum) * MeV /2 ) ;
+    eMin_x = inputMatrix->GetXaxis()->GetXmin();
+    eMin_y = inputMatrix->GetYaxis()->GetXmin();
+    
+    //minimum value of Excitation energy - gamma ray energy
+    eMin_diag = eMin_y - eMin_x;
+
+    //eMin_x  =  ( inputMatrix->GetXaxis()->GetBinCenter(1) * MeV) - (inputMatrix->GetXaxis()->GetBinWidth(1) * MeV /2 ) ;
+    //eMin_y  =  ( inputMatrix->GetYaxis()->GetBinCenter(1) * MeV) - (inputMatrix->GetYaxis()->GetBinWidth(1) * MeV /2 ) ;
+    
+    if (sett->verbose) {
+        std::cout <<"\nMaximum gamma ray energy detected in input matrix: "<< eMax_x <<endl;
+        std::cout <<"\nMaximum excitation energy detected in input matrix: "<< eMax_y <<endl;
+        std::cout <<"\nMinimum gamma ray energy detected in input matrix: "<< eMin_x <<endl;
+        std::cout <<"\nMinimum excitation energy detected in input matrix: "<< eMin_y <<endl;
+    }
+    //calculate the variable bin size; all bins have size exi_size except the last bin
+    
+    float_t xBinSize = inputMatrix->GetXaxis()->GetBinWidth(1);
+    //calculate number of xbins to allocate memory for xbins
+    bins = (int) (eMax_y - eMin_diag) / xBinSize;
+    xbins = new float[bins+1];
+    //the real number of xbins might be smaller by one
+    bins = 0;
+    do {
+        xbins[bins] = eMin_diag + (bins * xBinSize);
+        bins++;
+    }
+    while ( xbins[bins-1] <= eMax_y );
+    bins--;
+    //at this point, bins represents the number of bins for the x-axis in the diagonalied spectra; the array xbins has length bins+1, as it has to be
+    
+    //a sliding window appraoch is used for the y-bins: the first bin is sliding_window*bin_size and all following bins have width bin_size, except the last window.
+    
+    //check if nOfBins has to be increased by one due to moving window
+    if (sett->exiEne[1]-sett->exiEne[0] - (sliding_window*sett->exi_size[0]) - (( sett->nOfBins -1) * sett->exi_size[0]) > 0)
+        sett->nOfBins++;
+    ybins = new float_t[sett->nOfBins+1];
+    ybins[0] = sett->exiEne[0];
+    ybins[1] = (sliding_window *sett->exi_size[0]) + ybins[0];
+    if (sett->verbose)
+    {
+        std::cout<< "Diag sliding window: "<< sliding_window <<std::endl;
+        std::cout<< "excitation bin: "<< sett->exi_size[0] <<std::endl;
+
+    }
+    
+    for (int i = 2; i < sett->nOfBins; i++)
+        ybins[i] =  ybins[i-1] + sett->exi_size[0];
+    ybins[sett->nOfBins] = sett->exiEne[1];
+    if (sett->verbose == 2) {
+    for (int i = 0; i <= sett->nOfBins; i++)
+        std::cout<< "ybins: "<< ybins[i] <<std::endl;
+    }
+
+    
+    //creating histograms;
+    
+    delete gROOT->FindObject("diag");
+    diag  = new TH1F("diag","Diagonal Projection",bins, xbins);
+    delete gROOT->FindObject("diag_ex");
+    diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",bins,xbins, sett->nOfBins,ybins);
+    delete gROOT->FindObject("diag_ex_square");
+    diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared",bins,xbins, sett->nOfBins, ybins);
+    delete gROOT->FindObject("diag_ex_cube");
+    diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed",bins,xbins, sett->nOfBins, ybins);
+    
+    double X; // corresponds to gamma ray energy
+    double Y; // corresponds to excitation energy
+    
+     //Loop over input matrix
+    double diag_ene;
+    
+    TAxis *xaxis = inputMatrix->GetXaxis();
+    TAxis *yaxis = inputMatrix->GetYaxis();
+    
+    //fill the diag matrices and histos by looping over inputMatrix
+    for (int i = 1; i < XNum + 1; i++) {
+         X = xaxis->GetBinCenter(i);
+        for (int j = 1; j < YNum + 1; j++) {
+            Y = yaxis->GetBinCenter(j);
+            diag_ene = Y-X;
+            diag->Fill( diag_ene, inputMatrix->GetBinContent(i,j)*MeV);
+            diagEx->Fill( diag_ene,Y, inputMatrix->GetBinContent(i,j)*MeV);
+            if (X > 0) {
+                diagExSquare->Fill( diag_ene,Y, inputMatrix->GetBinContent(i,j) * MeV / TMath::Power( X, 2 ) );
+                diagExCube->Fill( diag_ene,Y, inputMatrix->GetBinContent(i,j) * MeV / TMath::Power( X, 3 ) );
+            }
+        }
+    }
+    
+    //fill vectors with integration results
+    Integrate();
+    IntegrateBg();
+    IntegrateSquare();
+    IntegrateCube();
+}
+
+TGraph* ShapeMatrix::getFitWidthGraph(int level) {
+    
+    std::vector <double> width;
+    std::vector <double> allgamma;
+
+    double peakEne = ( sett->levEne[2*level] + sett->levEne[2*level+1] ) /2;
+    if (level == 0) {
+        width = width1;
+        allgamma  = allgamma1;
+    }
+    else {
+        width = width2;
+        allgamma = allgamma2;
+    }
+    
+    double x[width.size()];
+    double y[width.size()];
+    
+    int counter = 0;
+    for (int i = 0; i < width.size(); i++) {
+        if (allgamma[i] >= sett->exiEne[0] - peakEne && allgamma[i] <= sett->exiEne[1] - peakEne && width[i] > 0) {
+            x[counter] = allgamma[i];
+            y[counter] = width[i];
+            counter++;
+        }
+    }
+    
+    TGraph *T = new TGraph(counter, x, y);
+    
+    if (level == 0)
+        T->SetMarkerColor(kRed);
+    else
+        T->SetMarkerColor(kBlue);
+    
+    T->SetMarkerStyle(21);
+    
+    return T;
+}
+
+//loop through all objects in root file and store all TH2D object names in matrixName
+void ShapeMatrix::BrowseRootFile()
+{
+   
+    TIter keyList(dataFile->GetListOfKeys());
+    TKey *key;
+    while ((key = (TKey*)keyList())) {
+        TClass *cl = gROOT->GetClass(key->GetClassName());
+        if (!cl->InheritsFrom("TH2")) continue;
+        TH2 *h = (TH2*)key->ReadObj();
+        matrixName.push_back(h->GetName());
+    
+    }
+  
+}

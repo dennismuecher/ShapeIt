@@ -1,0 +1,25 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/FirstGenerationFiles/Ge76_fg.root
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/OsloFiles/oslo_data_76Ge.txt
+matrixName matrix1
+MeV: 1
+mode 2
+doInterpol 1
+doOslo 1
+doSlidingWindow 1
+doBinVariation 1
+doBackground 0
+verbose 0
+gSF_norm 0.013
+level1 419 660
+bg_level1 270.781 424.43 752.462 791.719
+bg_level2 938.156 979.663 1282.67 1324.18
+level2 1019 1254
+excitation 2500 5800
+excitation_bin_1 400
+excitation_bin_2 800
+nOfBins 7
+eff_corr 1.16
+interPoint 3
+minCounts 20
+doWidthCal 1
+widthCal 21.5555 0.00270419 16.5565 0.00762124

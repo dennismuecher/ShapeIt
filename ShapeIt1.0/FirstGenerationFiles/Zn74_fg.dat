@@ -1,0 +1,25 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/FirstGenerationFiles/Zn74_fg.root
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/OsloFiles/oslo_data_74Zn_paper.txt
+matrixName matrix1
+MeV: 1
+mode 2
+doInterpol 1
+doOslo 1
+doSlidingWindow 0
+doBinVariation 0
+doBackground 1
+verbose 1
+gSF_norm 1
+level1 500 750
+bg_level1 260 360 950 1050
+bg_level2 1400 1600 2000 2200
+level2 1550 1850
+excitation 3000 7500
+excitation_bin_1 400
+excitation_bin_2 800
+nOfBins 5
+eff_corr 1.16
+interPoint 2
+minCounts 34
+doWidthCal 1
+widthCal 100.006 -0.00164674 115.584 -0.000224529

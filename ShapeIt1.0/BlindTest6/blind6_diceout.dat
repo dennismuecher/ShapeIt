@@ -1,0 +1,24 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/BlindTest6/Ni70_bl6_diceout.root
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/OsloFiles/Ni71_blind3.txt
+matrixName matrix
+MeV: 1
+mode 1
+doInterpol 1
+doOslo 1
+doSlidingWindow 1
+doBinVariation 1
+doBackground 0
+verbose 0
+gSF_norm 0.016
+level1 780 880
+bg_level1 620.711 718.75 979.167 1077.21
+bg_level2 1397.39 1498.69 1854.9 1952.94
+level2 1580 1680
+excitation 2400 8400
+excitation_bin 200
+nOfBins 30
+eff_corr 1
+interPoint 5
+minCounts 50
+doWidthCal 0
+widthCal 0 0 0 0

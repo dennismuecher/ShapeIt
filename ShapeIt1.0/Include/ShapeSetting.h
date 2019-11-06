@@ -1,0 +1,56 @@
+#ifndef SHAPESETTING_H
+#define SHAPESETTING_H
+
+class ShapeSetting {
+
+private:
+	
+
+
+public:
+	ShapeSetting();                         //the constructor
+    
+	std::string dataFileName; 				//name of file containing matrix
+	std::string matrixName;  				//name of matrix in dataFileName
+	std::string osloFileName = "";				 //name of file containing reference data
+    std::string settFileName = "";                  //name of settings save file
+    TFile *settFile;                         //the file used to safe the current settings
+    int mode = 1;                           //mode: 1 = integration; 2 = autofit
+	
+    double MeV = 1.;
+    bool doOslo = false;					//if true, plot reference data
+    bool doInterpol = true;                 //if true, do interpolation to get gSF
+    bool doBackground = true;               //if true, do background subtraction
+    bool doWidthCal = false;                 //if true, use results from width calibrations
+    int verbose = 0;					//prints extra information if true
+	double gSF_norm = 1 ;				//normalization factor for gSF
+	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
+    double bgEne[2][4];                      //background regions for level 1 and level 2
+    double bgWidth = 100;                   //width of each background window
+    double exiEne[2] = {0, 0};						//lower and upper excitation energy considered
+    double exi_size[2] = {0, 0};					//bin size for shape method
+    double widthCal[2][2];                  //parameters for width calibration
+    int nOfBins = 1;
+    double eff_corr = 1;					//correction factor for level 2;
+	int interPoint = 4;					//starting point used for interpolation
+    int minCounts = 0;                      //minimum number of counts required in a bin to be considered
+	
+	void SetMeV(bool b) {MeV = (b) ? 1000 : 1;}		//set MeV=1000 in case of b true
+    void SetFileName(string str) {dataFileName = str;}
+    std::string GetFileName() {return dataFileName;}
+    void PrintSettings();                       //prints all settings
+    int SizeToBin();                        //calculates the nr of integration bins based on the size of each bin
+    int SizeToBin(double size);             //calculates the nr of integration bins based on size "size" of each bin
+    int BinToSize();                    //calculates the size of integratio bin based on nr of integration bins
+    int BinToSize(int n);                    //calculates the size of integratio bin based on nr of integration bins
+    bool doSlidingWindow = false;           //says if sliding window variation should be performed
+    bool doBinVariation = false;
+    void SaveSettings();
+    void ReadSettings();
+    void setBgEne1(double ene[4]);
+    void setBgEne2(double ene[4]);
+    void ResetWidth();                      //resets the width calibration parameters for re-fitting
+
+};
+
+#endif
