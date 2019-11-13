@@ -40,5 +40,7 @@ public:
     TGraphErrors* plotLit();            //plots literature data of gSF
     void gSF_Print();
     void gSF_Collect();
+    TGraphErrors* gSF_SortHisto();          //plots all gSF results using error band
+
 };
 #endif

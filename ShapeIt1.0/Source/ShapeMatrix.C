@@ -355,9 +355,7 @@ void ShapeMatrix::Diag(){
     
     //minimum value of Excitation energy - gamma ray energy
     eMin_diag = eMin_y - eMin_x;
-
-    //eMin_x  =  ( inputMatrix->GetXaxis()->GetBinCenter(1) * MeV) - (inputMatrix->GetXaxis()->GetBinWidth(1) * MeV /2 ) ;
-    //eMin_y  =  ( inputMatrix->GetYaxis()->GetBinCenter(1) * MeV) - (inputMatrix->GetYaxis()->GetBinWidth(1) * MeV /2 ) ;
+    eMin_diag = -100;
     
     if (sett->verbose) {
         std::cout <<"\nMaximum gamma ray energy detected in input matrix: "<< eMax_x <<endl;

@@ -60,7 +60,8 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_PROJBIN,
     M_DISPLAY_GSF,
     M_DISPLAY_FITWIDTH,
-    M_DISPLAY_PRINT
+    M_DISPLAY_PRINT,
+    M_DISPLAY_BAND
 };
 
 const char *filetypes[2] = {"ROOT files", "*.root"};
@@ -118,6 +119,7 @@ private:
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *fitGSF;
+    bool gSF_band = false;                    //if true, display gSF as error band
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);

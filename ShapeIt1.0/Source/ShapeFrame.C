@@ -60,22 +60,22 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fMatrix->SetEnabled(false);
     fG[4]->AddFrame(fMatrix, fL2);
     //Energy Settings
-    energy[0] = new TGNumberEntry(fEnergy[0], 410, 9,1, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    energy[0] = new TGNumberEntry(fEnergy[0], 410, 9,1, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     fEnergy[0]->AddFrame(energy[0], fL2);
     energy[0]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     TGLabel *l1 = new TGLabel(fEnergy[0], "< Level 1 <");
     fEnergy[0]->AddFrame(l1, fL2);
-    energy[1] = new TGNumberEntry(fEnergy[0], 660, 9,2, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    energy[1] = new TGNumberEntry(fEnergy[0], 660, 9,2, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     energy[1]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[0]->AddFrame(energy[1], fL2);
     fG[1]->AddFrame(fEnergy[0], fL2);
 
-    energy[2] = new TGNumberEntry(fEnergy[1], 1000, 9,3, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    energy[2] = new TGNumberEntry(fEnergy[1], 1000, 9,3, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     energy[2]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[1]->AddFrame(energy[2], fL2);
     TGLabel *l2 = new TGLabel(fEnergy[1], "< Level 2 <");
     fEnergy[1]->AddFrame(l2, fL2);
-    energy[3] = new TGNumberEntry(fEnergy[1], 1300, 9,4, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    energy[3] = new TGNumberEntry(fEnergy[1], 1300, 9,4, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     energy[3]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[1]->AddFrame(energy[3], fL2);
     fG[1]->AddFrame(fEnergy[1], fL2);
@@ -391,6 +391,8 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("Diag &Projection (total)", M_DISPLAY_PROJTOT);
     fDisplayFile->AddEntry("Dia&g Projection (bin)", M_DISPLAY_PROJBIN);
     fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
+    fDisplayFile->AddSeparator();
+    fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
     
@@ -730,18 +732,9 @@ void ShapeFrame::ShapeItBaby() {
             //scale fitGSF to refernce data set
             fitGSF->Scale(1/chi2->GetScale());
 
-            //plot new result
-            gSF_plot = fitGSF->gSF_Histo();
-            
             //collect results
             fitGSF->gSF_Collect();
             
-            //set plotting options
-            gSF_plot->SetMarkerStyle(22);
-            gSF_plot->SetMarkerSize(2);
-            gSF_plot->SetMarkerColor(6);
-    
-            mg->Add(gSF_plot,"P");
             //set sliding window for next iteration
             matrix->sliding_window = i/5.;
         }
@@ -750,9 +743,24 @@ void ShapeFrame::ShapeItBaby() {
         sett->exi_size[0] = sett->exi_size[0] + (50 );
     }
 
+    //mg->Draw("A*");
+    TGraphErrors *g = fitGSF->gSF_SortHisto();
+    g->SetFillColor(6);
+    g->SetFillStyle(1001);
+    
+    //draw gSF graph, either as band or using individual points
+    if (gSF_band)
+        mg->Add(g,"A3");
+    else {
+        g->SetMarkerStyle(22);
+        g->SetMarkerSize(2);
+        g->SetMarkerColor(6);
+        mg->Add(g,"P");
+    }
     mg->Draw("A*");
     fCanvas->Modified();
     fCanvas->Update();
+    
     //restore setting values and diagonalize matrix
     matrix->sliding_window = 1.;
     sett->exi_size[0] = exi_store;
@@ -983,6 +991,14 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_DISPLAY_FITWIDTH:
             UpdateDisplay(7);
             break;
+        case M_DISPLAY_BAND: {
+            gSF_band = !gSF_band;
+            if (gSF_band)
+                fDisplayFile->CheckEntry(M_DISPLAY_BAND);
+            else
+                fDisplayFile->UnCheckEntry(M_DISPLAY_BAND);
+            break;
+        }
         case M_DISPLAY_PRINT:
             if (status > 1)
                 fitGSF->gSF_Print();

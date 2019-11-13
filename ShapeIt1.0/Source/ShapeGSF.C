@@ -388,6 +388,24 @@ void ShapeGSF::gSF_Print() {
         std::cout << gSF_sort[i].egamma <<"     "<< gSF_sort[i].value<<"     " << gSF_sort[i].dvalue <<std::endl;
 }
 
+//creats TGraphError using the sorted data and drawing option for plotitng a band
+TGraphErrors* ShapeGSF::gSF_SortHisto() {
+    std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
+    int nOfPoints = gSF_sort.size();
+    double x[nOfPoints], y[nOfPoints];
+    double dx[nOfPoints], dy[nOfPoints];
+    for (int i = 0; i < nOfPoints ; i++ ) {
+        x[i] = gSF_sort[i].egamma;
+        y[i] = gSF_sort[i].value;
+        dx[i] = 1;
+        dy[i] = gSF_sort[i].dvalue;
+    }
+    TGraphErrors *sortPlot = new TGraphErrors(nOfPoints,x,y,dx,dy);
+    return sortPlot;
+}
+
+
+
 TGraphErrors* ShapeGSF::gSF_Histo() {
     
     int nOfActiveBins = (binRange[1] - binRange[0] +1);
