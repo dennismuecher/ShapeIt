@@ -387,10 +387,12 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile = new TGPopupMenu(gClient->GetRoot());
     fDisplayFile->AddEntry("&Input Matrix", M_DISPLAY_MAT);
     fDisplayFile->AddEntry("&Diag vs Excitation energy", M_DISPLAY_DIAG);
-    fDisplayFile->AddEntry("&Diag &Cube vs Excitation energy", M_DISPLAY_DIAGCUBE);
+    fDisplayFile->AddEntry("Diag &Cube vs Excitation energy", M_DISPLAY_DIAGCUBE);
     fDisplayFile->AddEntry("Diag &Projection (total)", M_DISPLAY_PROJTOT);
     fDisplayFile->AddEntry("Dia&g Projection (bin)", M_DISPLAY_PROJBIN);
     fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
+    fDisplayFile->AddSeparator();
+    fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
     fDisplayFile->AddSeparator();
@@ -991,6 +993,10 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_DISPLAY_FITWIDTH:
             UpdateDisplay(7);
             break;
+        case M_DISPLAY_RATIO:
+            UpdateDisplay(8);
+            break;
+            
         case M_DISPLAY_BAND: {
             gSF_band = !gSF_band;
             if (gSF_band)
@@ -1079,6 +1085,11 @@ void ShapeFrame::UpdateDisplay(int display) {
             leg->AddEntry(T1, "level 1", "lp");
             leg->AddEntry(T2, "level 2", "lp");
             leg->Draw();
+            break;
+        }
+        case 8: {
+            if (status > 1)
+                fitGSF->getRatioGraph()->Draw("AP*");
             break;
         }
     }

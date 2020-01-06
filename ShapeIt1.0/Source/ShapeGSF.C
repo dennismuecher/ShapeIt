@@ -258,7 +258,7 @@ double ShapeGSF::getBgRatio(int bin, int level) {
 void ShapeGSF::FillgSF() {
     gSF_str gSF_t;
     gSF.clear();
-    
+    p_ratio.clear();
     gSF_matrix->Integrate();
     gSF_matrix->IntegrateBg();
     gSF_matrix->IntegrateSquare();
@@ -293,6 +293,7 @@ void ShapeGSF::FillgSF() {
             //recalculate gSF in case autofit is activated
             if (sett->mode == 2 && sett->doBackground) {
                 gSF_t.value1 = gSF_matrix->fit_integral1Net[i] * gSF_matrix->integral1Cube[i] * sett->gSF_norm / gSF_matrix->integral1[i];
+                
                 if (gSF_matrix->fit_integral1Net[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value1 = 0;
@@ -323,6 +324,7 @@ void ShapeGSF::FillgSF() {
             
             if (sett->mode == 2 && sett->doBackground) {
                 gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
+                
                 if (gSF_matrix->fit_integral2Net[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value2 = 0;
@@ -343,8 +345,58 @@ void ShapeGSF::FillgSF() {
             std::cout <<"energies: " <<gSF[i].egamma1 << " " << gSF[i].egamma2 <<std::endl;
             std::cout <<"gSF1: " <<gSF[i].value1 << "+- " << gSF[i].dvalue1 <<std::endl;
             std::cout <<"gSF2: " <<gSF[i].value2 << "+- " << gSF[i].dvalue2 <<std::endl;   }
+        
+        //calculate peak area ratios; this is useful for debugging and understanding detector efficiencies
+        double rat;
+        
+        if (sett->mode == 1 && !sett->doBackground) {
+            if (gSF_matrix->integral2[i] > 0)
+                rat = gSF_matrix->integral1[i] / gSF_matrix->integral2[i];
+            else
+                rat = 0;
+        }
+        
+        else if (sett->mode == 1 && sett->doBackground) {
+            if (gSF_matrix->integral2[i] > 0)
+                rat = getBgRatio(i, 1) * gSF_matrix->integral1[i] / gSF_matrix->integral2[i] / getBgRatio(i, 2);
+            else
+                rat = 0;
+        }
+        
+        else if (sett->mode == 2 && sett->doBackground) {
+            if (gSF_matrix->fit_integral2Net[i] > 0)
+                rat = gSF_matrix->fit_integral1Net[i] / gSF_matrix->fit_integral2Net[i];
+            else
+                rat = 0;
+        }
+        
+        else if (sett->mode == 2 && !sett->doBackground) {
+            if (gSF_matrix->fit_integral2[i] > 0)
+                rat = gSF_matrix->fit_integral1[i] / gSF_matrix->fit_integral2[i];
+            else
+                rat = 0;
+        }
+        //fill vector with peak ratio value
+        p_ratio.push_back(rat);
+        if (sett->verbose)
+            std::cout <<"Ratio of Level 1 and Level 2 for bin " <<i <<" is: " <<rat<<std::endl;
+        
     }
     
+}
+
+//returns a graph displaying the peak area ratios for level 1 and level 2 for each bin, taking into account the actual settings (interation autofit, background subtraction)
+
+TGraph* ShapeGSF::getRatioGraph() {
+    double x[p_ratio.size()];
+    double y[p_ratio.size()];
+   
+    for (int i =0; i < p_ratio.size(); i++) {
+        x[i] = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2;
+        y[i] = p_ratio[i];
+    }
+    TGraph *T = new TGraph(p_ratio.size(), x, y);
+    return T;
 }
 
 void ShapeGSF::Update() {

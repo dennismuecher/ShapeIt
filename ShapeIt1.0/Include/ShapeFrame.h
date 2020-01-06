@@ -61,7 +61,8 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_GSF,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
-    M_DISPLAY_BAND
+    M_DISPLAY_BAND,
+    M_DISPLAY_RATIO
 };
 
 const char *filetypes[2] = {"ROOT files", "*.root"};

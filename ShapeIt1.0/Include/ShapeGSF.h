@@ -27,6 +27,7 @@ public:
 
     std::vector <gSF_sor> gSF_sort;      //vector of energies and gSF used for sorting and printing results
     std::vector <gSF_str> gSF;          //vector of gamma ray strength functions (egamma and value with error for each level)
+    std::vector <double> p_ratio;       //vector of ratios of counts in peak1 / peak2
     ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t);
     void GetgSF() {return gSF;}
     void FillgSF();                         //calculates the gSF
@@ -41,6 +42,6 @@ public:
     void gSF_Print();
     void gSF_Collect();
     TGraphErrors* gSF_SortHisto();          //plots all gSF results using error band
-
+    TGraph* getRatioGraph();                //plot of peak area ratios
 };
 #endif
