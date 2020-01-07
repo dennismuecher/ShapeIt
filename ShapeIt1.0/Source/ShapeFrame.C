@@ -1088,8 +1088,14 @@ void ShapeFrame::UpdateDisplay(int display) {
             break;
         }
         case 8: {
-            if (status > 1)
-                fitGSF->getRatioGraph()->Draw("AP*");
+            if (status > 1) {
+                TGraph* T = fitGSF->getRatioGraph();
+                T->SetMarkerStyle(23);
+                T->SetMarkerSize(2);
+                T->SetMarkerColor(2);
+                T->SetTitle("Peak area 1 / Peak area 2" );
+                T->Draw("AP");
+            }
             break;
         }
     }
