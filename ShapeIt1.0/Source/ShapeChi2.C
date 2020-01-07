@@ -40,13 +40,13 @@ double ShapeChi2::getChi2(double scale) {
             std::cout <<"zero gSF error value zero found in Chi2 routine "<<std::endl;
             continue;
         }
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"Chi2 in loop " <<i <<"is: " << chi2 << std::endl;
-        if (sett->verbose == 2 )
+        if (sett->verbose > 1 )
             std::cout <<"scale in loop " <<i <<"is: " << scale << std::endl;
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"d values in loop " <<i <<"are: " << d[0] <<" " <<d[1] << std::endl;
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"ref value in loop " <<i <<"is: " << ref_val[i] << std::endl;
         //chi2 += d[0]/d[1] * (d[0] - ( scale * ref_val[i] ) );
         chi2 += (d[0] - ( scale * ref_val[i] ) );
@@ -66,7 +66,7 @@ double ShapeChi2::GetScale() {
     do {
         scale_tot = scale_tot * scale;
         chi2 = getChi2(scale_tot);
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"New chi2 value: " << chi2 << "with factor " << scale_tot << endl;
         if (chi2 > 0) { // ref values larger than fit values
             if (walk == -1) {
@@ -88,7 +88,7 @@ double ShapeChi2::GetScale() {
             break;
         }
     } while (dscale > 0.005);
-     if (sett->verbose)
+     if (sett->verbose )
          std::cout <<"Scaling factor: " << scale_tot<<endl;
     return scale_tot;
 }

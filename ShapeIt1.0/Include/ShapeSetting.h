@@ -22,7 +22,7 @@ public:
     bool doInterpol = true;                 //if true, do interpolation to get gSF
     bool doBackground = true;               //if true, do background subtraction
     bool doWidthCal = false;                 //if true, use results from width calibrations
-    int verbose = 0;					//prints extra information if true
+    int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
 	double gSF_norm = 1 ;				//normalization factor for gSF
 	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
     double bgEne[2][4];                      //background regions for level 1 and level 2

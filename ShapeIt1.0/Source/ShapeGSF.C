@@ -29,14 +29,14 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
     int index_l = -1;
     int index_r = -1;
     
-    if (sett->verbose == 2) {
+    if (sett->verbose > 1) {
         for (int i = 0; i < nOfActiveBins; i++) {
             std::cout <<"Current gSF energies gamma1: "<< gSF[binRange[0]+i-1].egamma1 <<std::endl;
              std::cout <<"Current gSF energies gamma2: "<< gSF[binRange[0]+i-1].egamma2 <<std::endl;
         }
     }
    
-    if (sett->verbose == 2)
+    if (sett->verbose > 1)
         std::cout <<"Energy for Interpolation: " <<ene<<std::endl;
     //find clodest gamma ray lower than ene
     for (int i = 0; i < nOfActiveBins; i++) {
@@ -49,7 +49,7 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
             val1 = t_val;
             dval1 = t_dval;
             index_l = i;
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"Found closer energy smaller than ene: " <<ene1<< " with value: " <<val1 <<   std::endl;
         }
         t_ene =gSF[binRange[0]+i-1].egamma2 - ene;
@@ -61,7 +61,7 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
             val1 = t_val;
             dval1 =t_dval;
             index_l = i;
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"Found closer energy smaller than ene: " <<ene1<< " with value: " <<val1 <<   std::endl;
         }
     }
@@ -75,7 +75,7 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
             val2 = t_val;
             dval2 = t_dval;
             index_r = j;
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"Found closer energy higher than ene: " <<ene2<< " with value: " <<val2 <<   std::endl;
         }
         t_ene =gSF[binRange[0]+j-1].egamma2 - ene;
@@ -86,7 +86,7 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
             val2 = t_val;
             dval2 = t_dval;
             index_r = j;
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"Found closer energy higher than ene: " <<ene2<< " with value: " <<val2 <<   std::endl;
         }
     }
@@ -95,14 +95,14 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
         ene1 = gSF[binRange[0]+index_r].egamma2 - ene;
         val1 = gSF[binRange[0]+index_r].value2;
         dval1 = gSF[binRange[0]+index_r].dvalue2;
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"ene1 wasn't defined, now setting to: " <<ene1<< " with value: " <<val1 <<   std::endl;
     }
     else if (index_r == -1) {
         ene2 = gSF[binRange[0]+index_l-2].egamma1 - ene;
         val2 = gSF[binRange[0]+index_l-2].value1;
         dval2 = gSF[binRange[0]+index_l-2].dvalue1;
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout <<"ene2 wasn't defined, now setting to: " <<ene2<< " with value: " <<val2 <<   std::endl;
 
     }
@@ -110,11 +110,11 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
     //transform to gamma ray energy
     ene1 = ene1 + ene;
     ene2 = ene2 + ene;
-    if (sett->verbose == 2)
+    if (sett->verbose > 1)
         std::cout <<"Final values ene1 and ene2 " <<ene1<< " and " <<ene2 <<   std::endl;
     //now interpolate gSF
     double m = ( val1 - val2) / ( ene1 - ene2);
-    if (sett->verbose == 2)
+    if (sett->verbose > 1)
         std::cout <<"slope calculated as : " << m <<   std::endl;
     std::vector <double> result;
     result.push_back ( ( ene - ene1) * m + val1);
@@ -143,7 +143,7 @@ void ShapeGSF::DoInterpol() {
                 //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value2 anymore, so the entire bin, and all following bins, are ignored
                 //erase all elements in gSF from current bin onwards
                 binRange[0] = i+2; //will not include the current bin
-                if (sett->verbose == 2)
+                if (sett->verbose > 1)
                     std::cout <<"Setting lowest active bin to "<< i+2 <<std::endl;
                 break;
             }
@@ -154,7 +154,7 @@ void ShapeGSF::DoInterpol() {
                 gSF[i].value1 = y_norm;
                 //binRange[0] = i+1;//will include the current bin and terminate the interpolation
                 binRange[0] = i+2;//will NOT include the current bin and terminate the interpolation
-                if (sett->verbose == 2)
+                if (sett->verbose > 1)
                     std::cout <<"Setting lowest active bin to "<< i+1 <<std::endl;
                 break;
             }
@@ -165,7 +165,7 @@ void ShapeGSF::DoInterpol() {
             gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
             gSF[i].value1 = y_norm;
             
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
         }
         
@@ -173,7 +173,7 @@ void ShapeGSF::DoInterpol() {
       
         slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
         
-        if (sett->verbose == 2)
+        if (sett->verbose > 1)
             std::cout << "\nSlope for interpolation:" <<slope<<endl;
     }
     
@@ -190,7 +190,7 @@ void ShapeGSF::DoInterpol() {
             if (gSF[i].value2 <= 0) {
                 //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value1 anymore, so the entire bin, and all following bins, are ignored
                 binRange[1] = i; //will not include the current bin
-                if (sett->verbose == 2)
+                if (sett->verbose > 1)
                     std::cout <<"Setting number of active bins to "<< i <<std::endl;
                 break;
             }
@@ -201,7 +201,7 @@ void ShapeGSF::DoInterpol() {
                 gSF[i].value2 = y_norm;
                 //binRange[1] = i+1; //will include the current bin
                 binRange[1] = i; //will NOT include the current bin
-                if (sett->verbose == 2)
+                if (sett->verbose > 1)
                     std::cout <<"Setting number of active bins to "<< i+1 <<std::endl;
                 break;
             }
@@ -214,9 +214,9 @@ void ShapeGSF::DoInterpol() {
                 
             }
             
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout << "\nSlope for interpolation:" <<slope<<endl;
-            if (sett->verbose == 2)
+            if (sett->verbose > 1)
                 std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
         }
         //calculate slope for next iteration
@@ -344,7 +344,8 @@ void ShapeGSF::FillgSF() {
             std::cout <<"Bin: " <<i+1<<std::endl;
             std::cout <<"energies: " <<gSF[i].egamma1 << " " << gSF[i].egamma2 <<std::endl;
             std::cout <<"gSF1: " <<gSF[i].value1 << "+- " << gSF[i].dvalue1 <<std::endl;
-            std::cout <<"gSF2: " <<gSF[i].value2 << "+- " << gSF[i].dvalue2 <<std::endl;   }
+            std::cout <<"gSF2: " <<gSF[i].value2 << "+- " << gSF[i].dvalue2 <<std::endl;
+        }
         
         //calculate peak area ratios; this is useful for debugging and understanding detector efficiencies
         double rat;

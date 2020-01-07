@@ -397,7 +397,7 @@ void ShapeMatrix::Diag(){
     for (int i = 2; i < sett->nOfBins; i++)
         ybins[i] =  ybins[i-1] + sett->exi_size[0];
     ybins[sett->nOfBins] = sett->exiEne[1];
-    if (sett->verbose == 2) {
+    if (sett->verbose > 1) {
     for (int i = 0; i <= sett->nOfBins; i++)
         std::cout<< "ybins: "<< ybins[i] <<std::endl;
     }

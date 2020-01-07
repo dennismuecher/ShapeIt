@@ -399,6 +399,7 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
     
     fDisplayFile->DisableEntry(M_DISPLAY_FITWIDTH);
+    fDisplayFile->DisableEntry(M_DISPLAY_RATIO);
     fMenuBar->AddPopup("&Display", fDisplayFile, fMenuBarItemLayout);
 
     
@@ -693,9 +694,11 @@ void ShapeFrame::ShapeItBaby() {
     //status update: will have values for gSF
     status = 2;
     
-    //enable Menu entry showing fit results
+    //enable Menu entry showing fit results for peak width and peak ratios
     if (sett->mode == 2)
         fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
+    
+    fDisplayFile->EnableEntry(M_DISPLAY_RATIO);
     
     //only temporary use during the loop to store each individual gSF plot
     TGraphErrors* gSF_plot;
