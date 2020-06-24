@@ -43,5 +43,6 @@ public:
     void gSF_Collect();
     TGraphErrors* gSF_SortHisto();          //plots all gSF results using error band
     TGraph* getRatioGraph();                //plot of peak area ratios
+    
 };
 #endif

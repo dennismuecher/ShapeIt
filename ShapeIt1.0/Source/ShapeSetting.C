@@ -45,27 +45,65 @@ int ShapeSetting::SizeToBin(double size) {
     return bins;
 }
 
+//returns an energy-dependend efficiency factor
+double ShapeSetting::getEffCor(double ene) {
+	
+	
+	// this is just a diry hack to implement an energy-dependent efficiency correction
+	
+	//settings for 76Ge 2+1, 2+2
+	/*double a = 7E-4; //slope
+	double b = -0.3965; //offset
+	
+	double min_e = 1000;//minimum energy to apply factor
+	double max_e = 2200; //maximum energy to apply factor
+	
+	double corr = a * ene + b;*/
+	
+	
+	//settings for 76Ge 0+1, 2+1,
+	double a = 4.2E-4; //slope
+	double b = -0.4; //offset
+	
+	double min_e = 2400;//minimum energy to apply factor
+	double max_e = 3000; //maximum energy to apply factor
+	
+	double corr = a * ene + b;
+	
+	if (ene < min_e)
+		corr = a * min_e + b;
+	else if (ene > max_e)
+		//corr = a * max_e + b;
+		corr = 1;
+	
+	corr = 1;
+	return eff_corr * corr;
+}
 
 void ShapeSetting::SaveSettings() {
     ofstream outfile;
     outfile.open (settFileName.c_str());
     outfile << dataFileName << "\n";
     outfile << osloFileName << "\n";
+	outfile << effiFileName << "\n";
     outfile << "matrixName " << matrixName<<"\n";
     outfile << "MeV: " << MeV<<"\n";
     outfile << "mode " << mode << "\n";
     outfile << "doInterpol " << doInterpol<<"\n";
     outfile << "doOslo " << doOslo<<"\n";
+    outfile << "doEffi " << doEffi<<"\n";
     outfile << "doSlidingWindow " << doSlidingWindow <<"\n";
     outfile << "doBinVariation " << doBinVariation <<"\n";
     outfile << "doBackground " << doBackground <<"\n";
     outfile << "verbose " << verbose<<"\n";
     outfile << "gSF_norm " << gSF_norm<<"\n";
     outfile << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
+    outfile << "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     outfile << "bg_level1 " << bgEne[0][0] <<" "<< bgEne[0][1] <<" "<< bgEne[0][2] <<" "<< bgEne[0][3] <<"\n";
     outfile << "bg_level2 " << bgEne[1][0] <<" "<< bgEne[1][1] <<" "<< bgEne[1][2] <<" "<< bgEne[1][3] <<"\n";
     outfile << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
-    outfile << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
+    outfile << "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
+	outfile << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     outfile << "excitation_bin_1 " << exi_size[0] <<"\n";
     outfile << "excitation_bin_2 " << exi_size[1] <<"\n";
     outfile << "nOfBins " << nOfBins <<"\n";
@@ -92,24 +130,41 @@ void ShapeSetting::ReadSettings() {
         //get the literature data filename; this goes extra because of issues wih absolute paths containing white spaces
         getline(inp,line);
         osloFileName = line;
+        
+		//get the efficiency data filename; due to backwards compatibility, check if this line contains the matrixName information
+        getline(inp,line);
+        word.clear();
+        istringstream isstr(line);
+        isstr >> word;
+		if (word == "matrixName" ) {
+			isstr >> matrixName;
+			std::cout <<"Found old file format" <<std::endl;
+		}
+		else {
+			effiFileName = line;
+			std::cout <<"Found new file format" <<std::endl;
+		}
+		
         //now get everything else
         while ( getline(inp,line) ) {
             word.clear();
             istringstream isstr(line);
             isstr >> word;
-        
             if (word == "matrixName" ) isstr >> matrixName;
             if (word == "MeV:" ) isstr >> MeV;
             if (word == "mode" ) isstr >> mode ;
             if (word == "doInterpol" ) isstr >> doInterpol;
             if (word == "doOslo" ) isstr >> doOslo;
+            if (word == "doEffi" ) isstr >> doEffi;
             if (word == "doSlidingWindow" ) isstr >> doSlidingWindow ;
             if (word == "doBinVariation" ) isstr >> doBinVariation ;
             if (word == "doBackground" ) isstr >> doBackground ;
             if (word == "verbose" ) isstr >> verbose;
             if (word == "gSF_norm" ) isstr >> gSF_norm;
             if (word == "level1" ) { isstr >> levEne[0]; isstr >>levEne[1];}
+			if (word == "level1_2" ) { isstr >> levEne_2[0]; isstr >>levEne_2[1];}
             if (word == "level2" ) { isstr >> levEne[2]; isstr >>levEne[3];}
+			if (word == "level2_2" ) { isstr >> levEne_2[2]; isstr >>levEne_2[3];}
             if (word == "bg_level1" ){ isstr >> bgEne[0][0]; isstr >> bgEne[0][1]; isstr >> bgEne[0][2]; isstr >> bgEne[0][3];}
             if (word == "bg_level2" ){ isstr >> bgEne[1][0]; isstr >> bgEne[1][1]; isstr >> bgEne[1][2]; isstr >> bgEne[1][3];}
             if (word == "excitation" ) { isstr >> exiEne[0]; isstr >>exiEne[1];}
@@ -121,6 +176,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
+			
         
         }
         if (verbose)
@@ -145,10 +201,12 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "root file name " << dataFileName<<"\n";
     std::cout  << "matrixName " << matrixName<<"\n";
     std::cout  << "Literature values " << osloFileName<<"\n";
+    std::cout  << "Efficiency correction " << effiFileName<<"\n";
     std::cout  << "MeV: " << MeV<<"\n";
     std::cout  << "mode " << mode << "\n";
     std::cout  << "doInterpol " << doInterpol<<"\n";
     std::cout  << "doOslo " << doOslo<<"\n";
+    std::cout  << "doEffi " << doEffi<<"\n";
     std::cout  << "doSlidingWindow " << doSlidingWindow <<"\n";
     std::cout  << "doBinVariation " << doBinVariation <<"\n";
     std::cout  << "doBackground " << doBackground <<"\n";

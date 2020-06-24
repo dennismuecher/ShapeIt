@@ -1,0 +1,29 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/Ge76_rain17_e13502.root
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/input_gSF_E1_M1.txt
+
+matrixName matrix1
+MeV: 1
+mode 2
+doInterpol 1
+doOslo 1
+doEffi 0
+doSlidingWindow 1
+doBinVariation 0
+doBackground 1
+verbose 0
+gSF_norm 0.027
+level1 470 631
+level1_2 0 0
+bg_level1 328.145 427.757 641.932 688.295
+bg_level2 887.447 987.356 1231.58 1377.28
+level2 1018 1191
+level2_2 0 0
+excitation 2000 7500
+excitation_bin_1 500
+excitation_bin_2 800
+nOfBins 11
+eff_corr 1.19
+interPoint 5
+minCounts 400
+doWidthCal 0
+widthCal 0 0 0 0

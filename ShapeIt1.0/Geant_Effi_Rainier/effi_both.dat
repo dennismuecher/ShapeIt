@@ -1,0 +1,25 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/Effic_both.root
+
+matrixName matrix1
+MeV: 1
+mode 2
+doInterpol 0
+doOslo 0
+doSlidingWindow 0
+doBinVariation 0
+doBackground 1
+verbose 0
+gSF_norm 0.012
+level1 1183 1426
+bg_level1 990.437 1091.83 1490.38 1561.27
+bg_level2 1871.47 1933.08 2262.29 2289.57
+level2 1962 2229
+excitation 4250 10000
+excitation_bin_1 501
+excitation_bin_2 800
+nOfBins 12
+eff_corr 1
+interPoint 6
+minCounts 50
+doWidthCal 0
+widthCal 0 0 0 0

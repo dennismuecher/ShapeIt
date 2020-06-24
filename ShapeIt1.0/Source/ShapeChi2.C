@@ -2,6 +2,7 @@
 
 #include "../Include/ShapeChi2.h"
 //the gSF values of gSF_fit are going to be scaled to those of gSF_ref
+
 ShapeChi2::ShapeChi2(ShapeGSF *gSF_t, ShapeSetting *sett_t) {
     gSF = gSF_t;
     sett = sett_t;
@@ -19,17 +20,20 @@ ShapeChi2::ShapeChi2(ShapeGSF *gSF_t, ShapeSetting *sett_t) {
 double ShapeChi2::getChi2(double scale) {
     double chi2 = 0;
     std::vector <double> d;
-    for (int i = 0; i < ref_ene.size() - 2; i++) {
+    
+	//this should be fixed....a proper way of defining what to take into account during chi2 min! 
+	
+	//for (int i = sett->interPoint-4 ; i < sett->interPoint+3;  i++) {
+		
+	for (int i = 0; i < ref_ene.size() - 2; i++) {
         d = gSF->InterpolValue(ref_ene[i]);
         if (d[0] > 0.0001) {
             std::cout <<"Unusual gSF detected in Chi2 in loop " <<i <<std::endl;
-         sett->verbose = 1;
         }
         //this is a chi2, weighted by the relative error for each gSF value;
         
         if (d[0] < 0 ) {
             std::cout <<"negative gSF value zero found in Chi2 routine "<<std::endl;
-            sett->verbose = 1;
             continue;
         }
         if (d[0] == 0 ) {
@@ -40,7 +44,7 @@ double ShapeChi2::getChi2(double scale) {
             std::cout <<"zero gSF error value zero found in Chi2 routine "<<std::endl;
             continue;
         }
-        if (sett->verbose > 1)
+		if (sett->verbose > 1)
             std::cout <<"Chi2 in loop " <<i <<"is: " << chi2 << std::endl;
         if (sett->verbose > 1 )
             std::cout <<"scale in loop " <<i <<"is: " << scale << std::endl;

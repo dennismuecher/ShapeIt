@@ -33,7 +33,7 @@
 #include <TFile.h>
 #include <TKey.h>
 #include <TClass.h>
-
+#include <algorithm>
 
 
 class TGWindow;
@@ -52,6 +52,7 @@ enum ETestCommandIdentifiers {
     M_SETTING_SAVEAS,
     M_SETTING_PRINT,
     M_SETTING_OSLO,
+	M_SETTING_EFFI,
     M_SETTING_WIDTHRESET,
     M_DISPLAY_MAT,
     M_DISPLAY_DIAG,
@@ -62,7 +63,8 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
     M_DISPLAY_BAND,
-    M_DISPLAY_RATIO
+    M_DISPLAY_RATIO,
+    M_DISPLAY_GRF
 };
 
 const char *filetypes[2] = {"ROOT files", "*.root"};
@@ -90,7 +92,7 @@ private:
     TGLayoutHints *fL1;
     TGLayoutHints *fL2;
     TGRadioButton* fR[6];
-    TGCheckButton* OB[6];
+    TGCheckButton* OB[7];
     TGPopupMenu* fMenuFile;
     TGPopupMenu* fSettingsFile;
     TGPopupMenu* fDisplayFile;
@@ -121,6 +123,7 @@ private:
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *fitGSF;
     bool gSF_band = false;                    //if true, display gSF as error band
+    bool grf_show = false;                      //if true, display fit of gSF via giant resonance formula from RAINIER
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);

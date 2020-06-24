@@ -1,0 +1,29 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/Ge76_rain17_ExEg.root
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/input_gSF_E1_M1.txt
+
+matrixName sum_ExEg
+MeV: 1
+mode 1
+doInterpol 1
+doOslo 1
+doEffi 0
+doSlidingWindow 1
+doBinVariation 1
+doBackground 1
+verbose 0
+gSF_norm 0.25
+level1 440 660
+level1_2 0 0
+bg_level1 260 360 700 800
+bg_level2 865.02 964.797 1208.48 1269.88
+level2 962 1199
+level2_2 0 0
+excitation 3000 7500
+excitation_bin_1 321
+excitation_bin_2 800
+nOfBins 15
+eff_corr 1
+interPoint 6
+minCounts 20
+doWidthCal 0
+widthCal 0 0 0 0

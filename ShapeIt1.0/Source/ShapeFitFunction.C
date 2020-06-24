@@ -1,4 +1,4 @@
-//the class defining the fit function
+//the class defining the peak fit function
 
 #include "TF1.h"
 
@@ -19,7 +19,7 @@ private:
         else if (xx >= bgRanges[2] && xx <= bgRanges[3] )
             return false;
         else if (xx >= peakRanges[0] && xx <= peakRanges[1] )
-            return false;
+			  return false;
         else if ( do_reject )
             return true;
         else return false;
@@ -29,16 +29,20 @@ public:
     
     //Constructor
     
-    ShapeFitFunction ( ) {
-        multip = 0;
+    ShapeFitFunction (bool is_doublet ) {
+		if ( is_doublet) 
+			multip = 1;
+		else
+			multip = 0;
+		
         for (int j = 0; j < 4; j++) {
             bgRanges[j] = 0;
             multi_gaus[j] = 0;
         }
         gauss = 0;
         peakRanges[0] = 0; peakRanges[1] = 0;
-        do_reject = false;
-        fix_width = false;
+        do_reject = true;
+        fix_width = true;
     }
     
     void SetReject (bool ddo_reject) {do_reject = ddo_reject;}
@@ -68,13 +72,12 @@ public:
         }
         //define one gaussian for each multiplet peak
         //the first gaussian has parameters par[3], par[4], par[5], the second peak has par[6], par[7]
-        
         gauss = par[3]*exp(-0.5*TMath::Power(((x[0]-par[4])/par[5]),2));
         for (int j = 0; j < multip; j++) {
             if (fix_width)
-                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power((2.35*(x[0]-par[3*j + 7])/par[5]),2));
+                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power(((x[0]-par[3*j + 7])/par[5]),2));
             else
-                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power((2.35*(x[0]-par[3*j + 7])/par[3*j + 8]),2));
+                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power(((x[0]-par[3*j + 7])/par[3*j + 8]),2));
             gauss = gauss + multi_gaus[j];
             
         }

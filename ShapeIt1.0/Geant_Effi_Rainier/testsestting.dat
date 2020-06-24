@@ -1,0 +1,28 @@
+/Users/dmuecher/Library/Mobile Documents/com~apple~CloudDocs/ShapeIt1.0/ShapeIt1.0/Geant_Effi_Rainier/Ge76_rain17_geant4_matrix.root
+
+
+matrixName matrix1
+MeV: 1
+mode 1
+doInterpol 1
+doOslo 0
+doSlidingWindow 0
+doBinVariation 0
+doBackground 0
+verbose 0
+gSF_norm 0.012
+level1 410 660
+level1_2 0 0
+bg_level1 260 360 700 800
+bg_level2 850 950 1350 1450
+level2 1000 1300
+level2_2 0 0
+excitation 2500 7000
+excitation_bin_1 400
+excitation_bin_2 800
+nOfBins 12
+eff_corr 1
+interPoint 6
+minCounts 50
+doWidthCal 0
+widthCal 0 0 0 0

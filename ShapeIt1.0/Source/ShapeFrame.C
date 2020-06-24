@@ -1,6 +1,23 @@
 #include "../Include/ShapeFrame.h"
 #include "../Source/ShapeInfo.C"
 
+
+double glo(double *x, double *par){
+  //par[0]: sigma
+  //par[1]: width
+  //par[2]: energy
+  double Tf = 0.86; //CT model, T at final states (can be adjusted)
+  //double Tf = par[3];
+  double a = 8.674E-8; //1/3pi^2hbar^2c^2 constant, in MeV^2 mb^-1
+  double b = 39.4784; //4pi^2 constant
+  double gamma = (par[1]*(pow(x[0] /1000.,2)+b*pow(Tf,2)))/pow(par[2],2);
+  double gamma0 = b*pow(Tf,2)*par[1]/pow(par[2],2);
+  double term1 = ((x[0]*gamma / 1000.)/(pow(pow(x[0] / 1000. ,2)-pow(par[2],2),2)+pow(x[0] / 1000.,2)*pow(gamma,2)));
+  double term2 = (0.7*gamma0)/(pow(par[2],3));
+  double f = a*par[0]*par[1]*(term1 + term2);
+  return f;
+}
+
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
@@ -176,6 +193,8 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     OB[4] = new TGCheckButton(fG[2], new TGHotString("Background subtraction"), 23);
     OB[5] = new TGCheckButton(fG[2], new TGHotString("Use Width Calibration"), 24);
     OB[5]->SetEnabled(false);
+    OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
+    OB[6]->SetEnabled(false);
     for (int i = 1 ; i < 6; i++) {
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
@@ -276,7 +295,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->mode == 2)
         fR[1]->SetState(kButtonDown);
     
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 7; i++)
         OB[i]->SetState(kButtonUp);
     
     if (sett_t->doInterpol)
@@ -291,7 +310,8 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         OB[4]->SetState(kButtonDown);
     if (sett_t->doWidthCal)
         OB[5]->SetState(kButtonDown);
-    
+    if (sett_t->doEffi)
+        OB[6]->SetState(kButtonDown);
     
 }
 
@@ -342,7 +362,12 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
         sett_t->doWidthCal = true;
     else
         sett_t->doWidthCal = false;
-    
+	
+    if (OB[6]->GetState() == kButtonDown)
+        sett_t->doEffi = true;
+    else
+        sett_t->doEffi = false;
+	
 
     sett_t->interPoint = sett->interPoint; //this is a dirty hack....sett always caries the information on interPoint but it should be done better...
 
@@ -377,6 +402,7 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("&Print Settings to terminal", M_SETTING_PRINT);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("L&oad Literature Values", M_SETTING_OSLO);
+    //fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
     
@@ -395,6 +421,8 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
+    fDisplayFile->AddSeparator();
+    fDisplayFile->AddEntry("&Fit Giant Resoance Formula", M_DISPLAY_GRF);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
     
@@ -495,7 +523,9 @@ void ShapeFrame::DoRadio()
         case 24:
             sett->doWidthCal = !sett->doWidthCal;
             break;
-            
+	    case 25:
+	        sett->doEffi = !sett->doEffi;
+	        break; 
 
     };
 }
@@ -723,23 +753,35 @@ void ShapeFrame::ShapeItBaby() {
 
             //update number of integration bins according to exi_size
             sett->nOfBins = sett->SizeToBin();
-            if (sett->nOfBins < sett->interPoint) {
-                std::cout <<"Skipping this iteration because interPoint larger than number of bins!" <<std::endl;
-                continue;
-            }
-            //sliding window of integration bin
+            
+          if (sett->nOfBins < sett->interPoint) {
+                   std::cout <<"Skipping this iteration because interPoint larger than number of bins!" <<std::endl;
+                    continue;
+           }
+            //loop over first bin energy
+            
+           
+            //update matrix
             matrix->Diag();
             
-            //recalculate gSF values
-            fitGSF->Update();
-
-
-            //scale fitGSF to refernce data set
-            fitGSF->Scale(1/chi2->GetScale());
-
-            //collect results
-            fitGSF->gSF_Collect();
             
+            //loop over interpoint if requested
+            //for (int inter = 2; inter < sett->nOfBins -1; inter++) {
+            //sett->interPoint = inter;
+                //if (sett->nOfBins < inter) {
+                  //  std::cout <<"Skipping this iteration because interPoint larger than number of bins!" <<std::endl;
+                    //continue;
+                //}
+                
+                //recalculate gSF values
+                fitGSF->Update();
+
+                //scale fitGSF to refernce data set
+                fitGSF->Scale(1/chi2->GetScale());
+
+                //collect results
+                fitGSF->gSF_Collect();
+				//}
             //set sliding window for next iteration
             matrix->sliding_window = i/5.;
         }
@@ -755,16 +797,29 @@ void ShapeFrame::ShapeItBaby() {
     
     //draw gSF graph, either as band or using individual points
     if (gSF_band)
-        mg->Add(g,"A3");
+        mg->Add(g,"E3");
     else {
         g->SetMarkerStyle(22);
         g->SetMarkerSize(2);
         g->SetMarkerColor(6);
         mg->Add(g,"P");
     }
+	//plot the multigraph
     mg->Draw("A*");
+	
+    //fit giant resonance formula if requested
+	if (grf_show) {
+		TF1 *fitGDR = new TF1("fitGDR",glo,3000,6000,3);
+		fitGDR->SetParameter(0,300);
+		fitGDR->SetParameter(1,5);
+		fitGDR->SetParameter(2,15);
+		//fitGDR->SetParameter(3,0.5);
+		fitGDR->SetLineColor(1);
+		g->Fit(fitGDR," "," ",3000,6000);   
+	}
     fCanvas->Modified();
     fCanvas->Update();
+    
     
     //restore setting values and diagonalize matrix
     matrix->sliding_window = 1.;
@@ -968,6 +1023,25 @@ void ShapeFrame::HandleMenu(Int_t id)
             }
             break;
         }
+		
+        //currently not in use...for future implementation to lead energy-dependent effi parameters
+		case M_SETTING_EFFI: {
+            static TString dir(".");
+            TGFileInfo fi_sett;
+            fi_sett.fFileTypes = filetypes_t;
+            fi_sett.fIniDir    = StrDup(dir);
+            
+            new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
+            if (fi_sett.fFilename) {
+                sett->effiFileName = fi_sett.fFilename;
+                sett->doEffi = true;
+                UpdateGuiSetting(sett);
+            }
+            break;
+        }
+		
+		
+		
             
         case M_SETTING_WIDTHRESET: {
             sett->doWidthCal = 0;
@@ -1008,15 +1082,20 @@ void ShapeFrame::HandleMenu(Int_t id)
                 fDisplayFile->UnCheckEntry(M_DISPLAY_BAND);
             break;
         }
+        case M_DISPLAY_GRF: {
+            grf_show = !grf_show;
+            if (grf_show)
+                fDisplayFile->CheckEntry(M_DISPLAY_GRF);
+            else
+                fDisplayFile->UnCheckEntry(M_DISPLAY_GRF);
+            break;
+        }
         case M_DISPLAY_PRINT:
             if (status > 1)
                 fitGSF->gSF_Print();
             else
                 std::cout <<"ShapeIt, first! No values to show" <<std::endl;
             break;
-            
-        
-        
             
     default:
             break;

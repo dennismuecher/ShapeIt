@@ -260,7 +260,7 @@ void ShapeMatrix::FitIntegral(){
 //performs a gauss fit to histo of bin "bin" for level 1 (level =0) or level 2 (level =1)
 void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     char name[20];
-    
+    bool is_doublet = true;
     //background regions
     double bgRange[4];
     for (int i =0; i <4; i++)
@@ -268,44 +268,101 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     
     //peak region
     double peakRange[2];
-    peakRange[0] = sett->levEne[2*level];
-    peakRange[1] = sett->levEne[2*level+1];
     
+	if ( sett->levEne_2[2*level] == 0 && sett->levEne_2[2*level] == 0 ) 
+		is_doublet = false;
+	
+	//no doublet for this level
+	if (!is_doublet)
+	{
+		peakRange[0] = sett->levEne[2*level];
+    	peakRange[1] = sett->levEne[2*level+1];
+	}
+    
+	//doublet present
+	else {
+		peakRange[0] = min(sett->levEne[2*level], sett->levEne_2[2*level]);
+		peakRange[1] = max(sett->levEne[2*level+1], sett->levEne_2[2*level+1]);
+	}
+			
     //peak energy
     double p = ( sett->levEne[2*level] + sett->levEne[2*level + 1] )/2;
+    double p_2 = ( sett->levEne_2[2*level] + sett->levEne_2[2*level + 1] )/2;
+	
 
     //initital guess for sigma: 1/6th of width of integration range
     double dp = ( sett->levEne[2*level+1] - sett->levEne[2*level] )/6;
+	double dp_2 = ( sett->levEne_2[2*level+1] - sett->levEne_2[2*level] )/6;
 
     //define fit function and set ranges
-    ShapeFitFunction *fitfunc = new ShapeFitFunction();
+    
+	ShapeFitFunction *fitfunc = new ShapeFitFunction(is_doublet);
     fitfunc->SetPeakRanges(peakRange);
     fitfunc->SetBgRanges(bgRange);
     
     //TF1 object for the fit
     sprintf(name,"fit_level%d_bin%d",level+1, bin);
-    fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
-    fit_result[level]->SetLineColor(6);
+    if (is_doublet)
+		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 8 );
+	else
+		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
+    
+	fit_result[level]->SetLineColor(6);
 
     //get bin content at peak and bgRange[1] as starting value for fit amplitude
     double amplitude_init = histo->GetBinContent(energyToBinX(p));
-    double amplitude_init_bg = histo->GetBinContent(energyToBinX(bgRange[1]));
+    double amplitude_init_2 = histo->GetBinContent(energyToBinX(p_2));
+    
+	double amplitude_init_bg = histo->GetBinContent(energyToBinX(bgRange[1]));
     
     //set initial fit values
     fit_result[level]->SetParameter(1, 0);
     fit_result[level]->SetParameter(2, amplitude_init_bg);
-    fit_result[level]->SetParameter(3, amplitude_init );
-    fit_result[level]->SetParameter(4, p);
-    fit_result[level]->SetParameter(5, dp);
-    
+	
     //do linear background
     fit_result[level]->FixParameter(0,0);
     
+    //perform fit of background, first
+	fit_result[level]->FixParameter(3, 0);
+	if (is_doublet) 
+			fit_result[level]->FixParameter(6, 0);
+	//set peakrange to zero
+	double peakRange_temp[2]={0,0};
+	fitfunc->SetPeakRanges(peakRange_temp);
+	
+  	if (level == 0)
+	     histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+  	else
+		  histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+	
+	//fix background fit parameter
+	fit_result[level]->FixParameter(1, fit_result[level]->GetParameter(1));
+	fit_result[level]->FixParameter(2, fit_result[level]->GetParameter(2));
+
+	//set peak range for peak fit
+	fitfunc->SetPeakRanges(peakRange);
+	
+	fit_result[level]->SetParameter(3, amplitude_init );
+    fit_result[level]->SetParameter(4, p);
+    fit_result[level]->SetParameter(5, dp);
+    
+	if (is_doublet) {
+		fit_result[level]->SetParameter(6, amplitude_init_2);
+		fit_result[level]->SetParameter(7, p_2);
+	}
+	
+    
+	
     //set fit boundaries
     fit_result[level]->SetParLimits(3,0.01*amplitude_init, 100*amplitude_init);
-    fit_result[level]->SetParLimits(4, peakRange[0], peakRange[1]);
+    fit_result[level]->SetParLimits(4, sett->levEne[2*level], sett->levEne[2*level+1]);
 
     fit_result[level]->SetParLimits(5, 0.5*dp, 2*dp);
+	
+	if (is_doublet) {
+		fit_result[level]->SetParLimits(6,0.01*amplitude_init_2, 100*amplitude_init_2);
+		fit_result[level]->SetParLimits(7, sett->levEne_2[2*level], sett->levEne_2[2*level+1]);
+	}
 
     //if doFitWidth is set, fix width according to calibration
     if (sett->doWidthCal)
@@ -331,6 +388,10 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     else
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 
+	//set amplitude of doublet peak to zero as we only want the peak content of the peak of interest
+	
+	if (is_doublet) 
+		fit_result[level]->FixParameter(6,0);
 }
 
 

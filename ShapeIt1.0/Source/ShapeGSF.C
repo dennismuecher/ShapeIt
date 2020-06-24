@@ -264,7 +264,7 @@ void ShapeGSF::FillgSF() {
     gSF_matrix->IntegrateSquare();
     gSF_matrix->IntegrateCube();
     
-    //if autofit or background usbtraction is set, perform autofit using Gauss
+    //if autofit or background subtraction is set, perform autofit using Gauss
     if (sett->mode == 2 || sett->doBackground)
         gSF_matrix->FitIntegral();
     
@@ -274,21 +274,23 @@ void ShapeGSF::FillgSF() {
     
     for (int i = 0; i < gSF_matrix->integral1Cube.size(); i++ ) {
         
-        //calculate gamma ray strength
-        gSF_t.value1 = getBgRatio(i, 1) * gSF_matrix->integral1Cube[i] * sett->gSF_norm;
-        gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->eff_corr * sett->gSF_norm;
-        
-        if (getBgRatio(i, 1) * gSF_matrix->integral1[i] < sett->minCounts || gSF_matrix->integral1[i] == 0 ) {
+		if (getBgRatio(i, 1) * gSF_matrix->integral1[i] < sett->minCounts || gSF_matrix->integral1[i] == 0 ) {
             gSF_t.value1 = 0;
             gSF_t.dvalue1 = 0;
             gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
         }
         else {
-            gSF_t.dvalue1 = TMath::Power(1./gSF_matrix->integral1[i], 0.5)*gSF_t.value1;
+			
+			//calculate E_gamma
             //this is the better way of calculating E_gamma by calculating the average E_g, weighted by gSF, i.e. egamma_avg = SUM (E_g*gSF) / SUM(gSF). E_g*gSF is contained in the gSFSquare matrix
             gSF_t.egamma1 = gSF_matrix->integral1Square[i] / gSF_matrix->integral1Cube[i];
             //this calculates the average E_gamma just using the middle of each excitation bin; not the preferred way as it doesn't take into account of feeding as a function iof excitation energy
             //gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
+            
+	        //calculate gamma ray strength
+			double M1 =  getBgRatio(i, 1) * gSF_matrix->integral1Cube[i];
+			gSF_t.value1 = M1 * sett->gSF_norm;
+            gSF_t.dvalue1 = TMath::Power(1./gSF_matrix->integral1[i], 0.5)*gSF_t.value1;
             
             //recalculate gSF in case autofit is activated
             if (sett->mode == 2 && sett->doBackground) {
@@ -316,22 +318,29 @@ void ShapeGSF::FillgSF() {
             
         }
         else {
-            gSF_t.dvalue2 = TMath::Power(1./gSF_matrix->integral2[i], 0.5)*gSF_t.value2;
+			//calculate E_gamma
             //this is the better way of calculating E_gamma by calculating the average E_g, weighted by gSF, i.e. egamma_avg = SUM (E_g*gSF) / SUM(gSF). E_g*gSF is contained in the gSFSquare matrix
             gSF_t.egamma2 = gSF_matrix->integral2Square[i] / gSF_matrix->integral2Cube[i];
             //this calculates the average E_gamma just using the middle of each excitation bin; not the preferred way as it doesn't take into account of feeding as a function iof excitation energy
             //gSF_t.egamma2 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel2;
+			
+			//calculate gamma ray strength
+			//gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->eff_corr * sett->gSF_norm;
+			gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->getEffCor(gSF_t.egamma2) * sett->gSF_norm;
+            gSF_t.dvalue2 = TMath::Power(1./gSF_matrix->integral2[i], 0.5)*gSF_t.value2;
             
+			//recalculate gSF in case autofit is activated
             if (sett->mode == 2 && sett->doBackground) {
-                gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
                 
+				//gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
+         		gSF_t.value2 = sett->getEffCor(gSF_t.egamma2) * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
                 if (gSF_matrix->fit_integral2Net[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value2 = 0;
                 }
             }
             else if (sett->mode == 2 && !sett->doBackground) {
-                gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
+                gSF_t.value2 = sett->getEffCor(gSF_t.egamma2) * gSF_matrix->fit_integral2[i] * gSF_matrix->integral2Cube[i] * sett->gSF_norm / gSF_matrix->integral2[i];
                 if (gSF_matrix->fit_integral2[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value2 = 0;
@@ -438,7 +447,7 @@ void ShapeGSF::gSF_Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
     std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
     for (int i = 0; i < gSF_sort.size(); i++ )
-        std::cout << gSF_sort[i].egamma <<"     "<< gSF_sort[i].value<<"     " << gSF_sort[i].dvalue <<std::endl;
+        std::cout << gSF_sort[i].egamma <<"     "<< gSF_sort[i].value + gSF_sort[i].dvalue <<"     " << gSF_sort[i].value - gSF_sort[i].dvalue <<std::endl;
 }
 
 //creats TGraphError using the sorted data and drawing option for plotitng a band
@@ -495,13 +504,13 @@ TGraphErrors* ShapeGSF::plotLit() {
     ifstream inp;
     inp.open(sett->osloFileName.c_str());
     if (inp.is_open() ) {
-        double oslo_gamma[ 100 ];
-        double oslo_gSF_high[ 100 ];
-        double oslo_gSF_low[ 100 ];
-        double oslo_gSF[ 100 ];
+        double oslo_gamma[ 1000 ];
+        double oslo_gSF_high[ 1000 ];
+        double oslo_gSF_low[ 1000 ];
+        double oslo_gSF[ 1000 ];
         
-        double oslo_dgamma[ 100 ];
-        double oslo_dgSF[ 100 ];
+        double oslo_dgamma[ 1000 ];
+        double oslo_dgSF[ 1000 ];
         int i = 0;
         while ( !inp.eof() ) {
             inp >> oslo_gamma[i] >> oslo_gSF_high[i] >>oslo_gSF_low[i];
