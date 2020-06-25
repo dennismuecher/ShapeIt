@@ -125,7 +125,6 @@ private:
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *fitGSF;
     bool gSF_band = false;                    //if true, display gSF as error band
-    bool grf_show = false;                      //if true, display fit of gSF via giant resonance formula from RAINIER
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);

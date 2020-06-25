@@ -93,6 +93,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "doOslo " << doOslo<<"\n";
     outfile << "doEffi " << doEffi<<"\n";
 	outfile << "colour " << colour<<"\n";
+	outfile << "doGRF " << doGRF<<"\n";
     outfile << "doSlidingWindow " << doSlidingWindow <<"\n";
     outfile << "doBinVariation " << doBinVariation <<"\n";
     outfile << "doBackground " << doBackground <<"\n";
@@ -158,6 +159,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "doOslo" ) isstr >> doOslo;
             if (word == "doEffi" ) isstr >> doEffi;
 			if (word == "colour" ) isstr >> colour;
+            if (word == "doGRF" ) isstr >> doGRF;
             if (word == "doSlidingWindow" ) isstr >> doSlidingWindow ;
             if (word == "doBinVariation" ) isstr >> doBinVariation ;
             if (word == "doBackground" ) isstr >> doBackground ;
@@ -210,6 +212,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doOslo " << doOslo<<"\n";
     std::cout  << "doEffi " << doEffi<<"\n";
 	std::cout  << "colour " << colour<<"\n";
+    std::cout  << "doGRF " << doGRF<<"\n";
     std::cout  << "doSlidingWindow " << doSlidingWindow <<"\n";
     std::cout  << "doBinVariation " << doBinVariation <<"\n";
     std::cout  << "doBackground " << doBackground <<"\n";

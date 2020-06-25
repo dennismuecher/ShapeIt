@@ -738,11 +738,6 @@ void ShapeFrame::ShapeItBaby() {
     
     //this multigraph shows all the individual gSF plots
     string t = "gamma ray strength function " + mname;
-    mg = new TMultiGraph("mg",t.c_str());
-    
-    //add literature values
-    if (sett->doOslo && fitGSF->plotLit())
-        mg->Add(fitGSF->plotLit(),"3A");
     
     //the chi2 fitting object
     ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
@@ -795,14 +790,11 @@ void ShapeFrame::ShapeItBaby() {
 	}
 	
 	//add gSF graph with two different colours 
-	mg->Add(fitGSF->gSF_SortHisto(sett->colour));
-
-	//plot the multigraph
-    mg->Draw("A*");
-	
+	TMultiGraph* g = fitGSF->gSF_SortHisto(sett->colour);
 	
     //fit giant resonance formula if requested
-	/*if (grf_show) {
+	
+	if (sett->doGRF) {
 		TF1 *fitGDR = new TF1("fitGDR",glo,3000,6000,3);
 		fitGDR->SetParameter(0,300);
 		fitGDR->SetParameter(1,5);
@@ -810,7 +802,15 @@ void ShapeFrame::ShapeItBaby() {
 		//fitGDR->SetParameter(3,0.5);
 		fitGDR->SetLineColor(1);
 		g->Fit(fitGDR," "," ",3000,6000);   
-	}*/
+	}
+	
+    //add literature values
+    if (sett->doOslo && fitGSF->plotLit())
+        g->Add(fitGSF->plotLit(),"3A");
+
+	//plot the multigraph
+    g->Draw("A*");
+
     fCanvas->Modified();
     fCanvas->Update();
     
@@ -1087,8 +1087,8 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
 		
         case M_DISPLAY_GRF: {
-            grf_show = !grf_show;
-            if (grf_show)
+            sett->doGRF = !sett->doGRF;
+            if (sett->doGRF)
                 fDisplayFile->CheckEntry(M_DISPLAY_GRF);
             else
                 fDisplayFile->UnCheckEntry(M_DISPLAY_GRF);
