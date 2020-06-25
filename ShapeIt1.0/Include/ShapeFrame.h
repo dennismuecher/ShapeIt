@@ -123,7 +123,7 @@ private:
     TH1D* diagHisto;
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
-    ShapeGSF *fitGSF;
+    ShapeGSF *fitGSF;							//contains the gSF results
     bool gSF_band = false;                    //if true, display gSF as error band
     
 public:
@@ -149,6 +149,8 @@ public:
     void HandleMyCanvas(Int_t a,Int_t b,Int_t c,TObject* obj);
     void ShapeItBaby();
     void PrintMessage();
+	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
+	void Scale(Double_t scale);					//scale results of gSF and refresh display
     TGFileInfo fi;                              //file containing matrix
     TMultiGraph *wgraph ;
 };

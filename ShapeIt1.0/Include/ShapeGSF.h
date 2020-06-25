@@ -31,6 +31,7 @@ public:
     std::vector <double> p_ratio;       //vector of ratios of counts in peak1 / peak2
     ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t);
     void GetgSF() {return gSF;}
+	void ScaleAll(double scale);				//scale all results of gSF with factor scale
     void FillgSF();                         //calculates the gSF
     double getBgRatio(int bin, int level);      //return the ratio of peak to background counts
     void DoInterpol();

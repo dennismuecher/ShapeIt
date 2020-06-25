@@ -651,7 +651,13 @@ void ShapeFrame::DoNumberEntry() {
             bin[0]->SetNumber(sett->BinToSize());
             UpdateSetting(sett);
         }
-        
+		
+        //scaling factor has changed
+		if (id == 10) {
+			 UpdateSetting(sett);
+			 ShowGraph();
+		 }
+		 
         if (id == 11){
             UpdateSetting(sett);
             if (bin[1]->GetNumber() <= bin[0]->GetNumber() + 50  )
@@ -674,7 +680,7 @@ void ShapeFrame::DoNumberEntry() {
             UpdateSetting(sett);
         }
         
-        if (id == 9 || id == 10 || id == 13 ){
+        if (id == 9 || id == 13 ){
             UpdateSetting(sett);
         }
         if (id >4 && id < 9) {
@@ -712,12 +718,10 @@ void ShapeFrame::ShapeItBaby() {
     }
     //setting display mode
     UpdateDisplay(6);
-    //update settings accordings to the GUI settings; critical as settings are changed during parameter variation
-
   
+    //update settings accordings to the GUI settings; critical as settings are changed during parameter variation
     UpdateSetting(sett);
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
-    fCanvas->Clear();
+   
     sett->nOfBins = sett->SizeToBin();
 
     //calculate gamma ray strength function
@@ -788,7 +792,22 @@ void ShapeFrame::ShapeItBaby() {
         sett->exi_size[0] = sett->exi_size[0] + (50 );
     
 	}
+	ShowGraph();
 	
+    //restore setting values and diagonalize matrix
+    matrix->sliding_window = 1.;
+    sett->exi_size[0] = exi_store;
+    sett->nOfBins = sett->SizeToBin();
+    UpdateSetting(sett);
+    matrix->Diag();
+}
+
+//displays the results for gSF, literature values, resonance fit etc.
+void ShapeFrame::ShowGraph()
+{
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    fCanvas->Clear();
+
 	//add gSF graph with two different colours 
 	TMultiGraph* g = fitGSF->gSF_SortHisto(sett->colour);
 	
@@ -814,13 +833,6 @@ void ShapeFrame::ShapeItBaby() {
     fCanvas->Modified();
     fCanvas->Update();
     
-    
-    //restore setting values and diagonalize matrix
-    matrix->sliding_window = 1.;
-    sett->exi_size[0] = exi_store;
-    sett->nOfBins = sett->SizeToBin();
-    UpdateSetting(sett);
-    matrix->Diag();
 }
 
 void ShapeFrame::MatrixSelect(Int_t mnr)
@@ -1092,6 +1104,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 fDisplayFile->CheckEntry(M_DISPLAY_GRF);
             else
                 fDisplayFile->UnCheckEntry(M_DISPLAY_GRF);
+			ShowGraph();
             break;
         }
         case M_DISPLAY_PRINT:
