@@ -92,6 +92,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "doInterpol " << doInterpol<<"\n";
     outfile << "doOslo " << doOslo<<"\n";
     outfile << "doEffi " << doEffi<<"\n";
+	outfile << "colour " << colour<<"\n";
     outfile << "doSlidingWindow " << doSlidingWindow <<"\n";
     outfile << "doBinVariation " << doBinVariation <<"\n";
     outfile << "doBackground " << doBackground <<"\n";
@@ -112,7 +113,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "minCounts " << minCounts <<"\n";
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
-   
+	
     outfile.close();
     if (verbose)
         std::cout <<"Successfully saved Settings to file " << settFileName <<std::endl <<std::endl;
@@ -156,6 +157,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "doInterpol" ) isstr >> doInterpol;
             if (word == "doOslo" ) isstr >> doOslo;
             if (word == "doEffi" ) isstr >> doEffi;
+			if (word == "colour" ) isstr >> colour;
             if (word == "doSlidingWindow" ) isstr >> doSlidingWindow ;
             if (word == "doBinVariation" ) isstr >> doBinVariation ;
             if (word == "doBackground" ) isstr >> doBackground ;
@@ -207,6 +209,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doInterpol " << doInterpol<<"\n";
     std::cout  << "doOslo " << doOslo<<"\n";
     std::cout  << "doEffi " << doEffi<<"\n";
+	std::cout  << "colour " << colour<<"\n";
     std::cout  << "doSlidingWindow " << doSlidingWindow <<"\n";
     std::cout  << "doBinVariation " << doBinVariation <<"\n";
     std::cout  << "doBackground " << doBackground <<"\n";

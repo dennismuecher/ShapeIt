@@ -193,8 +193,8 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     OB[4] = new TGCheckButton(fG[2], new TGHotString("Background subtraction"), 23);
     OB[5] = new TGCheckButton(fG[2], new TGHotString("Use Width Calibration"), 24);
     OB[5]->SetEnabled(false);
-    OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
-    OB[6]->SetEnabled(false);
+    //OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
+    //OB[6]->SetEnabled(false);
     for (int i = 1 ; i < 6; i++) {
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
@@ -295,7 +295,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->mode == 2)
         fR[1]->SetState(kButtonDown);
     
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 6; i++)
         OB[i]->SetState(kButtonUp);
     
     if (sett_t->doInterpol)
@@ -310,8 +310,8 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         OB[4]->SetState(kButtonDown);
     if (sett_t->doWidthCal)
         OB[5]->SetState(kButtonDown);
-    if (sett_t->doEffi)
-        OB[6]->SetState(kButtonDown);
+    //if (sett_t->doEffi)
+      //  OB[6]->SetState(kButtonDown);
     
 }
 
@@ -363,10 +363,10 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
     else
         sett_t->doWidthCal = false;
 	
-    if (OB[6]->GetState() == kButtonDown)
-        sett_t->doEffi = true;
-    else
-        sett_t->doEffi = false;
+   // if (OB[6]->GetState() == kButtonDown)
+     //   sett_t->doEffi = true;
+    //else
+      //  sett_t->doEffi = false;
 	
 
     sett_t->interPoint = sett->interPoint; //this is a dirty hack....sett always caries the information on interPoint but it should be done better...
@@ -402,7 +402,7 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("&Print Settings to terminal", M_SETTING_PRINT);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("L&oad Literature Values", M_SETTING_OSLO);
-    //fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
+    //fSettingsFile->AddEntry("L&oad // Efficiency Calibration", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
     
@@ -421,6 +421,9 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
+    fDisplayFile->AddEntry("Use &Two-Colour Display", M_DISPLAY_COLOUR);
+	fDisplayFile->CheckEntry(M_DISPLAY_COLOUR);
+	
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Fit Giant Resoance Formula", M_DISPLAY_GRF);
     fDisplayFile->AddSeparator();
@@ -788,27 +791,18 @@ void ShapeFrame::ShapeItBaby() {
 
         //set exi_size for next iteration
         sett->exi_size[0] = sett->exi_size[0] + (50 );
-    }
-
-    //mg->Draw("A*");
-    TGraphErrors *g = fitGSF->gSF_SortHisto();
-    g->SetFillColor(6);
-    g->SetFillStyle(1001);
     
-    //draw gSF graph, either as band or using individual points
-    if (gSF_band)
-        mg->Add(g,"E3");
-    else {
-        g->SetMarkerStyle(22);
-        g->SetMarkerSize(2);
-        g->SetMarkerColor(6);
-        mg->Add(g,"P");
-    }
+	}
+	
+	//add gSF graph with two different colours 
+	mg->Add(fitGSF->gSF_SortHisto(sett->colour));
+
 	//plot the multigraph
     mg->Draw("A*");
 	
+	
     //fit giant resonance formula if requested
-	if (grf_show) {
+	/*if (grf_show) {
 		TF1 *fitGDR = new TF1("fitGDR",glo,3000,6000,3);
 		fitGDR->SetParameter(0,300);
 		fitGDR->SetParameter(1,5);
@@ -816,7 +810,7 @@ void ShapeFrame::ShapeItBaby() {
 		//fitGDR->SetParameter(3,0.5);
 		fitGDR->SetLineColor(1);
 		g->Fit(fitGDR," "," ",3000,6000);   
-	}
+	}*/
     fCanvas->Modified();
     fCanvas->Update();
     
@@ -1082,6 +1076,16 @@ void ShapeFrame::HandleMenu(Int_t id)
                 fDisplayFile->UnCheckEntry(M_DISPLAY_BAND);
             break;
         }
+		
+        case M_DISPLAY_COLOUR: {
+            sett->colour = !sett->colour;
+            if (sett->colour)
+                fDisplayFile->CheckEntry(M_DISPLAY_COLOUR);
+            else
+                fDisplayFile->UnCheckEntry(M_DISPLAY_COLOUR);
+            break;
+        }
+		
         case M_DISPLAY_GRF: {
             grf_show = !grf_show;
             if (grf_show)

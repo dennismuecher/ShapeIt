@@ -430,11 +430,13 @@ void ShapeGSF::gSF_Collect() {
         s.egamma = gSF[binRange[0]+i-1].egamma1;
         s.value = gSF[binRange[0]+i-1].value1;
         s.dvalue = gSF[binRange[0]+i-1].dvalue1;
+		s.peakID = 1;
         gSF_sort.push_back(s);
         
         s.egamma = gSF[binRange[0]+i-1].egamma2;
         s.value = gSF[binRange[0]+i-1].value2;
         s.dvalue = gSF[binRange[0]+i-1].dvalue2;
+		s.peakID = 2;
         gSF_sort.push_back(s);
     }
 }
@@ -451,37 +453,62 @@ void ShapeGSF::gSF_Print() {
 }
 
 //creats TGraphError using the sorted data and drawing option for plotitng a band
-TGraphErrors* ShapeGSF::gSF_SortHisto() {
+TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
     std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
     int nOfPoints = gSF_sort.size();
-    double x[nOfPoints], y[nOfPoints];
-    double dx[nOfPoints], dy[nOfPoints];
-    for (int i = 0; i < nOfPoints ; i++ ) {
-        x[i] = gSF_sort[i].egamma;
-        y[i] = gSF_sort[i].value;
-        dx[i] = 1;
-        dy[i] = gSF_sort[i].dvalue;
-    }
-    TGraphErrors *sortPlot = new TGraphErrors(nOfPoints,x,y,dx,dy);
-    return sortPlot;
-}
-
-
-
-TGraphErrors* ShapeGSF::gSF_Histo() {
     
-    int nOfActiveBins = (binRange[1] - binRange[0] +1);
-    double x[2*nOfActiveBins], y[2*nOfActiveBins];
-    double dx[2*nOfActiveBins], dy[2*nOfActiveBins];
-    for (int i = 0; i < nOfActiveBins ; i++ ) {
-        x[2*i] = gSF[binRange[0]+i-1].egamma1; dx[2*i] = 1;
-        y[2*i] = gSF[binRange[0]+i-1].value1;  dy[2*i] = gSF[binRange[0]+i-1].dvalue1;
-        
-        x[2*i+1] = gSF[binRange[0]+i-1].egamma2; dx[2*i+1] = 1;
-        y[2*i+1] = gSF[binRange[0]+i-1].value2;  dy[2*i+1] = gSF[binRange[0]+i-1].dvalue2;
-    }
-    TGraphErrors *gSFPlot = new TGraphErrors(2*nOfActiveBins,x,y,dx,dy);
-    return gSFPlot;
+	//nOfPoints must always be an even number, or something is terribly wrong
+	
+	if (nOfPoints % 2 != 0) {
+		std::cout <<"This is a bug! The number of gSF data points is not an even number! " <<std::endl;
+		exit(0);
+	}
+	
+	TMultiGraph *mg = new TMultiGraph();
+	
+	nOfPoints = nOfPoints / 2;
+		
+	double x1[nOfPoints], y1[nOfPoints];
+	double dx1[nOfPoints], dy1[nOfPoints];
+    	
+	double x2[nOfPoints], y2[nOfPoints];
+	double dx2[nOfPoints], dy2[nOfPoints];
+    int id_1 = 0;
+	int id_2 = 0;	
+	for (int i = 0; i < 2*nOfPoints ; i++ ) {
+        	
+		if ( gSF_sort[i].peakID == 1 ) {
+			x1[id_1] = gSF_sort[i].egamma;
+			y1[id_1] = gSF_sort[i].value;
+			dx1[id_1] = 1;
+			dy1[id_1] = gSF_sort[i].dvalue;
+			id_1++;
+		}
+		else {
+			x2[id_2] = gSF_sort[i].egamma;
+			y2[id_2] = gSF_sort[i].value;
+			dx2[id_2] = 1;
+			dy2[id_2] = gSF_sort[i].dvalue;
+			id_2++;
+		}
+	}
+	TGraphErrors *gSFPlot_1 = new TGraphErrors(nOfPoints,x1,y1,dx1,dy1);
+    gSFPlot_1->SetMarkerStyle(22);
+    gSFPlot_1->SetMarkerSize(2);
+    gSFPlot_1->SetMarkerColor(6);
+	
+	mg->Add(gSFPlot_1,"P");
+	 
+  	TGraphErrors *gSFPlot_2 = new TGraphErrors(nOfPoints,x2,y2,dx2,dy2);
+    gSFPlot_2->SetMarkerStyle(22);
+    gSFPlot_2->SetMarkerSize(2);
+    if (colour) 
+		gSFPlot_2->SetMarkerColor(7);
+	else
+		gSFPlot_2->SetMarkerColor(6);
+    mg->Add(gSFPlot_2,"P");
+	
+	return mg;
 }
 
 void ShapeGSF::Scale(double factor){

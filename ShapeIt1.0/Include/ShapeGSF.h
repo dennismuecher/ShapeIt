@@ -14,6 +14,7 @@ typedef struct gSF_sorting{
     double egamma;               //gamma energy
     double value;              //gamma ray strength
     double dvalue;             //error gamma ray strength
+	int peakID;				//peakID =1 for peak1, peakID=2 for peak2 	
 }gSF_sor;
 
 
@@ -32,7 +33,6 @@ public:
     void GetgSF() {return gSF;}
     void FillgSF();                         //calculates the gSF
     double getBgRatio(int bin, int level);      //return the ratio of peak to background counts
-    TGraphErrors* gSF_Histo();
     void DoInterpol();
     int binRange[2];                        //first and last bin taken into account in analysis of gSF
     std::vector <double> InterpolValue(double ene);
@@ -41,7 +41,7 @@ public:
     TGraphErrors* plotLit();            //plots literature data of gSF
     void gSF_Print();
     void gSF_Collect();
-    TGraphErrors* gSF_SortHisto();          //plots all gSF results using error band
+    TMultiGraph* gSF_SortHisto(bool colour);          //plots all gSF results using two colours, if colour = true
     TGraph* getRatioGraph();                //plot of peak area ratios
     
 };

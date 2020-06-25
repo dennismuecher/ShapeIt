@@ -25,7 +25,9 @@ public:
 	bool doInterpol = true;                 //if true, do interpolation to get gSF
     bool doBackground = true;               //if true, do background subtraction
     bool doWidthCal = false;                 //if true, use results from width calibrations
-    int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
+    bool colour = true;						//if true, plot gSF points in two different colours for peak1 and peak2
+	
+	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
 	double gSF_norm = 1 ;				//normalization factor for gSF
 	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
 	double levEne_2[4] = {0, 0, 0, 0};						//energies for doublet peaks level 1 and level 2 (upper, lower)	
