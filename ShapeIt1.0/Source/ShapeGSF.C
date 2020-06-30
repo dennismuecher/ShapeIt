@@ -138,7 +138,6 @@ void ShapeGSF::DoInterpol() {
             
             //this is the interpolated value for gSF
             double y_norm = ( gSF[i].egamma1 -gSF[i+1].egamma1 ) * slope  + gSF[i+1].value1;
-            std::cout <<"energy during interpolation: " <<gSF[i].egamma1 <<" "<<gSF[i+1].egamma1 <<std::endl;
             if (gSF[i].value1 <= 0) {
                 //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value2 anymore, so the entire bin, and all following bins, are ignored
                 //erase all elements in gSF from current bin onwards
