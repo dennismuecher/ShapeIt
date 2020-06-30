@@ -138,7 +138,7 @@ public:
     void DoRadio();
     void HandleMenu(Int_t id);
     void CloseWindow();
-    void ShowMatrixSelector();
+    int MatrixSelector();										//updates the matrix selector and returns the index of the matrix saved in the current settings file; returns zero if no such matrix exists
     void UpdateSetting(ShapeSetting *sett_t);                   //updates a settings file
     void UpdateGuiSetting(ShapeSetting *sett_t);
     void MatrixSelect(Int_t mnr);

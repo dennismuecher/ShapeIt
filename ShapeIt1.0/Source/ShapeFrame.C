@@ -454,10 +454,10 @@ void ShapeFrame::fBinComboDraw(TGComboBox *combo)
     }
     combo->Resize(80,20);
 
-    if (sett->nOfBins >= binSelect)
-        combo->Select(binSelect);
+    if (sett->nOfBins >= sett->interPoint)
+        combo->Select(sett->interPoint);
     else
-        combo->Select(sett->nOfBins);
+        combo->Select(2);
 
 
 }
@@ -827,6 +827,7 @@ void ShapeFrame::ShowGraph()
     
 }
 
+
 void ShapeFrame::MatrixSelect(Int_t mnr)
 {
     matrix->SetMatrix(mnr);
@@ -837,13 +838,13 @@ void ShapeFrame::MatrixSelect(Int_t mnr)
     fCanvas->Update();
 }
 
-void ShapeFrame::ShowMatrixSelector()
+int ShapeFrame::MatrixSelector()
 {
 
     std::vector <std::string> s;
      s.clear();
     s = matrix->GetMatrixName();
-   
+	int index = 0;
 
     if (s.size() > 0) {
         if (!fMatrix->IsEnabled())
@@ -851,19 +852,17 @@ void ShapeFrame::ShowMatrixSelector()
         fMatrix->RemoveAll();
         for (int i = 0; i < s.size(); i++ ) {
            fMatrix->AddEntry(s[i].c_str(), i+1);
-        }
-    
-        fMatrix->Select(1);
-
-        matrix->SetMatrix(1);
+		   if ( s[i] == sett->matrixName )
+			   index = i+1;
+        }   
 
         fMatrix->Connect("Selected(Int_t)", "ShapeFrame", this, "MatrixSelect(Int_t)");
-        DoDraw();
     }
     
     fMain->MapSubwindows();
     fMain->Resize(fMain->GetDefaultSize());
     fMain->MapWindow();
+	return index;
     
 }
 
@@ -905,8 +904,12 @@ void ShapeFrame::HandleMenu(Int_t id)
                 status = 1;
                 
                 //update Combo Menu showing the matrices
-                ShowMatrixSelector();
-
+                MatrixSelector();
+		        
+				//select first matrix in root file
+				fMatrix->Select(1);
+		        matrix->SetMatrix(1);
+ 			    DoDraw();
                 sett->interPoint = sett->nOfBins / 2;
 
                 fBinComboDraw(fInterCombo);
@@ -955,12 +958,21 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
-                
                 //update Combo Menu showing the matrices
-                ShowMatrixSelector();
-
+                int mIndex = MatrixSelector();
+				if (mIndex > 0) {
+		        
+					fMatrix->Select(mIndex);
+		        	matrix->SetMatrix(mIndex);
+					DoDraw();
+				}
+				else {
+					MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
+					CloseWindow();
+				}
+				
                 fBinComboDraw(fInterCombo);
-                
+         
                 //initialize histogram zoom
                 histX1 = 0;
                 histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();

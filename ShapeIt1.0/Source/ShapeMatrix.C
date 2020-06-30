@@ -36,9 +36,6 @@ void ShapeMatrix::SetMatrix(int mNr) {
     //inputMatrix->SetTitle(sett->dataFileName.c_str());
     sett->matrixName = matrixName[mNr-1];
 
-    //create diagonalized projections
-    //Diag();
-
 }
 
 //convert energy to bin in projection histo for X

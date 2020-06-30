@@ -133,18 +133,16 @@ void ShapeSetting::ReadSettings() {
         getline(inp,line);
         osloFileName = line;
         
-		//get the efficiency data filename; due to backwards compatibility, check if this line contains the matrixName information
+		//get the efficiency data filename; due to backwards compatibility, check if this line contains the matrixName information (old file format)
         getline(inp,line);
         word.clear();
         istringstream isstr(line);
         isstr >> word;
 		if (word == "matrixName" ) {
 			isstr >> matrixName;
-			std::cout <<"Found old file format" <<std::endl;
 		}
 		else {
 			effiFileName = line;
-			std::cout <<"Found new file format" <<std::endl;
 		}
 		
         //now get everything else
