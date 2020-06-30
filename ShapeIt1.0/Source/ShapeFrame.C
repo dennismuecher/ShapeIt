@@ -454,10 +454,10 @@ void ShapeFrame::fBinComboDraw(TGComboBox *combo)
     }
     combo->Resize(80,20);
 
-    if (sett->nOfBins >= sett->interPoint)
-        combo->Select(sett->interPoint);
+    if (sett->nOfBins >= binSelect)
+        combo->Select(binSelect);
     else
-        combo->Select(2);
+        combo->Select(sett->nOfBins);
 
 
 }
@@ -470,6 +470,7 @@ void ShapeFrame::InterSelect(Int_t sbin)
 
 void ShapeFrame::BinSelect(Int_t sbin)
 {
+	binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
     diagHisto->Draw();
@@ -1138,8 +1139,8 @@ void ShapeFrame::UpdateDisplay(int display) {
             fR[2]->SetState(kButtonDown);
             fBinCombo->SetEnabled(true);
             fBinComboDraw(fBinCombo);
-            BinSelect(1);
-            matrix->GetDiagEx(1, mname)->Draw("hist");
+            BinSelect(binSelect);
+            matrix->GetDiagEx(binSelect, mname)->Draw("hist");
             fBinCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "BinSelect(Int_t)");
             break;
         }

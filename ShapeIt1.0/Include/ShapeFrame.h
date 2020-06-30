@@ -101,6 +101,7 @@ private:
     
     TGComboBox *fMatrix;
     TGComboBox *fBinCombo;
+	int binSelect = 1;						//the bin selected in fbin combo (projection spectrum)
     TGComboBox *fInterCombo;
     
     TGGroupFrame* fG[6];
@@ -130,7 +131,9 @@ public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);
 
     virtual ~ShapeFrame();
-    void DoDraw();
+    int GetBinSelect() {return binSelect;}						//returns binSelect
+	void SetBinSelect(int tBinSelect) {binSelect = tBinSelect;}		//set binSelect
+	void DoDraw();
     void DoNumberEntry();
     void DoRadio();
     void HandleMenu(Int_t id);
