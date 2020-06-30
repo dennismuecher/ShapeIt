@@ -219,11 +219,13 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "verbose " << verbose<<"\n";
     std::cout  << "gSF norm " << gSF_norm<<"\n";
     std::cout  << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
+	std::cout  <<  "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     std::cout  << "left background level1 " << bgEne[0][0] <<"-" << bgEne[0][1] <<"\n";
     std::cout  << "right background level1 " << bgEne[0][2] <<"-" << bgEne[0][3] <<"\n";
     std::cout  << "left background level2 " << bgEne[1][0] <<"-" << bgEne[1][1] <<"\n";
     std::cout  << "right background level2 " << bgEne[1][2] <<"-" << bgEne[1][3] <<"\n";
     std::cout  << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
+	std::cout  <<  "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
     std::cout  << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     std::cout  << "excitation_bin_1 " << exi_size[0] <<"\n";
     std::cout  << "excitation_bin_2 " << exi_size[1] <<"\n";

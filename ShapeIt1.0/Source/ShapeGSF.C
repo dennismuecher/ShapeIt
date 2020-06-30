@@ -138,7 +138,7 @@ void ShapeGSF::DoInterpol() {
             
             //this is the interpolated value for gSF
             double y_norm = ( gSF[i].egamma1 -gSF[i+1].egamma1 ) * slope  + gSF[i+1].value1;
-            
+            std::cout <<"energy during interpolation: " <<gSF[i].egamma1 <<" "<<gSF[i+1].egamma1 <<std::endl;
             if (gSF[i].value1 <= 0) {
                 //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value2 anymore, so the entire bin, and all following bins, are ignored
                 //erase all elements in gSF from current bin onwards
@@ -277,7 +277,8 @@ void ShapeGSF::FillgSF() {
 		if (getBgRatio(i, 1) * gSF_matrix->integral1[i] < sett->minCounts || gSF_matrix->integral1[i] == 0 ) {
             gSF_t.value1 = 0;
             gSF_t.dvalue1 = 0;
-            gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
+            //gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
+			gSF_t.egamma1 = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize()  - elevel1;
         }
         else {
 			
@@ -314,7 +315,7 @@ void ShapeGSF::FillgSF() {
         if (getBgRatio(i, 2) * gSF_matrix->integral2[i] < sett->minCounts || gSF_matrix->integral2[i] == 0 ) {
             gSF_t.value2 = 0;
             gSF_t.dvalue2 = 0;
-            gSF_t.egamma2 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel2;
+            gSF_t.egamma2 = gSF_t.egamma1 = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize() - elevel2;
             
         }
         else {
@@ -402,7 +403,7 @@ TGraph* ShapeGSF::getRatioGraph() {
     double y[p_ratio.size()];
    
     for (int i =0; i < p_ratio.size(); i++) {
-        x[i] = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2;
+        x[i] = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize();
         y[i] = p_ratio[i];
     }
     TGraph *T = new TGraph(p_ratio.size(), x, y);
@@ -491,7 +492,7 @@ TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
 			dy2[id_2] = gSF_sort[i].dvalue * sett->gSF_norm;
 			id_2++;
 		}
-	}
+	}	
 	TGraphErrors *gSFPlot_1 = new TGraphErrors(nOfPoints,x1,y1,dx1,dy1);
     gSFPlot_1->SetMarkerStyle(22);
     gSFPlot_1->SetMarkerSize(2);

@@ -34,8 +34,10 @@ private:
     void openMatrix();                         //opens the matrix defined in settings
     std::vector <std::string> matrixName;    //names of all matrices found in dataFile
    
-    int bins;                                   //number of bins (max) of input matrix
-    int XNum, YNum;
+    int xbins, ybins;							//number of x and y bins for diagonalized matrices 
+	double ene0, ene1;							//lowest and highest excitation energies to be used in shape method
+	double esize;								//size of excitation energy bin used in shape method
+	int XNum, YNum;
     std::vector <double> width1;                //peak width for level 1 from all autofits
     std::vector <double> width2;                //peak width for leve2 1 from all autofits
     std::vector <double> allgamma1;                //corresponding excitation energy for width1 vector
@@ -45,31 +47,37 @@ private:
 public:
 	ShapeMatrix(ShapeSetting* setting);
     
+	double GetEne0() {return ene0;}
+	double GetEne1() {return ene1;}
+	double GetESize() {return esize;}
+	
+	void SetEne0(double nene0) {ene0 = nene0;}
+	void SetEne1(double nene1) {ene1 = nene1;}
+	void SetESize(double nesize) {esize = nesize;}
+	
     double eMin_x, eMax_x, eMin_y, eMax_y;
     double eMin_diag;                           //minimum value of Excitation Energy and Gamma ray energy
-    double sliding_window = 1;                   //factor by which the first integration bin is scaled during sliding window analysis
+    
     void Diag();
     void BrowseRootFile();
     std::vector <std::string> GetMatrixName() {return matrixName;}
     void SetMatrix(int mNr);                  //assigns inputMatrix to mNr matrix found in dataFile
-    TH2* GetInputMatrix (string title);
+    
+	TH2* GetInputMatrix (string title);
     TH1F* GetDiag(string title) {diag->SetTitle(title.c_str());  return diag;}
     TH2F* GetDiagEx(string title) {diagEx->SetTitle(title.c_str()); return diagEx;}
     TH2F* GetDiagExCube(string title) {diagExCube->SetTitle(title.c_str()); return diagExCube;}
     TH1D* GetDiagEx(int bbin, string title);                  //returns projection of DiagEx for bin bbin, starting at bin 1
-    Float_t GetDiagExMax(int bbin) {return ybins[bbin]; }
+
     double energyToBinX (double e);
-    double energyToBinY (double e);
-    double binToEnergyX (double bin);
-    double binToEnergyY (double bin);
-    void Reset();
+    
+	void Reset();
     void Integrate();
     void IntegrateBg();
     void IntegrateSquare();
     void IntegrateCube();
     void FitIntegral();                             //calculates peak areas of level 1 and level 2 for all bins
-    Float_t *xbins;
-    Float_t *ybins;                            //this holds the low-edges of each integration bin, calculated in "this->Diag()"
+                           
     std::vector <double> integral1;           //integral values of level1
     std::vector <double> integral2;           //integral values of level2
     std::vector <double> integral1Bg;           //integral values of background level1

@@ -3,6 +3,9 @@
 
 ShapeMatrix::ShapeMatrix(ShapeSetting* setting) {
     sett = setting;
+	ene0 = sett->exiEne[0];
+	ene1 = sett->exiEne[1];
+	esize = sett->exi_size[0];
     openMatrix();
     BrowseRootFile();
     //clear fit parameter vectors
@@ -34,7 +37,7 @@ void ShapeMatrix::SetMatrix(int mNr) {
     sett->matrixName = matrixName[mNr-1];
 
     //create diagonalized projections
-    Diag();
+    //Diag();
 
 }
 
@@ -44,42 +47,27 @@ double ShapeMatrix::energyToBinX (double e) {
     return ( xaxis->FindBin(e) );
 }
 
-//convert bin to energy for X
-double ShapeMatrix::binToEnergyX (double bin) {
-    TAxis *xaxis = diag->GetXaxis();
-    return ( xaxis->GetBinCenter(bin) );
-}
-
-//convert energy to bin in projection histo for Y
-double ShapeMatrix::energyToBinY (double e) {
-    TAxis *yaxis = diag->GetYaxis();
-    return ( yaxis->FindBin(e) );
-}
-
-//convert bin to energy for Y
-double ShapeMatrix::binToEnergyY (double bin) {
-   TAxis *yaxis = diagEx->GetYaxis();
-    return ( yaxis->GetBinCenter(bin) );
-}
 
 //returns the projection of diagonalized matrix for bin bbin
 TH1D* ShapeMatrix::GetDiagEx(int bbin, string title) {
-    if (bbin <= sett->nOfBins) {
+    if (bbin <= ybins) {
         char name[50];
         char title[50];
         sprintf(name,"diag_bin%d",bbin);
-        sprintf(title,"projection %d - %d ",(int) ybins[bbin-1], (int) ybins[bbin]);
-        //adapt binning to actual energy range: gamma ray energy cannot be higher than ybins[bbin]
-        float_t xBinSize = inputMatrix->GetXaxis()->GetBinWidth(1);
-        int histBin = (int) ( ybins[bbin] - eMin_y ) / xBinSize;
-        delete gROOT->FindObject(name);
-        TH1D* hist = new TH1D(name,title,histBin,eMin_y, ybins[bbin]);
+        sprintf(title,"projection %d - %d ",(int) ( (bbin -1) * esize + ene0 ), (int) ( bbin * esize + ene0 ) );
+        
+		//delet eprevious object
+		delete gROOT->FindObject(name);
+        
+		//create projection of diagEx
+        TH1D* hist = new TH1D(name,title,xbins,eMin_diag, eMax_y);
         hist = diagEx->ProjectionX(name,bbin,bbin,"o");
+		//TH1D* hist = diagEx->ProjectionX(name,bbin,bbin,"o");
+		//hist->SetTitle(title);
         if (sett->mode == 2) {
             FitGauss(hist, bbin, 0);
             FitGauss(hist, bbin, 1);
         }
-        //hist->SetTitle(title.c_str());
         return hist;
     }
     else
@@ -99,7 +87,7 @@ void ShapeMatrix::IntegrateBg() {
     for (int i =0; i < 4; i++) {
         integBin[i] = energyToBinX(sett->bgEne[0][i]);
     }
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         //left region
         a1 =diagEx->Integral(integBin[0],integBin[1], i+1, i+1);
         //right region
@@ -111,7 +99,7 @@ void ShapeMatrix::IntegrateBg() {
     for (int i =0; i < 4; i++) {
         integBin[i] = energyToBinX(sett->bgEne[1][i]);
     }
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         //left region
         a1 =diagEx->Integral(integBin[0],integBin[1], i+1, i+1);
         //right region
@@ -132,7 +120,7 @@ void ShapeMatrix::Integrate() {
         if (sett->verbose)
             std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         integral1.push_back(diagEx->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2.push_back(diagEx->Integral(integBin[2],integBin[3], i+1, i+1) );
         if (sett->verbose)
@@ -149,7 +137,7 @@ void ShapeMatrix::IntegrateSquare() {
         if (sett->verbose)
             std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         integral1Square.push_back(diagExSquare->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2Square.push_back(diagExSquare->Integral(integBin[2],integBin[3], i+1, i+1) );
         if (sett->verbose)
@@ -165,7 +153,7 @@ void ShapeMatrix::IntegrateCube() {
         if (sett->verbose)
             std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         integral1Cube.push_back(diagExCube->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2Cube.push_back(diagExCube->Integral(integBin[2],integBin[3], i+1, i+1) );
         if (sett->verbose)
@@ -184,9 +172,9 @@ void ShapeMatrix::FitIntegral(){
     fit_integral2Net.clear();
    
     //normalization of integral to bin width
-    double integral_norm = ( eMax_x - eMin_x) / bins;
+    double integral_norm = ( eMax_x - eMin_x) / xbins;
     //level 1
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         if (integral1[i] == 0) {
             fit_integral1.push_back(0);
             fit_integral1Bg.push_back(0);
@@ -269,7 +257,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //peak region
     double peakRange[2];
     
-	if ( sett->levEne_2[2*level] == 0 && sett->levEne_2[2*level] == 0 ) 
+	if ( sett->levEne_2[2*level] == 0 && sett->levEne_2[2*level+1] == 0 ) 
 		is_doublet = false;
 	
 	//no doublet for this level
@@ -395,20 +383,21 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 }
 
 
+//creates the matrices for shape method for excitation energies between ene0 and ene1, with bin size esize for the excitation energies
 void ShapeMatrix::Diag(){
-
+	
     double MeV = sett->MeV;
     XNum  = inputMatrix->GetNbinsX();
     YNum  = inputMatrix->GetNbinsY();
-    
-    // binning used for the diagonal histograms is the x-binning, as this usually is the higher binned axis (gamma ray energy is usually higher binned compared to excitaiton energy)
-    bins=XNum;
-    
+ 
     if (sett->verbose) {
         std::cout <<"\nNumber of x bins in matrix: "<< XNum <<endl;
         std::cout <<"\nNumber of y bins in matrix: "<< YNum <<endl;
     }
 
+	//number of bins used for x-axis (Ex - Eg) in diagonalized matrix; I choose the number of bins equal to the number of bins in the gamma ray axis of the input matrix
+	//xbins=XNum;
+	
     eMax_x  =  ( inputMatrix->GetXaxis()->GetBinCenter(XNum) * MeV) + (inputMatrix->GetXaxis()->GetBinWidth(XNum) * MeV /2 ) ;
     eMax_y  =  ( inputMatrix->GetYaxis()->GetBinCenter(YNum) * MeV) + (inputMatrix->GetYaxis()->GetBinWidth(YNum) * MeV /2 ) ;
     eMin_x = inputMatrix->GetXaxis()->GetXmin();
@@ -416,7 +405,8 @@ void ShapeMatrix::Diag(){
     
     //minimum value of Excitation energy - gamma ray energy
     eMin_diag = eMin_y - eMin_x;
-    eMin_diag = -100;
+    //creating some extra space at low energies to allow proper fits at low energies 
+	eMin_diag = eMin_diag -100;
     
     if (sett->verbose) {
         std::cout <<"\nMaximum gamma ray energy detected in input matrix: "<< eMax_x <<endl;
@@ -424,56 +414,33 @@ void ShapeMatrix::Diag(){
         std::cout <<"\nMinimum gamma ray energy detected in input matrix: "<< eMin_x <<endl;
         std::cout <<"\nMinimum excitation energy detected in input matrix: "<< eMin_y <<endl;
     }
-    //calculate the variable bin size; all bins have size exi_size except the last bin
-    
-    float_t xBinSize = inputMatrix->GetXaxis()->GetBinWidth(1);
-    //calculate number of xbins to allocate memory for xbins
-    bins = (int) (eMax_y - eMin_diag) / xBinSize;
-    xbins = new float[bins+1];
-    //the real number of xbins might be smaller by one
-    bins = 0;
-    do {
-        xbins[bins] = eMin_diag + (bins * xBinSize);
-        bins++;
-    }
-    while ( xbins[bins-1] <= eMax_y );
-    bins--;
-    //at this point, bins represents the number of bins for the x-axis in the diagonalied spectra; the array xbins has length bins+1, as it has to be
-    
-    //a sliding window appraoch is used for the y-bins: the first bin is sliding_window*bin_size and all following bins have width bin_size, except the last window.
-    
-    //check if nOfBins has to be increased by one due to moving window
-    if (sett->exiEne[1]-sett->exiEne[0] - (sliding_window*sett->exi_size[0]) - (( sett->nOfBins -1) * sett->exi_size[0]) > 0)
-        sett->nOfBins++;
-    ybins = new float_t[sett->nOfBins+1];
-    ybins[0] = sett->exiEne[0];
-    ybins[1] = (sliding_window *sett->exi_size[0]) + ybins[0];
-    if (sett->verbose)
-    {
-        std::cout<< "Diag sliding window: "<< sliding_window <<std::endl;
-        std::cout<< "excitation bin: "<< sett->exi_size[0] <<std::endl;
-
-    }
-    
-    for (int i = 2; i < sett->nOfBins; i++)
-        ybins[i] =  ybins[i-1] + sett->exi_size[0];
-    ybins[sett->nOfBins] = sett->exiEne[1];
-    if (sett->verbose > 1) {
-    for (int i = 0; i <= sett->nOfBins; i++)
-        std::cout<< "ybins: "<< ybins[i] <<std::endl;
-    }
-
-    
-    //creating histograms;
-    
-    delete gROOT->FindObject("diag");
-    diag  = new TH1F("diag","Diagonal Projection",bins, xbins);
-    delete gROOT->FindObject("diag_ex");
-    diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",bins,xbins, sett->nOfBins,ybins);
-    delete gROOT->FindObject("diag_ex_square");
-    diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared",bins,xbins, sett->nOfBins, ybins);
-    delete gROOT->FindObject("diag_ex_cube");
-    diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed",bins,xbins, sett->nOfBins, ybins);
+   
+	//calculate number of xbins
+	xbins = (int) (eMax_y - eMin_diag) / inputMatrix->GetXaxis()->GetBinWidth(1);
+    //calculate number of ybins
+	ybins = ( ene1 - ene0 ) / esize;
+	//increase number of ybins by one if we haven't reached the chosen maximum excitation energy, yet
+	if (  (int)(ene1 - ene0) % (int)esize != 0)
+		ybins++;
+ 	//update highest energy
+	ene1 = esize * ybins + ene0; 
+	
+    if (sett->verbose) {
+        std::cout <<"\nx binnings for diag matrix:"<< xbins <<" " <<eMin_diag << " " <<eMax_y <<endl;
+        std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1 <<endl;
+	}
+	
+    //cleaning up before generating matrices  
+	delete gROOT->FindObject("diag");
+	delete gROOT->FindObject("diag_ex");
+	delete gROOT->FindObject("diag_ex_square");
+	delete gROOT->FindObject("diag_ex_cube");
+	
+	//creating histograms;
+    diag  = new TH1F("diag","Diagonal Projection",xbins, eMin_diag, eMax_y);
+    diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
+    diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
+	diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
     
     double X; // corresponds to gamma ray energy
     double Y; // corresponds to excitation energy
@@ -505,6 +472,8 @@ void ShapeMatrix::Diag(){
     IntegrateSquare();
     IntegrateCube();
 }
+
+
 
 TGraph* ShapeMatrix::getFitWidthGraph(int level) {
     

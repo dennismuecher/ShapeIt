@@ -685,7 +685,10 @@ void ShapeFrame::DoNumberEntry() {
         }
         if (id >4 && id < 9) {
             UpdateSetting(sett);
-            matrix->Diag();
+			matrix->SetEne0(sett->exiEne[0]);
+			matrix->SetEne1(sett->exiEne[1]);
+            matrix->SetESize(sett->exi_size[0]);
+			matrix->Diag();
             fBinComboDraw(fBinCombo);
             fBinComboDraw(fInterCombo);
             UpdateDisplay(displayMode);
@@ -695,116 +698,104 @@ void ShapeFrame::DoNumberEntry() {
 
 void ShapeFrame::ShapeItBaby() {
     
-    //check if matrix is loaded
-    if (status == 0)
-        return;
+	//check if matrix is loaded
+	if (status == 0)
+		return;
    
-    //clean up matrix
-    matrix->Reset();
-    int l = 2;   //determined if bin variation loop will be done
-    if (sett->doBinVariation)
-        l = (sett->exi_size[1] - sett->exi_size[0]) / 50;
-    if (l < 2)
-        l = 2;
-    int k = 2; //determines if sliding window loop will be done
-    if (sett->doSlidingWindow)
-        k = 5;
+	//clean up matrix
+	matrix->Reset();
+	
+	//set current values of excitation energies for matrix 
+	matrix->SetEne0( sett->exiEne[0] ); 
+	matrix->SetEne1( sett->exiEne[1] );
+	matrix->SetESize( sett->exi_size[0] );
+	
+	//update matrix
+	matrix->Diag();
+	
+	int l = 2;   //determined if bin variation loop will be done
+	if (sett->doBinVariation)
+		l = (sett->exi_size[1] - sett->exi_size[0]) / 50;
+	if (l < 2)
+		l = 2;
+	
+	int kmax = 5;	//number of steps in sliding window
+	int k = 2; //determines if sliding window loop will be done
+	if (sett->doSlidingWindow)
+		k = kmax;
     
-    //determine lowest number of bins to be expected
-    int maxBin = sett->SizeToBin(sett->exi_size[0] + ((l-1)*40));
-    if (maxBin < sett->interPoint) {
-        MessageBox("Info", "Interpolation point is smaller than expected lowest number of bins!");
-        return;
-    }
-    //setting display mode
-    UpdateDisplay(6);
+	//determine lowest number of bins to be expected
+	int maxBin = sett->SizeToBin(sett->exi_size[0] + ((l-1)*40));
+	if (maxBin < sett->interPoint) {
+		MessageBox("Info", "Interpolation point is smaller than expected lowest number of bins!");
+		return;
+	}
+	//setting display mode
+	UpdateDisplay(6);
   
-    //update settings accordings to the GUI settings; critical as settings are changed during parameter variation
-    UpdateSetting(sett);
+	//update settings accordings to the GUI settings
+	UpdateSetting(sett);
    
-    sett->nOfBins = sett->SizeToBin();
+	sett->nOfBins = sett->SizeToBin();
 
-    //calculate gamma ray strength function
-    fitGSF = new ShapeGSF(sett, matrix);
-    fitGSF->Update();
+	//calculate gamma ray strength function
+	fitGSF = new ShapeGSF(sett, matrix);
+	fitGSF->Update();
     
-    //status update: will have values for gSF
-    status = 2;
+	//status update: will have values for gSF
+	status = 2;
     
-    //enable Menu entry showing fit results for peak width and peak ratios
-    if (sett->mode == 2)
-        fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
+	//enable Menu entry showing fit results for peak width and peak ratios
+	if (sett->mode == 2)
+		fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
     
-    fDisplayFile->EnableEntry(M_DISPLAY_RATIO);
+	fDisplayFile->EnableEntry(M_DISPLAY_RATIO);
     
-    //only temporary use during the loop to store each individual gSF plot
-    TGraphErrors* gSF_plot;
+	//this multigraph shows all the individual gSF plots
+	string t = "gamma ray strength function " + mname;
     
-    //this multigraph shows all the individual gSF plots
-    string t = "gamma ray strength function " + mname;
-    
-    //the chi2 fitting object
-    ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
-    
-    double exi_store = sett->exi_size[0];
-    
-    //loop over exi_size
-    for (int j = 1; j < l; j++) {
-        //sliding window
-        for (int i = 1; i < k; i++) {
-
-            //update number of integration bins according to exi_size
-            sett->nOfBins = sett->SizeToBin();
+	//the chi2 fitting object
+	ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
+       
+	
+	 
+	//loop over exi_size
+	for (int j = 1; j < l; j++) {
+		//sliding window
+		for (int i = 1; i < k; i++) {
+			
+			// the sliding window moves from the inital position in kmax steps to the end position, which is one bin to the "left"
+			// the high energy is kept at the initital value, at all times
+			matrix->SetEne0( sett->exiEne[0] - (double) (i-1) * matrix->GetESize() / (kmax-1)); 
+          	matrix->SetEne1( sett->exiEne[1] );
+			
+			//update matrix
+			matrix->Diag();
             
-          if (sett->nOfBins < sett->interPoint) {
-                   std::cout <<"Skipping this iteration because interPoint larger than number of bins!" <<std::endl;
-                    continue;
-           }
-            //loop over first bin energy
-            
-           
-            //update matrix
-            matrix->Diag();
-            
-            
-            //loop over interpoint if requested
-            //for (int inter = 2; inter < sett->nOfBins -1; inter++) {
-            //sett->interPoint = inter;
-                //if (sett->nOfBins < inter) {
-                  //  std::cout <<"Skipping this iteration because interPoint larger than number of bins!" <<std::endl;
-                    //continue;
-                //}
-                
-                //recalculate gSF values
-                fitGSF->Update();
+			//recalculate gSF values
+			fitGSF->Update();
 
-                //scale fitGSF to refernce data set
-                fitGSF->Scale(1/chi2->GetScale());
+			//scale fitGSF to refernce data set
+			fitGSF->Scale(1/chi2->GetScale());
 
-                //collect results
-                fitGSF->gSF_Collect();
-				//}
-            //set sliding window for next iteration
-            matrix->sliding_window = i/5.;
-        }
-
-        //set exi_size for next iteration
-        sett->exi_size[0] = sett->exi_size[0] + (50 );
-    
+			//collect results
+			fitGSF->gSF_Collect();
+			//}
+			
+		}
+		//change bin size
+		matrix->SetESize( matrix->GetESize() +50 );
+		
 	}
 	ShowGraph();
-	
-    //restore setting values and diagonalize matrix
-    matrix->sliding_window = 1.;
-    sett->exi_size[0] = exi_store;
-    sett->nOfBins = sett->SizeToBin();
-    UpdateSetting(sett);
-    matrix->Diag();
 }
 
 //displays the results for gSF, literature values, resonance fit etc.
 void ShapeFrame::ShowGraph()
 {
+	//check status
+	if (status < 2)
+		return;
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
 
@@ -921,7 +912,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //initialize histogram zoom
                 histX1 = 0;
-                histX2 = matrix->GetDiagExMax(1);
+                histX2 = matrix->GetEne0() + matrix->GetESize();
                 
                 //create projections
                 UpdateSetting(sett);
@@ -971,7 +962,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //initialize histogram zoom
                 histX1 = 0;
-                histX2 = matrix->GetDiagExMax(1);
+                histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
                 
                 //create projections
                 matrix->Diag();
@@ -1134,10 +1125,10 @@ void ShapeFrame::UpdateDisplay(int display) {
             matrix->GetInputMatrix(mname)->Draw("colz");
             break;
         case 2:
-            matrix->GetDiagEx(mname)->Draw("colz");
+            matrix->GetDiagEx(mname)->Draw("hist colz");
             break;
         case 3:
-            matrix->GetDiagExCube(mname)->Draw("colz");
+            matrix->GetDiagExCube(mname)->Draw("hist colz");
             break;
         case 4:
             displayHisto = matrix->GetDiag(mname);
@@ -1148,7 +1139,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             fBinCombo->SetEnabled(true);
             fBinComboDraw(fBinCombo);
             BinSelect(1);
-            matrix->GetDiagEx(1, mname)->Draw();
+            matrix->GetDiagEx(1, mname)->Draw("hist");
             fBinCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "BinSelect(Int_t)");
             break;
         }
