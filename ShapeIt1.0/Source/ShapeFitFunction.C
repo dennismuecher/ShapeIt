@@ -12,7 +12,8 @@ private:
     double multi_gaus[4];					//guass of multiplet peaks
     double gauss;							//gauss of main peak
     bool do_reject;							// flag to control if events outside the background ranges should be rejected
-    bool Reject (double xx)	{					//returns true if point is not within bgRange or peakRange
+    
+	bool Reject (double xx)	{					//returns true if point is not within bgRange or peakRange and do_reject is set to "true"
         
         if (xx >= bgRanges[0] && xx <= bgRanges[1] )
             return false;

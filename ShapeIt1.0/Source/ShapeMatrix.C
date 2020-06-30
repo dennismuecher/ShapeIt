@@ -336,8 +336,6 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 		fit_result[level]->SetParameter(7, p_2);
 	}
 	
-    
-	
     //set fit boundaries
     fit_result[level]->SetParLimits(3,0.01*amplitude_init, 100*amplitude_init);
     fit_result[level]->SetParLimits(4, sett->levEne[2*level], sett->levEne[2*level+1]);
@@ -372,6 +370,16 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
         histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
     else
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+	
+	//fix all fit parameters and refitfit function without rejection for a nicer display
+	for (int i = 0; i < 8; i++) 
+		fit_result[level]->FixParameter(i, fit_result[level]->GetParameter(i));
+	fitfunc->SetReject(false);
+    if (level == 0)
+        histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+    else
+        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+	
 
 	//set amplitude of doublet peak to zero as we only want the peak content of the peak of interest
 	
