@@ -55,6 +55,7 @@ public:
 	void SetEne1(double nene1) {ene1 = nene1;}
 	void SetESize(double nesize) {esize = nesize;}
 	
+	int GetYBins() {return ybins;}
     double eMin_x, eMax_x, eMin_y, eMax_y;
     double eMin_diag;                           //minimum value of Excitation Energy and Gamma ray energy
     

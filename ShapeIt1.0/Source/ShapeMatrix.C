@@ -205,7 +205,7 @@ void ShapeMatrix::FitIntegral(){
         }
     }
     //level 2
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < ybins; i++) {
         if (integral2[i] == 0) {
             fit_integral2.push_back(0);
             fit_integral2Bg.push_back(0);

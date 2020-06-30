@@ -7,7 +7,7 @@ ShapeGSF::ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t)
     gSF_matrix = matrix_t;
     gSF.clear();
     binRange[0] = 1;
-    binRange[1] = sett->nOfBins;
+    binRange[1] = gSF_matrix->GetYBins();
 }
 
 //returns an interpolated value of gSF for the gamma ray energy ene
@@ -178,7 +178,7 @@ void ShapeGSF::DoInterpol() {
     
     //interpolate from interPoint to higher energies
     slope = 0;
-    for (int i = (sett->interPoint -1 ); i < sett->nOfBins ; i++) {
+    for (int i = (sett->interPoint -1 ); i < gSF_matrix->GetYBins(); i++) {
        
         //do nothing for the first loop
         if ( slope != 0 ) {
@@ -513,7 +513,7 @@ TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
 
 void ShapeGSF::Scale(double factor){
     
-    for (int i = 0; i < sett->nOfBins; i++) {
+    for (int i = 0; i < gSF_matrix->GetYBins(); i++) {
         gSF[i].value1 = gSF[i].value1 * factor;
         gSF[i].value2 = gSF[i].value2 * factor;
         gSF[i].dvalue1 = gSF[i].dvalue1 * factor;

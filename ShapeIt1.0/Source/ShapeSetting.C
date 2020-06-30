@@ -26,7 +26,7 @@ void ShapeSetting::setBgEne2(double ene[4]) {
         bgEne[1][i] = ene[i];
 }
 
-//calculates the number of bins; the last bin might be smaller than sett->exi_size!
+//calculates the number of bins
 int ShapeSetting::SizeToBin() {
     int diff = exiEne[1] - exiEne[0];
     int bins = (int) diff / exi_size[0];
