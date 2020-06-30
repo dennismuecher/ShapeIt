@@ -409,7 +409,14 @@ void ShapeFrame::SetupMenu() {
 
     fMenuBar->AddPopup("&Settings", fSettingsFile, fMenuBarItemLayout);
 
-    //Display Menu
+	//cascade Menu for verbose level
+    fVerboseMenu = new TGPopupMenu(gClient->GetRoot());
+    fVerboseMenu->AddEntry("&Silent", M_DISPLAY_VERBOSE0);
+    fVerboseMenu->AddEntry("Some &Info", M_DISPLAY_VERBOSE1);
+    fVerboseMenu->AddEntry("&All the Details", M_DISPLAY_VERBOSE2);
+	fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE0);
+    
+	//Display Menu
     fDisplayFile = new TGPopupMenu(gClient->GetRoot());
     fDisplayFile->AddEntry("&Input Matrix", M_DISPLAY_MAT);
     fDisplayFile->AddEntry("&Diag vs Excitation energy", M_DISPLAY_DIAG);
@@ -431,7 +438,11 @@ void ShapeFrame::SetupMenu() {
     
     fDisplayFile->DisableEntry(M_DISPLAY_FITWIDTH);
     fDisplayFile->DisableEntry(M_DISPLAY_RATIO);
-    fMenuBar->AddPopup("&Display", fDisplayFile, fMenuBarItemLayout);
+	
+	//cascade Menu for verbose level
+	fDisplayFile->AddPopup("&Verbose Level", fVerboseMenu);
+	
+	fMenuBar->AddPopup("&Display", fDisplayFile, fMenuBarItemLayout);
 
     
     fMenuDock->AddFrame(fMenuBar, fMenuBarLayout);
@@ -866,6 +877,34 @@ int ShapeFrame::MatrixSelector()
     
 }
 
+//takes care about setting the verbose level and displaying the verbose cascade menu correctly
+void ShapeFrame::HandleVerboseMenu(int vLevel) {
+	
+	switch (vLevel) {
+		case 0: {
+			fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE0);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE1);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE2);
+			sett->verbose = 0;
+			break;
+		}
+		case 1: {
+			fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE1);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE0);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE2);
+			sett->verbose = 1;
+			break;
+		}
+		case 2: {
+			fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE2);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE0);
+			fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE1);
+			sett->verbose = 2;
+			break;
+		}
+	}
+}
+
 void ShapeFrame::HandleMenu(Int_t id)
 {
     // Handle menu items.
@@ -947,6 +986,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 sett->ReadSettings();
                 UpdateGuiSetting(sett);
+				HandleVerboseMenu(sett->verbose);
                 fMain->SetWindowName(sname.c_str());
 
                 //get nme of root file containing matrix
@@ -1083,8 +1123,16 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_DISPLAY_RATIO:
             UpdateDisplay(8);
             break;
-            
-        case M_DISPLAY_BAND: {
+	    case M_DISPLAY_VERBOSE0: 
+			HandleVerboseMenu(0);
+			break; 
+		case M_DISPLAY_VERBOSE1: 
+			HandleVerboseMenu(1);
+			break;
+		case M_DISPLAY_VERBOSE2: 
+			HandleVerboseMenu(2);
+			break;
+		case M_DISPLAY_BAND: {
             gSF_band = !gSF_band;
             if (gSF_band)
                 fDisplayFile->CheckEntry(M_DISPLAY_BAND);
@@ -1093,6 +1141,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
 		
+        
         case M_DISPLAY_COLOUR: {
             sett->colour = !sett->colour;
             if (sett->colour)

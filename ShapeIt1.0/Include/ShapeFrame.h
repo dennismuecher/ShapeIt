@@ -65,8 +65,11 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_BAND,
     M_DISPLAY_RATIO,
     M_DISPLAY_GRF,
-	M_DISPLAY_COLOUR
-		
+	M_DISPLAY_COLOUR,
+	M_DISPLAY_VERBOSE0,
+	M_DISPLAY_VERBOSE1,
+	M_DISPLAY_VERBOSE2
+
 };
 
 const char *filetypes[2] = {"ROOT files", "*.root"};
@@ -98,6 +101,7 @@ private:
     TGPopupMenu* fMenuFile;
     TGPopupMenu* fSettingsFile;
     TGPopupMenu* fDisplayFile;
+	TGPopupMenu* fVerboseMenu;
     
     TGComboBox *fMatrix;
     TGComboBox *fBinCombo;
@@ -144,6 +148,7 @@ public:
     void MatrixSelect(Int_t mnr);
     void BinSelect(Int_t sbin);
     void InterSelect(Int_t sbin);
+	void HandleVerboseMenu(int vLevel);							//takes care about the verbose level menu
 
     void fBinComboDraw(TGComboBox *combo);
     void UpdateDisplay();
