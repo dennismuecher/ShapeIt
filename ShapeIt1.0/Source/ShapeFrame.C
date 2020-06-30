@@ -725,20 +725,13 @@ void ShapeFrame::ShapeItBaby() {
 	//update matrix
 	matrix->Diag();
 	
-	int l = 2;   //determined if bin variation loop will be done
-	if (sett->doBinVariation)
-		l = (sett->exi_size[1] - sett->exi_size[0]) / 50;
-	if (l < 2)
-		l = 2;
-	
 	int kmax = 5;	//number of steps in sliding window
 	int k = 2; //determines if sliding window loop will be done
 	if (sett->doSlidingWindow)
 		k = kmax;
     
-	//determine lowest number of bins to be expected
-	int maxBin = sett->SizeToBin(sett->exi_size[0] + ((l-1)*40));
-	if (maxBin < sett->interPoint) {
+	//throw a warning if interPoint not set correctly
+	if (sett->SizeToBin(sett->exi_size[1]) < sett->interPoint) {
 		MessageBox("Info", "Interpolation point is smaller than expected lowest number of bins!");
 		return;
 	}
@@ -769,10 +762,8 @@ void ShapeFrame::ShapeItBaby() {
 	//the chi2 fitting object
 	ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
        
-	
-	 
 	//loop over exi_size
-	for (int j = 1; j < l; j++) {
+	do {
 		//sliding window
 		for (int i = 1; i < k; i++) {
 			
@@ -795,10 +786,13 @@ void ShapeFrame::ShapeItBaby() {
 			//}
 			
 		}
-		//change bin size
-		matrix->SetESize( matrix->GetESize() +50 );
+		//check if bin size should be varried 
+		if (!sett->doBinVariation) break;
 		
-	}
+		//change bin size
+		matrix->SetESize( matrix->GetESize() + 50 );
+		
+	} while (matrix->GetESize() <= sett->exi_size[1]);
 	ShowGraph();
 }
 
