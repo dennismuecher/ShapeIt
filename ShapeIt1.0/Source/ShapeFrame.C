@@ -729,10 +729,10 @@ void ShapeFrame::ShapeItBaby() {
 	int k = 2; //determines if sliding window loop will be done
 	if (sett->doSlidingWindow)
 		k = kmax;
-    
+    std::cout <<"exi_size[1]" << sett->SizeToBin(sett->exi_size[1]) << " " << sett->interPoint <<" " << sett->doBinVariation <<std::endl;
 	//throw a warning if interPoint not set correctly
-	if (sett->SizeToBin(sett->exi_size[1]) < sett->interPoint) {
-		MessageBox("Info", "Interpolation point is smaller than expected lowest number of bins!");
+	if (  sett->doBinVariation && sett->SizeToBin(sett->exi_size[1]) < sett->interPoint) {
+		MessageBox("Info", "Interpolation point is smaller than lowest number of bins!");
 		return;
 	}
 	//setting display mode

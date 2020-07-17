@@ -316,7 +316,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 	fitfunc->SetPeakRanges(peakRange_temp);
 	
   	if (level == 0)
-	     histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+	     histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
   	else
 		  histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
@@ -367,7 +367,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //perform fit
     sprintf(name,"fit_level%d_bin%d",level+1, bin);
     if (level == 0)
-        histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
     else
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
@@ -376,7 +376,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 		fit_result[level]->FixParameter(i, fit_result[level]->GetParameter(i));
 	fitfunc->SetReject(false);
     if (level == 0)
-        histo->Fit(name,"RQ","",bgRange[0],bgRange[3]);
+        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
     else
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
