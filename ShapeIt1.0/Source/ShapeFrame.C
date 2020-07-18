@@ -174,19 +174,16 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     
     //options
     fInter = new TGCompositeFrame(fG[2], 1, 1, kHorizontalFrame);
-    OB[0] = new TGCheckButton(fInter, new TGHotString("Interpolation"), 14);
+    OB[0] = new TGCheckButton(fInter, new TGHotString("Sewing ex. energy [keV]"), 14);
     OB[0]->SetState(kButtonDown);
     fInter->AddFrame(OB[0], new TGLayoutHints( kLHintsTop, 2, 2 , 3, 2));
-    
-    //Combo box for displaying interpolation bin
-    fInterCombo = new TGComboBox(fInter, 80);
-    fBinComboDraw(fInterCombo);
-    fInterCombo->SetEnabled(false);
-    fInter->AddFrame(fInterCombo, new TGLayoutHints( kLHintsTop, 0, 0, 1, 0));
-    fInterCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "InterSelect(Int_t)");
-    fG[2]->AddFrame(fInter);
     OB[0]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
     
+    exi[2] = new TGNumberEntry(fInter, 4500, 9,30, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,100, 99999);
+    exi[2]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
+    fInter->AddFrame(exi[2], new TGLayoutHints( kLHintsTop, 0, 0, 1, 0));
+    fG[2]->AddFrame(fInter);
+
     OB[1] = new TGCheckButton(fG[2], new TGHotString("Display expectation"), 15);
     OB[2] = new TGCheckButton(fG[2], new TGHotString("Sliding window variation"), 21);
     OB[3] = new TGCheckButton(fG[2], new TGHotString("Bin size variation"), 22);
@@ -286,7 +283,6 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
 
     minContent->SetNumber(sett_t->minCounts);
     scaling->SetNumber(sett_t->gSF_norm);
-    fInterCombo->Select(sett->interPoint);
     effCorr->SetNumber(sett_t->eff_corr);
     for (int i = 0; i < 2; i++)
         fR[i]->SetState(kButtonUp);
@@ -325,6 +321,8 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
     for (int i = 0; i < 2; i++)
         sett_t->exiEne[i] = exi[i]->GetNumber();
 
+    sett_t->sewingEne = exi[2]->GetNumber();
+    
     sett_t->exi_size[0] = bin[0]->GetNumber();
     sett_t->exi_size[1] = bin[1]->GetNumber();
     sett_t->nOfBins = nOfBins[0]->GetNumber();
@@ -363,14 +361,6 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
     else
         sett_t->doWidthCal = false;
 	
-   // if (OB[6]->GetState() == kButtonDown)
-     //   sett_t->doEffi = true;
-    //else
-      //  sett_t->doEffi = false;
-	
-
-    sett_t->interPoint = sett->interPoint; //this is a dirty hack....sett always caries the information on interPoint but it should be done better...
-
 }
 
 
@@ -464,27 +454,16 @@ void ShapeFrame::fBinComboDraw(TGComboBox *combo)
         combo->AddEntry(name,i);
     }
     combo->Resize(80,20);
-
-    if (sett->nOfBins >= sett->interPoint)
-        combo->Select(sett->interPoint);
-    else
-        combo->Select(2);
-
-
+    combo->Select(1);
 }
 
-void ShapeFrame::InterSelect(Int_t sbin)
-{
-    sett->interPoint = sbin;
-    
-}
 
 void ShapeFrame::BinSelect(Int_t sbin)
 {
 	binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
-    diagHisto->Draw();
+    diagHisto->Draw("Y+");
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
@@ -692,6 +671,15 @@ void ShapeFrame::DoNumberEntry() {
             UpdateSetting(sett);
         }
         
+        if (id ==30) {
+            if (exi[2]->GetNumber() < exi[0]->GetNumber())
+                exi[2]->SetNumber(exi[0]->GetNumber());
+            if (exi[2]->GetNumber() > exi[1]->GetNumber())
+                exi[2]->SetNumber(exi[1]->GetNumber());
+            UpdateSetting(sett);
+            
+        }
+        
         if (id == 9 || id == 13 ){
             UpdateSetting(sett);
         }
@@ -702,7 +690,6 @@ void ShapeFrame::DoNumberEntry() {
             matrix->SetESize(sett->exi_size[0]);
 			matrix->Diag();
             fBinComboDraw(fBinCombo);
-            fBinComboDraw(fInterCombo);
             UpdateDisplay(displayMode);
         }
     }
@@ -729,12 +716,7 @@ void ShapeFrame::ShapeItBaby() {
 	int k = 2; //determines if sliding window loop will be done
 	if (sett->doSlidingWindow)
 		k = kmax;
-    std::cout <<"exi_size[1]" << sett->SizeToBin(sett->exi_size[1]) << " " << sett->interPoint <<" " << sett->doBinVariation <<std::endl;
-	//throw a warning if interPoint not set correctly
-	if (  sett->doBinVariation && sett->SizeToBin(sett->exi_size[1]) < sett->interPoint) {
-		MessageBox("Info", "Interpolation point is smaller than lowest number of bins!");
-		return;
-	}
+
 	//setting display mode
 	UpdateDisplay(6);
   
@@ -943,9 +925,6 @@ void ShapeFrame::HandleMenu(Int_t id)
 				fMatrix->Select(1);
 		        matrix->SetMatrix(1);
  			    DoDraw();
-                sett->interPoint = sett->nOfBins / 2;
-
-                fBinComboDraw(fInterCombo);
                 
                 //initialize histogram zoom
                 histX1 = 0;
@@ -1004,9 +983,7 @@ void ShapeFrame::HandleMenu(Int_t id)
 					MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
 					CloseWindow();
 				}
-				
-                fBinComboDraw(fInterCombo);
-         
+                
                 //initialize histogram zoom
                 histX1 = 0;
                 histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
@@ -1195,7 +1172,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             fBinCombo->SetEnabled(true);
             fBinComboDraw(fBinCombo);
             BinSelect(binSelect);
-            matrix->GetDiagEx(binSelect, mname)->Draw("hist");
+            matrix->GetDiagEx(binSelect, mname)->Draw("hist Y+");
             fBinCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "BinSelect(Int_t)");
             break;
         }

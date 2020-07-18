@@ -130,9 +130,8 @@ void ShapeGSF::DoInterpol() {
     //slope of the last two points
     double slope = 0;
     
-    //interpolate from interPoint to lower energies
-    for (int i = (sett->interPoint -1 ); i > (-1) ; i--) {
-        
+    //interpolate from interEne to lower energies
+      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i > (-1) ; i--) {
         //do nothing for the first loop
         if ( slope != 0 ) {
             
@@ -176,10 +175,9 @@ void ShapeGSF::DoInterpol() {
             std::cout << "\nSlope for interpolation:" <<slope<<endl;
     }
     
-    //interpolate from interPoint to higher energies
+    //interpolate from interEne to higher energies
     slope = 0;
-    for (int i = (sett->interPoint -1 ); i < gSF_matrix->GetYBins(); i++) {
-       
+      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i < gSF_matrix->GetYBins(); i++) {
         //do nothing for the first loop
         if ( slope != 0 ) {
             

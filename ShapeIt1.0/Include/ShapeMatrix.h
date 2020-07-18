@@ -70,7 +70,8 @@ public:
     TH2F* GetDiagExCube(string title) {diagExCube->SetTitle(title.c_str()); return diagExCube;}
     TH1D* GetDiagEx(int bbin, string title);                  //returns projection of DiagEx for bin bbin, starting at bin 1
 
-    double energyToBinX (double e);
+    int energyToBinX (double e);
+    int energyToBinY (double e);
     
 	void Reset();
     void Integrate();

@@ -84,7 +84,7 @@ private:
     string absPath;
     TRootEmbeddedCanvas *fEcanvas;
     TGNumberEntry       *energy[4]; //energies of the two discrete states; lower and upper limit
-    TGNumberEntry       *exi[2];//excitation energies; lower and upper limit
+    TGNumberEntry       *exi[3];//excitation energies; lower and upper limit and interpolation energy
     TGNumberEntry       *bin[2];//size of integration bin; lower and upper limit
     TGNumberEntry       *nOfBins[2];//number of integration bins
     TGNumberEntry       *minContent; //mininmum number of counts an integration bin must have to be considered in the analysis
@@ -147,7 +147,6 @@ public:
     void UpdateGuiSetting(ShapeSetting *sett_t);
     void MatrixSelect(Int_t mnr);
     void BinSelect(Int_t sbin);
-    void InterSelect(Int_t sbin);
 	void HandleVerboseMenu(int vLevel);							//takes care about the verbose level menu
 
     void fBinComboDraw(TGComboBox *combo);

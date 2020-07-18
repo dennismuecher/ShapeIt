@@ -22,9 +22,7 @@ double ShapeChi2::getChi2(double scale) {
     std::vector <double> d;
     
 	//this should be fixed....a proper way of defining what to take into account during chi2 min! 
-	
-	//for (int i = sett->interPoint-4 ; i < sett->interPoint+3;  i++) {
-		
+			
 	for (int i = 0; i < ref_ene.size() - 2; i++) {
         d = gSF->InterpolValue(ref_ene[i]);
         if (d[0] > 0.0001) {

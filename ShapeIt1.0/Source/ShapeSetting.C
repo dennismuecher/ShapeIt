@@ -45,6 +45,16 @@ int ShapeSetting::SizeToBin(double size) {
     return bins;
 }
 
+int ShapeSetting::BinToSize() {
+    int size = (int) (exiEne[1] - exiEne[0] ) / nOfBins;
+    return size;
+}
+
+int ShapeSetting::BinToSize(int n) {
+    int size = (int) (exiEne[1] - exiEne[0] ) / n;
+    return size;
+}
+
 //returns an energy-dependend efficiency factor
 double ShapeSetting::getEffCor(double ene) {
 	
@@ -110,7 +120,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "excitation_bin_2 " << exi_size[1] <<"\n";
     outfile << "nOfBins " << nOfBins <<"\n";
     outfile << "eff_corr " << eff_corr <<"\n";
-    outfile << "interPoint " << interPoint <<"\n";
+    outfile << "sewingEne " << sewingEne <<"\n";
     outfile << "minCounts " << minCounts <<"\n";
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
@@ -174,7 +184,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "excitation_bin_2" ) isstr >> exi_size[1] ;
             if (word == "nOfBins" ) isstr >> nOfBins ;
             if (word == "eff_corr" ) isstr >> eff_corr ;
-            if (word == "interPoint" ) isstr >> interPoint ;
+            if (word == "sewingEne" ) isstr >> sewingEne ;
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
@@ -185,17 +195,6 @@ void ShapeSetting::ReadSettings() {
                 PrintSettings();
                 
     }
-}
-
-
-int ShapeSetting::BinToSize() {
-    int size = (int) (exiEne[1] - exiEne[0] ) / nOfBins;
-    return size;
-}
-
-int ShapeSetting::BinToSize(int n) {
-    int size = (int) (exiEne[1] - exiEne[0] ) / n;
-    return size;
 }
 
 
@@ -229,7 +228,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "excitation_bin_2 " << exi_size[1] <<"\n";
     std::cout  << "nOfBins " << nOfBins <<"\n";
     std::cout  << "eff_corr " << eff_corr <<"\n";
-    std::cout  << "interPoint " << interPoint <<"\n";
+    std::cout  << "sewingEne " << sewingEne <<"\n";
     std::cout  << "minCounts " << minCounts <<"\n";
     std::cout  << "doWidthCal " << doWidthCal <<"\n";
     std::cout  << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";

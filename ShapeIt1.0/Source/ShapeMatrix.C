@@ -38,8 +38,15 @@ void ShapeMatrix::SetMatrix(int mNr) {
 
 }
 
+//convert energy to bin for excitation energies
+int ShapeMatrix::energyToBinY (double e) {
+    TAxis *yaxis = diagEx->GetYaxis();
+    return ( yaxis->FindBin(e) );
+}
+
+
 //convert energy to bin in projection histo for X
-double ShapeMatrix::energyToBinX (double e) {
+int ShapeMatrix::energyToBinX (double e) {
     TAxis *xaxis = diag->GetXaxis();
     return ( xaxis->FindBin(e) );
 }
@@ -291,9 +298,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 8 );
 	else
 		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
-    
-	fit_result[level]->SetLineColor(6);
-
+	
     //get bin content at peak and bgRange[1] as starting value for fit amplitude
     double amplitude_init = histo->GetBinContent(energyToBinX(p));
     double amplitude_init_2 = histo->GetBinContent(energyToBinX(p_2));
@@ -308,17 +313,16 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     fit_result[level]->FixParameter(0,0);
     
     //perform fit of background, first
+	fit_result[level]->SetLineColor(kCyan-6);
+	fit_result[level]->SetLineWidth(3);
 	fit_result[level]->FixParameter(3, 0);
 	if (is_doublet) 
 			fit_result[level]->FixParameter(6, 0);
 	//set peakrange to zero
 	double peakRange_temp[2]={0,0};
 	fitfunc->SetPeakRanges(peakRange_temp);
-	
-  	if (level == 0)
-	     histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
-  	else
-		  histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+	//fit
+	histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
 	//fix background fit parameter
 	fit_result[level]->FixParameter(1, fit_result[level]->GetParameter(1));
@@ -366,16 +370,14 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     
     //perform fit
     sprintf(name,"fit_level%d_bin%d",level+1, bin);
-    if (level == 0)
-        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
-    else
-        histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
+    histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
 	//fix all fit parameters and refitfit function without rejection for a nicer display
 	for (int i = 0; i < 8; i++) 
 		fit_result[level]->FixParameter(i, fit_result[level]->GetParameter(i));
 	fitfunc->SetReject(false);
-    if (level == 0)
+    fit_result[level]->SetLineColor(6);
+	if (level == 0)
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
     else
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
