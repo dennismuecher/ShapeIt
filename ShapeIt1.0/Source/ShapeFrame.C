@@ -291,8 +291,12 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->mode == 2)
         fR[1]->SetState(kButtonDown);
     
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 5; i++)
         OB[i]->SetState(kButtonUp);
+    if (status > 2) {
+        OB[5]->SetEnabled(true);
+         OB[5]->SetState(kButtonUp);
+    }
     
     if (sett_t->doInterpol)
         OB[0]->SetState(kButtonDown);
@@ -306,6 +310,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         OB[4]->SetState(kButtonDown);
     if (sett_t->doWidthCal)
         OB[5]->SetState(kButtonDown);
+    
     //if (sett_t->doEffi)
       //  OB[6]->SetState(kButtonDown);
     
@@ -360,7 +365,8 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
         sett_t->doWidthCal = true;
     else
         sett_t->doWidthCal = false;
-	
+	if (status < 3)
+        OB[5]->SetEnabled(false);
 }
 
 
@@ -463,7 +469,7 @@ void ShapeFrame::BinSelect(Int_t sbin)
 	binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
-    diagHisto->Draw("Y+");
+    diagHisto->Draw();
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
@@ -917,7 +923,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
-                
+                OB[5]->SetEnabled(false);
                 //update Combo Menu showing the matrices
                 MatrixSelector();
 		        
@@ -971,6 +977,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
+                OB[5]->SetEnabled(false);
                 //update Combo Menu showing the matrices
                 int mIndex = MatrixSelector();
 				if (mIndex > 0) {
@@ -1067,6 +1074,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_SETTING_WIDTHRESET: {
             sett->doWidthCal = 0;
             sett->ResetWidth();
+            OB[5]->SetEnabled(false);
         }
             
         
@@ -1143,6 +1151,7 @@ void ShapeFrame::HandleMenu(Int_t id)
     }
 }
 
+
 void ShapeFrame::UpdateDisplay(int display) {
     if (status == 0)
         return;
@@ -1172,7 +1181,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             fBinCombo->SetEnabled(true);
             fBinComboDraw(fBinCombo);
             BinSelect(binSelect);
-            matrix->GetDiagEx(binSelect, mname)->Draw("hist Y+");
+            matrix->GetDiagEx(binSelect, mname)->Draw("hist");
             fBinCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "BinSelect(Int_t)");
             break;
         }
@@ -1196,7 +1205,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             //update status: having autofit results and width calibration
             status = 3;
-            
+            UpdateGuiSetting(sett);
             wgraph = new TMultiGraph("wplot", "Widths from Autofit");
             
             wgraph->Add(T1);
