@@ -62,23 +62,23 @@ double ShapeSetting::getEffCor(double ene) {
 	// this is just a diry hack to implement an energy-dependent efficiency correction
 	
 	//settings for 76Ge 2+1, 2+2
-	/*double a = 7E-4; //slope
+	double a = 7E-4; //slope
 	double b = -0.3965; //offset
 	
 	double min_e = 1000;//minimum energy to apply factor
 	double max_e = 2200; //maximum energy to apply factor
 	
-	double corr = a * ene + b;*/
+	double corr = a * ene + b;
 	
 	
 	//settings for 76Ge 0+1, 2+1,
-	double a = 4.2E-4; //slope
+	/*double a = 4.2E-4; //slope
 	double b = -0.4; //offset
 	
 	double min_e = 2400;//minimum energy to apply factor
 	double max_e = 3000; //maximum energy to apply factor
 	
-	double corr = a * ene + b;
+	double corr = a * ene + b;*/
 	
 	if (ene < min_e)
 		corr = a * min_e + b;

@@ -10,6 +10,7 @@ ShapeGSF::ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t)
     binRange[1] = gSF_matrix->GetYBins();
 }
 
+
 //returns an interpolated value of gSF for the gamma ray energy ene
 std::vector <double> ShapeGSF::InterpolValue(double ene) {
     //first, find the closest gamma ray energy for which there is data on gSF
@@ -449,6 +450,24 @@ void ShapeGSF::gSF_Print() {
     for (int i = 0; i < gSF_sort.size(); i++ )
         std::cout << gSF_sort[i].egamma <<"     "<< sett->gSF_norm * ( gSF_sort[i].value + gSF_sort[i].dvalue ) <<"     " << sett->gSF_norm *  ( gSF_sort[i].value - gSF_sort[i].dvalue ) << std::endl;
 }
+
+//transforms all gSF values via B*exp(alpha E_gamma)
+void ShapeGSF::Transform(double B_t, double alpha_t) {
+    
+    //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
+    for (int i = 0; i < gSF_sort.size() ; i++ ) {
+        gSF_sort[i].value =  B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].value;
+        gSF_sort[i].dvalue = B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].dvalue;
+        std::cout <<"test: " << alpha_t - alpha<<" " << gSF_sort[i].egamma <<std::endl;
+        std::cout <<"test: " << gSF_sort[i].value <<" " << gSF_sort[i].dvalue <<std::endl;
+    }
+    B = B_t;
+    alpha = alpha_t;
+    std::cout <<"B and Alpha: " <<B <<" "<<alpha<<std::endl;
+    
+    
+}
+
 
 //creats TGraphError using the sorted data and drawing option for plotitng a band
 TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {

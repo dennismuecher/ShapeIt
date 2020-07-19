@@ -56,13 +56,15 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fG[2] = new TGGroupFrame(f1, new TGString("Options"),kVerticalFrame|kRaisedFrame);
     fG[3] = new TGGroupFrame(f1, new TGString("Integration bin"),kVerticalFrame|kRaisedFrame);
      fG[4] = new TGGroupFrame(f3, new TGString("Input Matrix"),kVerticalFrame|kRaisedFrame);
-     fG[5] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
+      fG[5] = new TGGroupFrame(f1, new TGString("Transformation"),kVerticalFrame|kRaisedFrame);
+    fG[6] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
     
     for (int i = 0; i < 3; i++)
         fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
     for (int i = 3; i < 8; i++)
         fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
-    
+    for (int i = 0; i < 2; i++)
+        fTransform[i] = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
     //Mode
     
     fR[0] = new TGRadioButton(fG[0], new TGHotString("Integration"), 11);
@@ -205,8 +207,31 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     f1->AddFrame(fG[1], fL3 );
     f1->AddFrame(fG[3], fL3);
 
+    
+    //transformation settings
+    
+    TGLabel *t1 = new TGLabel(fTransform[0], "gSF scale B");
+    fTransform[0]->AddFrame(t1, fR2);
+    transB = new TGNumberEntry(fTransform[0], 1.0, 9,31, TGNumberFormat::kNESReal,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    transB->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
+    fTransform[0]->AddFrame(transB, fR2);
+    fG[5]->AddFrame(fTransform[0], fL2);
+    
+    TGLabel *t2 = new TGLabel(fTransform[1], " slope Alpha");
+    fTransform[1]->AddFrame(t2, fR2);
+    transAlpha = new TGNumberEntry(fTransform[1], 0.0, 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-100, 100);
+    transAlpha->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
+    fTransform[1]->AddFrame(transAlpha, fR2);
+    TGLabel *t3 = new TGLabel(fTransform[1], " [1/MeV]");
+    fTransform[1]->AddFrame(t3, fR2);
+    
+    
+    fG[5]->AddFrame(fTransform[1], fL2);
+    
+    f1->AddFrame(fG[5], fL3);
+    
     //display settings
-    fBin = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
+    fBin = new TGCompositeFrame(fG[6], 1, 1, kHorizontalFrame);
   
     fR[2] = new TGRadioButton(fBin, new TGHotString("Diagonal Projection"), 18);
     
@@ -217,9 +242,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fBinCombo->SetEnabled(false);
     fBin->AddFrame(fBinCombo, new TGLayoutHints( kLHintsTop, 0, 0, 1, 0));
    
-    fG[5]->AddFrame(fBin);
+    fG[6]->AddFrame(fBin);
     
-    f1->AddFrame(fG[5], fL3);
+    f1->AddFrame(fG[6], fL3);
     for (int i = 0 ; i < 3; i++)
         fR[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
 
@@ -684,6 +709,12 @@ void ShapeFrame::DoNumberEntry() {
                 exi[2]->SetNumber(exi[1]->GetNumber());
             UpdateSetting(sett);
             
+        }
+        
+        //Trnasfomration has changed
+        if ( (id == 31) || (id == 32) ) {
+            fitGSF->Transform(transB->GetNumber(), transAlpha->GetNumber());
+            ShowGraph();
         }
         
         if (id == 9 || id == 13 ){

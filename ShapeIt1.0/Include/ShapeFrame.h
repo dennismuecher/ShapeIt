@@ -89,7 +89,10 @@ private:
     TGNumberEntry       *nOfBins[2];//number of integration bins
     TGNumberEntry       *minContent; //mininmum number of counts an integration bin must have to be considered in the analysis
     TGNumberEntry       *scaling;           //scaling factor for gSF
-    TGNumberEntry       *effCorr;              //efficiency factor for level 2 
+    TGNumberEntry       *effCorr;              //efficiency factor for level 2
+    TGNumberEntry       *transB;              //transformation B parameter field
+    TGNumberEntry       *transAlpha;              //transformation alpha parameter field
+    
     TGCompositeFrame *fBin;
     TGCompositeFrame *fInter;
     TGCompositeFrame *f1;
@@ -108,8 +111,9 @@ private:
 	int binSelect = 1;						//the bin selected in fbin combo (projection spectrum)
     TGComboBox *fInterCombo;
     
-    TGGroupFrame* fG[6];
+    TGGroupFrame* fG[7];
     TGCompositeFrame* fEnergy[8];
+    TGCompositeFrame* fTransform[2];
     TH1F *displayHisto;                      //points to the 1d histogram on display in the main canvas
     TH2 *inMatrix;							//the input matrix
     TFile* dataFile;							//the root file containing the input matrix
