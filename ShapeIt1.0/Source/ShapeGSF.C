@@ -1,6 +1,7 @@
 #include "../Include/ShapeGSF.h"
 #include <algorithm>
 
+//constructor using setting file and a matrix
 ShapeGSF::ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t)
 {
     sett = setting_t;
@@ -9,6 +10,132 @@ ShapeGSF::ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t)
     binRange[0] = 1;
     binRange[1] = gSF_matrix->GetYBins();
 }
+
+//constructor using the literature input file specified in the settings file, containing gamma energies and gSF data
+ShapeGSF::ShapeGSF(ShapeSetting* setting_t)
+{
+     sett = setting_t;
+    //reset gSF_sort vector
+    gSF_sort.clear();
+    
+    //read file data into gSF
+    if (sett->osloFileName == "") {
+        std::cout << "No Literature File loaded!"<<std::endl;
+        return NULL;
+    }
+    
+    //temporary vector to collect the file gSF data
+    gSF_sor s;
+
+    if (sett->verbose)
+        std::cout <<"\nReading OSLO DATA... " <<endl;
+    ifstream inp;
+    inp.open(sett->osloFileName.c_str());
+    if (inp.is_open() ) {
+        
+        double oslo_gSF_high;
+        double oslo_gSF_low;
+        
+        while ( !inp.eof() ) {
+            inp >> s.egamma >> oslo_gSF_high >>oslo_gSF_low;
+            s.value = ( oslo_gSF_high + oslo_gSF_low ) /2;
+            s.dvalue = oslo_gSF_high - s.value;
+            s.peakID = 1;               //peak ID has no meaning here...so just setting this to 1
+            gSF_sort.push_back(s);
+            
+            if (sett->verbose)
+                std::cout<< s.egamma << " "<< s.value <<" "<<s.dvalue <<endl;
+        }
+    }
+}
+
+//returns an interpolated value of gSF for the gamma ray energy ene based on the gSF_sort vector
+std::vector <double> ShapeGSF::InterpolValueSort(double ene) {
+    //first, find the closest gamma ray energy for which there is data on gSF
+    double ene1 = 1E5;
+    double val1 = 1;
+    double dval1 = 1;
+    
+    double ene2 = 1E5;
+    double val2 = 1;
+    double dval2 = 1;
+    
+    double t_ene;
+    double t_val;
+    double t_dval;
+    
+    int nOfActiveBins = gSF_sort.size();
+    int index_l = -1;
+    int index_r = -1;
+    
+    
+    if (sett->verbose > 1)
+        std::cout <<"Energy for Interpolation: " <<ene<<std::endl;
+    
+    //find clodest gamma ray lower than ene
+    for (int i = 0; i < nOfActiveBins; i++) {
+        t_ene =gSF_sort[i].egamma - ene;
+        t_val =gSF_sort[i].value;
+        t_dval =gSF_sort[i].dvalue;
+        
+        if (TMath::Abs(t_ene) < TMath::Abs(ene1) && (t_val > 0 ) && (t_ene <= 0)) {
+            ene1 = t_ene;
+            val1 = t_val;
+            dval1 = t_dval;
+            index_l = i;
+            if (sett->verbose > 1)
+                std::cout <<"Found closer energy smaller than ene: " <<ene1<< " with value: " <<val1 <<   std::endl;
+        }
+        
+    }
+    //find closest gamma ray higher than ene
+    for (int j = 0; j < nOfActiveBins; j++) {
+        t_ene =gSF_sort[j].egamma - ene;
+        t_val =gSF_sort[j].value;
+        t_dval =gSF_sort[j].dvalue;
+        if (TMath::Abs(t_ene) < TMath::Abs(ene2) && (t_val > 0 ) && (t_ene > 0)) {
+            ene2 = t_ene;
+            val2 = t_val;
+            dval2 = t_dval;
+            index_r = j;
+            if (sett->verbose > 1)
+                std::cout <<"Found closer energy higher than ene: " <<ene2<< " with value: " <<val2 <<   std::endl;
+        }
+    }
+    //check if ene1 and ene2 are defined
+    if (index_l == -1) {
+        ene1 = gSF_sort[0].egamma - ene;
+        val1 = gSF_sort[0].value;
+        dval1 = gSF_sort[0].dvalue;
+        ene2 = gSF_sort[1].egamma - ene;
+        val2 = gSF_sort[1].value;
+        dval2 = gSF_sort[1].dvalue;
+    }
+    else if (index_r == -1) {
+        ene1 = gSF_sort[nOfActiveBins-2].egamma - ene;
+        val1 = gSF_sort[nOfActiveBins-2].value;
+        dval1 = gSF_sort[nOfActiveBins-2].dvalue;
+        ene2 = gSF_sort[nOfActiveBins-1].egamma - ene;
+        val2 = gSF_sort[nOfActiveBins-1].value;
+        dval2 = gSF_sort[nOfActiveBins-1].dvalue;
+    }
+    
+    //transform to gamma ray energy
+    ene1 = ene1 + ene;
+    ene2 = ene2 + ene;
+    if (sett->verbose > 1)
+        std::cout <<"Final values ene1 and ene2 " <<ene1<< " and " <<ene2 <<   std::endl;
+    //now interpolate gSF
+    double m = ( val1 - val2) / ( ene1 - ene2);
+    if (sett->verbose > 1)
+        std::cout <<"slope calculated as : " << m <<   std::endl;
+    std::vector <double> result;
+    result.push_back ( ( ene - ene1) * m + val1);
+    m = ( dval1 - dval2) / ( ene1 - ene2);
+    result.push_back ( ( ene - ene1) * m + dval1);
+    return result;
+}
+
 
 
 //returns an interpolated value of gSF for the gamma ray energy ene
@@ -428,13 +555,15 @@ void ShapeGSF::gSF_Collect() {
         
         s.egamma = gSF[binRange[0]+i-1].egamma1;
         s.value = gSF[binRange[0]+i-1].value1;
-        s.dvalue = gSF[binRange[0]+i-1].dvalue1;
+        //adding a 10% systematic uncertainty due to fluctuations
+        s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.1 * s.value );
 		s.peakID = 1;
         gSF_sort.push_back(s);
         
         s.egamma = gSF[binRange[0]+i-1].egamma2;
         s.value = gSF[binRange[0]+i-1].value2;
-        s.dvalue = gSF[binRange[0]+i-1].dvalue2;
+        //adding a 10% systematic uncertainty due to fluctuations
+        s.dvalue = gSF[binRange[0]+i-1].dvalue2 + ( 0.1 * s.value );
 		s.peakID = 2;
         gSF_sort.push_back(s);
     }
@@ -458,14 +587,29 @@ void ShapeGSF::Transform(double B_t, double alpha_t) {
     for (int i = 0; i < gSF_sort.size() ; i++ ) {
         gSF_sort[i].value =  B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].value;
         gSF_sort[i].dvalue = B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].dvalue;
-        std::cout <<"test: " << alpha_t - alpha<<" " << gSF_sort[i].egamma <<std::endl;
-        std::cout <<"test: " << gSF_sort[i].value <<" " << gSF_sort[i].dvalue <<std::endl;
     }
     B = B_t;
     alpha = alpha_t;
-    std::cout <<"B and Alpha: " <<B <<" "<<alpha<<std::endl;
+}
+
+//provides a plot of gSF read from a file
+TGraphErrors* ShapeGSF::plotLit() {
     
+    int nOfPoints = gSF_sort.size();
     
+    double x[nOfPoints], y[nOfPoints];
+    double dx[nOfPoints], dy[nOfPoints];
+
+    for (int i = 0; i < nOfPoints ; i++ ) {
+        x[i] = gSF_sort[i].egamma;
+        y[i] = gSF_sort[i].value;
+        dx[i] = 1;
+        dy[i] = gSF_sort[i].dvalue;
+    }
+    TGraphErrors *lit_data = new TGraphErrors(nOfPoints,x,y,dx,dy);
+    lit_data->SetFillColor(4);
+    lit_data->SetFillStyle(3010);
+    return lit_data;
 }
 
 
@@ -528,6 +672,15 @@ TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
 	return mg;
 }
 
+//scales the sorted vector of gSF
+void ShapeGSF::ScaleSort(double factor){
+    
+    for (int i = 0; i < gSF_sort.size(); i++) {
+        gSF_sort[i].value = gSF_sort[i].value * factor;
+        gSF_sort[i].dvalue = gSF_sort[i].dvalue * factor;
+    }
+}
+
 void ShapeGSF::Scale(double factor){
     
     for (int i = 0; i < gSF_matrix->GetYBins(); i++) {
@@ -537,42 +690,4 @@ void ShapeGSF::Scale(double factor){
         gSF[i].dvalue2 = gSF[i].dvalue2 * factor;
     }
 }
-TGraphErrors* ShapeGSF::plotLit() {
-    if (sett->osloFileName == "") {
-        std::cout << "No Literature File loaded!"<<std::endl;
-        return NULL;
-    }
-        
-    if (sett->verbose)
-        std::cout <<"\nPLOTTING OSLO DATA... " <<endl;
-    ifstream inp;
-    inp.open(sett->osloFileName.c_str());
-    if (inp.is_open() ) {
-        double oslo_gamma[ 1000 ];
-        double oslo_gSF_high[ 1000 ];
-        double oslo_gSF_low[ 1000 ];
-        double oslo_gSF[ 1000 ];
-        
-        double oslo_dgamma[ 1000 ];
-        double oslo_dgSF[ 1000 ];
-        int i = 0;
-        while ( !inp.eof() ) {
-            inp >> oslo_gamma[i] >> oslo_gSF_high[i] >>oslo_gSF_low[i];
-            if (sett->verbose)
-                std::cout<<oslo_gamma[i] << " "<< oslo_gSF_high[i] <<" "<<oslo_gSF_low[i] <<endl;
-            oslo_gSF[i] = ( oslo_gSF_high[i] + oslo_gSF_low[i] ) /2;
-            oslo_dgSF[i] = TMath::Abs( oslo_gSF_high[i] - oslo_gSF[i] );
-            oslo_dgamma[i] = 1; //not sure what this should be
-            //if (oslo_gamma[i] > ( gSF_matrix->eMax_y ) ) break;
-            i = i + 1;
-        }
-        TGraphErrors *oslo_data = new TGraphErrors(i-1, oslo_gamma, oslo_gSF, oslo_dgamma, oslo_dgSF);
-        
-        oslo_data->SetFillColor(4);
-        oslo_data->SetFillStyle(3010);
-        return oslo_data;
-    }
-    else
-        throw "Cannot open Oslo Data File! Provide correct file or set 'plot_Oslo' to 0 in input file! Exciting...";
-    return NULL;
-}
+

@@ -55,8 +55,8 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fG[1] = new TGGroupFrame(f1, new TGString("Energies (all in keV)"),kVerticalFrame|kRaisedFrame);
     fG[2] = new TGGroupFrame(f1, new TGString("Options"),kVerticalFrame|kRaisedFrame);
     fG[3] = new TGGroupFrame(f1, new TGString("Integration bin"),kVerticalFrame|kRaisedFrame);
-     fG[4] = new TGGroupFrame(f3, new TGString("Input Matrix"),kVerticalFrame|kRaisedFrame);
-      fG[5] = new TGGroupFrame(f1, new TGString("Transformation"),kVerticalFrame|kRaisedFrame);
+    fG[4] = new TGGroupFrame(f3, new TGString("Input Matrix"),kVerticalFrame|kRaisedFrame);
+    fG[5] = new TGGroupFrame(f1, new TGString("Transformation of Oslo Literature values"),kVerticalFrame|kRaisedFrame);
     fG[6] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
     
     for (int i = 0; i < 3; i++)
@@ -145,10 +145,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fEnergy[4]->AddFrame(nOfBins[1], fR2);
     
     fG[3]->AddFrame(fEnergy[4], fR2);
-    
-    //disable bin variation for now
-    //l[9]->SetEnabled(false);
-    //l[10]->SetEnabled(false);
+
     bin[1]->SetState(false);
     nOfBins[1]->SetState(false);
     
@@ -165,6 +162,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     scaling->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[6]->AddFrame(scaling, fR2);
     fG[3]->AddFrame(fEnergy[6], fL2);
+    autoScale = new TGCheckButton(fEnergy[6], new TGHotString("Auto"), 40);
+    autoScale->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
+    fEnergy[6]->AddFrame(autoScale, fR2);
     
     TGLabel *l8 = new TGLabel(fEnergy[7], "      Eff. Corr.");
     fEnergy[7]->AddFrame(l8, fR2);
@@ -336,6 +336,11 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->doWidthCal)
         OB[5]->SetState(kButtonDown);
     
+    if (sett->doAutoScale)
+        autoScale->SetState(kButtonDown);
+    else
+        autoScale->SetState(kButtonUp);
+    
     //if (sett_t->doEffi)
       //  OB[6]->SetState(kButtonDown);
     
@@ -454,6 +459,8 @@ void ShapeFrame::SetupMenu() {
 	
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Fit Giant Resoance Formula", M_DISPLAY_GRF);
+    fDisplayFile->AddEntry("Plo&t chi2 graph for transformation", M_DISPLAY_TRAFO);
+    
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
     
@@ -550,9 +557,13 @@ void ShapeFrame::DoRadio()
             break;
 	    case 25:
 	        sett->doEffi = !sett->doEffi;
-	        break; 
+	        break;
+        case 40:
+            sett->doAutoScale = !sett->doAutoScale;
+            ShowGraph();
+            break;
 
-    };
+    }
 }
 
 void ShapeFrame::MessageBox(string title, string message)
@@ -713,7 +724,6 @@ void ShapeFrame::DoNumberEntry() {
         
         //Trnasfomration has changed
         if ( (id == 31) || (id == 32) ) {
-            fitGSF->Transform(transB->GetNumber(), transAlpha->GetNumber());
             ShowGraph();
         }
         
@@ -812,7 +822,35 @@ void ShapeFrame::ShapeItBaby() {
 		matrix->SetESize( matrix->GetESize() + 50 );
 		
 	} while (matrix->GetESize() <= sett->exi_size[1]);
+    
+    //create new ShapeGSF object containing the lit values
+    if (sett->doOslo)
+        litGSF = new ShapeGSF(sett);
+        
 	ShowGraph();
+}
+
+//scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
+double ShapeFrame::AutoScale(int mode) {
+    
+    //create new chi2 object
+    ShapeChi2 *chi2_lit = new ShapeChi2(fitGSF, litGSF, sett);
+    
+    if (chi2_lit->GetScale() == 0) {
+        std::cout <<"Error: Chi2 scaling factor is zero!" <<std::endl;
+        return -1;
+    }
+    else if (mode == 0) {
+        double scale_t = 1 / chi2_lit->GetScale();
+        //fitGSF->ScaleSort(scale_t);
+        sett->gSF_norm = scale_t;
+        scaling->SetNumber(scale_t);
+    }
+
+    else if (mode == 1)
+        litGSF->ScaleSort(chi2_lit->GetScale());
+    
+    return chi2_lit->getChi2();
 }
 
 //displays the results for gSF, literature values, resonance fit etc.
@@ -821,6 +859,22 @@ void ShapeFrame::ShowGraph()
 	//check status
 	if (status < 2)
 		return;
+    
+    //check  if autoscaling is requested
+    
+    if ( sett->doOslo ) {
+        //apply transformation
+        litGSF->Transform(transB->GetNumber(), transAlpha->GetNumber());
+        
+        //autoscale gSF to literature values, if requested
+        if (sett->doAutoScale) {
+            lit_chi2  = AutoScale(0);
+            
+            //if (sett->verbose)
+            std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
+        }
+    }
+        
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
 
@@ -839,10 +893,10 @@ void ShapeFrame::ShowGraph()
 		g->Fit(fitGDR," "," ",3000,6000);   
 	}
 	
-    //add literature values
-    if (sett->doOslo && fitGSF->plotLit())
-        g->Add(fitGSF->plotLit(),"3A");
-
+    //add literature values to graph
+    if (sett->doOslo)
+        g->Add(litGSF->plotLit(),"3A");
+    
 	//plot the multigraph
     g->Draw("A*");
 
@@ -1170,6 +1224,10 @@ void ShapeFrame::HandleMenu(Int_t id)
 			ShowGraph();
             break;
         }
+        case M_DISPLAY_TRAFO: {
+            UpdateDisplay(9);
+            break;
+        }
         case M_DISPLAY_PRINT:
             if (status > 1)
                 fitGSF->gSF_Print();
@@ -1261,6 +1319,37 @@ void ShapeFrame::UpdateDisplay(int display) {
             }
             break;
         }
+        case 9: {
+            //some hard-coded stuff here....needs to be fixed
+            double alphaX[11];
+            double chi2Y[11];
+            int pointC = 0;
+            TGraph2D *dt = new TGraph2D();
+            
+            for (int j = 0; j < 6; j++) {
+                
+            for (int i  = 0; i < 11; i++) {
+                alphaX[i] = i*0.1 - 0.5;
+                transAlpha->SetNumber(alphaX[i]);
+                ShowGraph();
+                chi2Y[i] = lit_chi2;
+                pointC++;
+                dt->SetPoint(pointC,alphaX[i],exi[0]->GetNumber(),lit_chi2);
+                
+            }
+           
+            exi[0]->SetNumber(exi[0]->GetNumber() - 200);
+            UpdateSetting(sett);
+            ShapeItBaby();
+            }
+                
+            TGraph* alphaPlot = new TGraph(21, alphaX, chi2Y);
+            alphaPlot->SetMarkerStyle(4);
+            alphaPlot->SetMarkerColor(kRed);
+            dt->Draw("collz");
+            //alphaPlot->Draw("AC*");
+        }
+            
     }
     DrawMarker();
     fCanvas->Modified();

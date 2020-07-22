@@ -86,7 +86,7 @@ double ShapeSetting::getEffCor(double ene) {
 		//corr = a * max_e + b;
 		corr = 1;
 	
-	corr = 1;
+	//corr = 1;
 	return eff_corr * corr;
 }
 
@@ -102,6 +102,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "doInterpol " << doInterpol<<"\n";
     outfile << "doOslo " << doOslo<<"\n";
     outfile << "doEffi " << doEffi<<"\n";
+    outfile << "doAutoScale " << doAutoScale<<"\n";
 	outfile << "colour " << colour<<"\n";
 	outfile << "doGRF " << doGRF<<"\n";
     outfile << "doSlidingWindow " << doSlidingWindow <<"\n";
@@ -166,6 +167,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "doInterpol" ) isstr >> doInterpol;
             if (word == "doOslo" ) isstr >> doOslo;
             if (word == "doEffi" ) isstr >> doEffi;
+            if (word == "doAutoScale" ) isstr >> doAutoScale;
 			if (word == "colour" ) isstr >> colour;
             if (word == "doGRF" ) isstr >> doGRF;
             if (word == "doSlidingWindow" ) isstr >> doSlidingWindow ;
@@ -208,6 +210,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doInterpol " << doInterpol<<"\n";
     std::cout  << "doOslo " << doOslo<<"\n";
     std::cout  << "doEffi " << doEffi<<"\n";
+    std::cout  << "doAutoScale " << doAutoScale<<"\n";
 	std::cout  << "colour " << colour<<"\n";
     std::cout  << "doGRF " << doGRF<<"\n";
     std::cout  << "doSlidingWindow " << doSlidingWindow <<"\n";

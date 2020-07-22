@@ -60,6 +60,7 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_PROJTOT,
     M_DISPLAY_PROJBIN,
     M_DISPLAY_GSF,
+    M_DISPLAY_TRAFO,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
     M_DISPLAY_BAND,
@@ -101,6 +102,7 @@ private:
     TGLayoutHints *fL2;
     TGRadioButton* fR[6];
     TGCheckButton* OB[7];
+    TGCheckButton* autoScale;
     TGPopupMenu* fMenuFile;
     TGPopupMenu* fSettingsFile;
     TGPopupMenu* fDisplayFile;
@@ -119,7 +121,6 @@ private:
     TFile* dataFile;							//the root file containing the input matrix
     ShapeSetting *sett;                  //the settings file
     ShapeMatrix *matrix;                    //the matrix object
-    ShapeGSF *gSFFrame;                     //the gSF object used in ShapeFrame
     void SetupMenu();
     TLine *l[4];
     TBox *bgBox[4];                         //boxes indicating background regions
@@ -128,11 +129,12 @@ private:
     TRootEmbeddedCanvas* fEMessage;
     string mname="";                           //filename of the root file without the pathname
     int status = 0;                             //tracks the status of ShapeIt: 0: no matrix loaded; 1: matrix loaded; 2: gSF data available
-        void MessageBox(string title, string message);              //shows a dialog box with title and message and ok button
+    void MessageBox(string title, string message);              //shows a dialog box with title and message and ok button
     TH1D* diagHisto;
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
-    ShapeGSF *fitGSF;							//contains the gSF results
+    ShapeGSF *fitGSF;							//contains the gSF results from the data
+    ShapeGSF *litGSF;                           //contains the gSF results from literature values
     bool gSF_band = false;                    //if true, display gSF as error band
     
 public:
@@ -162,7 +164,9 @@ public:
     void PrintMessage();
 	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
 	void Scale(Double_t scale);					//scale results of gSF and refresh display
+    double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
     TGFileInfo fi;                              //file containing matrix
     TMultiGraph *wgraph ;
+    double lit_chi2 = 0;                    //value of chi2 fit of lit gSF to fit gSF
 };
 #endif

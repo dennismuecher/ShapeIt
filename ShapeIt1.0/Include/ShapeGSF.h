@@ -32,13 +32,17 @@ public:
     std::vector <gSF_str> gSF;          //vector of gamma ray strength functions (egamma and value with error for each level)
     std::vector <double> p_ratio;       //vector of ratios of counts in peak1 / peak2
     ShapeGSF(ShapeSetting* setting_t, ShapeMatrix* matrix_t);
+    ShapeGSF(ShapeSetting* setting_t);
     void GetgSF() {return gSF;}
 	void ScaleAll(double scale);				//scale all results of gSF with factor scale
     void FillgSF();                         //calculates the gSF
     double getBgRatio(int bin, int level);      //return the ratio of peak to background counts
     void DoInterpol();
+    
     int binRange[2];                        //first and last bin taken into account in analysis of gSF
     std::vector <double> InterpolValue(double ene);
+    std::vector <double> InterpolValueSort(double ene);
+    void ScaleSort(double factor);            //multiplies the gSF values in sort vector with scale
     void Scale(double factor);               //multiplies the gSF values with scale
     void Update();                    //refills the gSF values
     TGraphErrors* plotLit();            //plots literature data of gSF

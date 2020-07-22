@@ -50,8 +50,11 @@ public:
     int SizeToBin(double size);             //calculates the nr of integration bins based on size "size" of each bin
     int BinToSize();                    //calculates the size of integratio bin based on nr of integration bins
     int BinToSize(int n);                    //calculates the size of integratio bin based on nr of integration bins
+    
     bool doSlidingWindow = false;           //says if sliding window variation should be performed
     bool doBinVariation = false;
+    bool doAutoScale = false;               //if true, automatically scale gSF to Oslo data
+    
     void SaveSettings();
     void ReadSettings();
     void setBgEne1(double ene[4]);

@@ -361,9 +361,9 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
             eGamma = integral2Square[bin] /integral2Cube[bin];
         double widthFix = sett->widthCal[level][1] * eGamma + sett->widthCal[level][0];
         if (!(eGamma == 0)) {
-            //fit_result[level]->FixParameter(5, widthFix);
-            fit_result[level]->SetParameter(5, widthFix);
-            fit_result[level]->SetParLimits(5, widthFix-5, widthFix +5);
+            fit_result[level]->FixParameter(5, widthFix);
+            //fit_result[level]->SetParameter(5, widthFix);
+            //fit_result[level]->SetParLimits(5, widthFix-5, widthFix +5);
             
         }
     }
