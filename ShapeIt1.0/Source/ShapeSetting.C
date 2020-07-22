@@ -86,7 +86,7 @@ double ShapeSetting::getEffCor(double ene) {
 		//corr = a * max_e + b;
 		corr = 1;
 	
-	//corr = 1;
+	corr = 1;
 	return eff_corr * corr;
 }
 
