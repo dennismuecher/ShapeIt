@@ -66,8 +66,8 @@ TH1D* ShapeMatrix::GetDiagEx(int bbin, string title) {
 		//create projection of diagEx
         TH1D* hist = new TH1D(name,title,xbins,eMin_diag, eMax_y);
         hist = diagEx->ProjectionX(name,bbin,bbin,"o");
-		//TH1D* hist = diagEx->ProjectionX(name,bbin,bbin,"o");
-		//hist->SetTitle(title);
+        hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+        hist->GetYaxis()->SetTitle("counts");
         if (sett->mode == 2) {
             FitGauss(hist, bbin, 0);
             FitGauss(hist, bbin, 1);

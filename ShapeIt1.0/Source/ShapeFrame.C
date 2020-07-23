@@ -192,9 +192,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     OB[4] = new TGCheckButton(fG[2], new TGHotString("Background subtraction"), 23);
     OB[5] = new TGCheckButton(fG[2], new TGHotString("Use Width Calibration"), 24);
     OB[5]->SetEnabled(false);
-    //OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
-    //OB[6]->SetEnabled(false);
-    for (int i = 1 ; i < 6; i++) {
+    OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
+    OB[6]->SetEnabled(false);
+    for (int i = 1 ; i < 7; i++) {
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
     }
@@ -341,8 +341,8 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     else
         autoScale->SetState(kButtonUp);
     
-    //if (sett_t->doEffi)
-      //  OB[6]->SetState(kButtonDown);
+    if (sett_t->doEffi)
+        OB[6]->SetState(kButtonDown);
     
 }
 
@@ -428,7 +428,7 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("&Print Settings to terminal", M_SETTING_PRINT);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("L&oad Literature Values", M_SETTING_OSLO);
-    //fSettingsFile->AddEntry("L&oad // Efficiency Calibration", M_SETTING_EFFI);
+    fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
     
@@ -449,8 +449,9 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("Diag &Cube vs Excitation energy", M_DISPLAY_DIAGCUBE);
     fDisplayFile->AddEntry("Diag &Projection (total)", M_DISPLAY_PROJTOT);
     fDisplayFile->AddEntry("Dia&g Projection (bin)", M_DISPLAY_PROJBIN);
-    fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
     fDisplayFile->AddSeparator();
+    fDisplayFile->AddEntry("&Plot Efficiency Data from File", M_DISPLAY_EFFI);
+    fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
     fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
@@ -898,6 +899,7 @@ void ShapeFrame::ShowGraph()
         g->Add(litGSF->plotLit(),"3A");
     
 	//plot the multigraph
+    g->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     g->Draw("A*");
 
     fCanvas->Modified();
@@ -1137,7 +1139,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
 		
-        //currently not in use...for future implementation to lead energy-dependent effi parameters
+        //load energy-dependent effi parameters
 		case M_SETTING_EFFI: {
             static TString dir(".");
             TGFileInfo fi_sett;
@@ -1148,6 +1150,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             if (fi_sett.fFilename) {
                 sett->effiFileName = fi_sett.fFilename;
                 sett->doEffi = true;
+                sett->readEffi();
                 UpdateGuiSetting(sett);
             }
             break;
@@ -1226,6 +1229,10 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_DISPLAY_TRAFO: {
             UpdateDisplay(9);
+            break;
+        }
+        case M_DISPLAY_EFFI: {
+            UpdateDisplay(10);
             break;
         }
         case M_DISPLAY_PRINT:
@@ -1348,6 +1355,14 @@ void ShapeFrame::UpdateDisplay(int display) {
             alphaPlot->SetMarkerColor(kRed);
             dt->Draw("collz");
             //alphaPlot->Draw("AC*");
+            break;
+        }
+        case 10: {
+            sett->eGraph->SetMarkerStyle(4);
+            sett->eGraph->SetMarkerColor(kRed);
+            sett->eGraph->SetTitle("Energy dependend scaling factor; gamma energy [keV]; scaling factor; non");
+            sett->eGraph->Draw("AC*");
+            break;
         }
             
     }

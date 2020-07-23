@@ -61,6 +61,8 @@ public:
     void setBgEne2(double ene[4]);
     void ResetWidth();                      //resets the width calibration parameters for re-fitting
 	double getEffCor(double ene);			//returns an energy-dependend efficiency factor
+    void readEffi();                        //reads the energy-depend efficiency factors
+    TGraph* eGraph;                         //contains the data of the efficiency correction
 
 };
 

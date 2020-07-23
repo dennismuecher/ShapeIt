@@ -55,39 +55,65 @@ int ShapeSetting::BinToSize(int n) {
     return size;
 }
 
+void ShapeSetting::readEffi()
+{
+    
+    //read file data into eGraph
+    if (effiFileName == "") {
+        std::cout << "No Efficiency File loaded!"<<std::endl;
+        return NULL;
+    }
+    
+    if (verbose)
+        std::cout <<"\nReading Efficiency DATA... " <<endl;
+    
+    ifstream inp;
+    inp.open(effiFileName.c_str());
+    
+    if (inp.is_open() ) {
+        
+        double e;
+        double eff;
+        
+        //stores the minimum and maximum energies from the input file;
+        double emin = -1;
+        double emax = -1;
+        
+        int i = 0;
+        eGraph = new TGraph();
+        
+        while ( !inp.eof() ) {
+            inp >> e >> eff;
+            eGraph->SetPoint(i,e,eff);
+            i++;
+            if (verbose)
+                std::cout<< i<< " " << e << " "<< eff <<endl;
+        }
+        eGraph->SetMarkerStyle(4);
+        eGraph->SetMarkerColor(kRed);
+        eGraph->SetTitle("Energy dependend scaling factor; E_{#gamma} (keV); scaling factor");
+    }
+}
+
 //returns an energy-dependend efficiency factor
 double ShapeSetting::getEffCor(double ene) {
 	
-	
-	// this is just a diry hack to implement an energy-dependent efficiency correction
-	
-	//settings for 76Ge 2+1, 2+2
-	double a = 7E-4; //slope
-	double b = -0.3965; //offset
-	
-	double min_e = 1000;//minimum energy to apply factor
-	double max_e = 2200; //maximum energy to apply factor
-	
-	double corr = a * ene + b;
-	
-	
-	//settings for 76Ge 0+1, 2+1,
-	/*double a = 4.2E-4; //slope
-	double b = -0.4; //offset
-	
-	double min_e = 2400;//minimum energy to apply factor
-	double max_e = 3000; //maximum energy to apply factor
-	
-	double corr = a * ene + b;*/
-	
-	if (ene < min_e)
-		corr = a * min_e + b;
-	else if (ene > max_e)
-		//corr = a * max_e + b;
-		corr = 1;
-	
-	corr = 1;
-	return eff_corr * corr;
+    double c = 1;
+    
+    if (doEffi) {
+        
+        //find minimum and maximum x values of efficiency factors
+        double xmin = TMath::MinElement(eGraph->GetN(),eGraph->GetX());
+        double xmax = TMath::MaxElement(eGraph->GetN(),eGraph->GetX());
+        
+        if (verbose  > 1)
+            std::cout <<"Minimum and maximum values in efficiency data file: " <<xmin <<" "<<xmax <<std::endl;
+        
+        //if ene not inside graph, return 1, otherwise return interpolated value
+        if ( (ene >= xmin) && (ene <=xmax) )
+            c = eGraph->Eval(ene);
+        }
+    return eff_corr * c;
 }
 
 void ShapeSetting::SaveSettings() {
@@ -195,7 +221,9 @@ void ShapeSetting::ReadSettings() {
         }
         if (verbose)
                 PrintSettings();
-                
+        
+        if (doEffi)
+            readEffi();
     }
 }
 
