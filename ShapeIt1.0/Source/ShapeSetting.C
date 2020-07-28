@@ -96,15 +96,15 @@ void ShapeSetting::readEffi()
 }
 
 //returns an energy-dependend efficiency factor
-double ShapeSetting::getEffCor(double ene) {
+double ShapeSetting::getEffCor(double ene, int level) {
 	
     double c = 1;
     
     if (doEffi) {
         
-        //find minimum and maximum x values of efficiency factors
-        double xmin = TMath::MinElement(eGraph->GetN(),eGraph->GetX());
-        double xmax = TMath::MaxElement(eGraph->GetN(),eGraph->GetX());
+        //find minimum and maximum x values of efficiency factors; add 50 keV margin 
+        double xmin = TMath::MinElement(eGraph->GetN(),eGraph->GetX()) -50;
+        double xmax = TMath::MaxElement(eGraph->GetN(),eGraph->GetX()) +50;
         
         if (verbose  > 1)
             std::cout <<"Minimum and maximum values in efficiency data file: " <<xmin <<" "<<xmax <<std::endl;
@@ -113,7 +113,10 @@ double ShapeSetting::getEffCor(double ene) {
         if ( (ene >= xmin) && (ene <=xmax) )
             c = eGraph->Eval(ene);
         }
-    return eff_corr * c;
+    //apply efficiency factor stored in eff_cor for level 2 in any case
+    if (level == 2)
+        c = c * eff_corr;
+    return c;
 }
 
 void ShapeSetting::SaveSettings() {

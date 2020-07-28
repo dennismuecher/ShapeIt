@@ -341,8 +341,16 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     else
         autoScale->SetState(kButtonUp);
     
+    if ( sett_t->effiFileName.empty()  )
+        OB[6]->SetEnabled(false);
+    else
+        OB[6]->SetEnabled(false);
     if (sett_t->doEffi)
         OB[6]->SetState(kButtonDown);
+    else
+        OB[6]->SetState(kButtonUp);
+    
+    
     
 }
 
@@ -827,13 +835,17 @@ void ShapeFrame::ShapeItBaby() {
     //create new ShapeGSF object containing the lit values
     if (sett->doOslo)
         litGSF = new ShapeGSF(sett);
-        
+    
+    //sort gSF_sort vector
+    fitGSF->gSF_Sort();
+    
 	ShowGraph();
 }
 
 //scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
 double ShapeFrame::AutoScale(int mode) {
     
+    double scale_t = 1;
     //create new chi2 object
     ShapeChi2 *chi2_lit = new ShapeChi2(fitGSF, litGSF, sett);
     
@@ -841,15 +853,18 @@ double ShapeFrame::AutoScale(int mode) {
         std::cout <<"Error: Chi2 scaling factor is zero!" <<std::endl;
         return -1;
     }
+    
     else if (mode == 0) {
-        double scale_t = 1 / chi2_lit->GetScale();
-        //fitGSF->ScaleSort(scale_t);
+        scale_t = 1 / chi2_lit->GetScale();
         sett->gSF_norm = scale_t;
         scaling->SetNumber(scale_t);
     }
 
     else if (mode == 1)
         litGSF->ScaleSort(chi2_lit->GetScale());
+    
+    //print correction factors, if required
+    chi2_lit->printScalingSort();
     
     return chi2_lit->getChi2();
 }
@@ -871,9 +886,10 @@ void ShapeFrame::ShowGraph()
         if (sett->doAutoScale) {
             lit_chi2  = AutoScale(0);
             
-            //if (sett->verbose)
+            if (sett->verbose)
             std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
         }
+    
     }
         
     TCanvas *fCanvas = fEcanvas->GetCanvas();
@@ -1002,7 +1018,8 @@ void ShapeFrame::HandleMenu(Int_t id)
                 sett->SetFileName(mname);
                 //convert to filename, only (for the display)
                 mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
-
+                OB[5]->SetEnabled(false);
+                OB[6]->SetEnabled(false);
                 UpdateSetting(sett);
 
                 //create Matrix object
@@ -1010,7 +1027,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
-                OB[5]->SetEnabled(false);
+          
                 //update Combo Menu showing the matrices
                 MatrixSelector();
 		        
@@ -1050,6 +1067,8 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+                OB[5]->SetEnabled(false);
+                OB[6]->SetEnabled(false);
                 sett->ReadSettings();
                 UpdateGuiSetting(sett);
 				HandleVerboseMenu(sett->verbose);
@@ -1064,7 +1083,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
-                OB[5]->SetEnabled(false);
+           
                 //update Combo Menu showing the matrices
                 int mIndex = MatrixSelector();
 				if (mIndex > 0) {

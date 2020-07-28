@@ -26,5 +26,6 @@ public:
     double minChi2(double scale);
     double minChi2Sort(double scale);
     double getChi2() {return chi2;}
+    void printScalingSort();            //prints a list of energies and scaling factors which aligns gSF with the reference values
 };
 #endif

@@ -414,13 +414,13 @@ void ShapeGSF::FillgSF() {
             //gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
             
 	        //calculate gamma ray strength
-			double M1 =  getBgRatio(i, 1) * gSF_matrix->integral1Cube[i];
+			double M1 =  getBgRatio(i, 1) * gSF_matrix->integral1Cube[i] * sett->getEffCor(gSF_t.egamma1, 1);
 			gSF_t.value1 = M1;
             gSF_t.dvalue1 = TMath::Power(1./gSF_matrix->integral1[i], 0.5)*gSF_t.value1;
             
             //recalculate gSF in case autofit is activated
             if (sett->mode == 2 && sett->doBackground) {
-                gSF_t.value1 = gSF_matrix->fit_integral1Net[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
+                gSF_t.value1 = sett->getEffCor(gSF_t.egamma1, 1) * gSF_matrix->fit_integral1Net[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
                 
                 if (gSF_matrix->fit_integral1Net[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
@@ -428,7 +428,7 @@ void ShapeGSF::FillgSF() {
                 }
             }
             else if( sett->mode == 2 && !sett->doBackground) {
-                gSF_t.value1 = gSF_matrix->fit_integral1[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
+                gSF_t.value1 = sett->getEffCor(gSF_t.egamma1, 1) * gSF_matrix->fit_integral1[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
                 if (gSF_matrix->fit_integral1[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value1 = 0;
@@ -452,21 +452,21 @@ void ShapeGSF::FillgSF() {
 			
 			//calculate gamma ray strength
 			//gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->eff_corr ;
-			gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->getEffCor(gSF_t.egamma2);
+			gSF_t.value2 = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->getEffCor(gSF_t.egamma2, 2);
             gSF_t.dvalue2 = TMath::Power(1./gSF_matrix->integral2[i], 0.5)*gSF_t.value2;
             
 			//recalculate gSF in case autofit is activated
             if (sett->mode == 2 && sett->doBackground) {
                 
 				//gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i]  / gSF_matrix->integral2[i];
-         		gSF_t.value2 = sett->getEffCor(gSF_t.egamma2) * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] / gSF_matrix->integral2[i];
+         		gSF_t.value2 = sett->getEffCor(gSF_t.egamma2, 2) * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] / gSF_matrix->integral2[i];
                 if (gSF_matrix->fit_integral2Net[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value2 = 0;
                 }
             }
             else if (sett->mode == 2 && !sett->doBackground) {
-                gSF_t.value2 = sett->getEffCor(gSF_t.egamma2) * gSF_matrix->fit_integral2[i] * gSF_matrix->integral2Cube[i]  / gSF_matrix->integral2[i];
+                gSF_t.value2 = sett->getEffCor(gSF_t.egamma2, 2) * gSF_matrix->fit_integral2[i] * gSF_matrix->integral2Cube[i]  / gSF_matrix->integral2[i];
                 if (gSF_matrix->fit_integral2[i] < 0) {
                     std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
                     gSF_t.value2 = 0;
@@ -569,13 +569,11 @@ void ShapeGSF::gSF_Collect() {
     }
 }
 
-bool compare(gSF_sor &a, gSF_sor &b) { return a.egamma < b.egamma; }
 
 
 //prints the gSF values, sorted for egamma
 void ShapeGSF::gSF_Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
-    std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
     for (int i = 0; i < gSF_sort.size(); i++ )
         std::cout << gSF_sort[i].egamma <<"     "<< sett->gSF_norm * ( gSF_sort[i].value + gSF_sort[i].dvalue ) <<"     " << sett->gSF_norm *  ( gSF_sort[i].value - gSF_sort[i].dvalue ) << std::endl;
 }
@@ -612,10 +610,16 @@ TGraphErrors* ShapeGSF::plotLit() {
     return lit_data;
 }
 
+//sorting of gSF_sort vector
+
+bool compare(gSF_sor &a, gSF_sor &b) { return a.egamma < b.egamma; }
+
+void ShapeGSF::gSF_Sort() {
+    std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
+}
 
 //creats TGraphError using the sorted data and drawing option for plotitng a band
 TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
-    std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
     int nOfPoints = gSF_sort.size();
     
 	//nOfPoints must always be an even number, or something is terribly wrong

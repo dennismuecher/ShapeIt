@@ -51,7 +51,7 @@ public:
     TMultiGraph* gSF_SortHisto(bool colour);          //plots all gSF results using two colours, if colour = true
     TGraph* getRatioGraph();                //plot of peak area ratios
     void Transform(double B_t, double alpha_t);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
-
+    void gSF_Sort();                                    //sorts gSF_sort vector by energy
     
 };
 #endif

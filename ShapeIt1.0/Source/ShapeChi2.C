@@ -37,6 +37,23 @@ ShapeChi2::ShapeChi2(ShapeGSF *gSF_t, ShapeGSF *gSF_ref_t, ShapeSetting *sett_t)
     mode = 1;
 }
 
+//prints a list of energies and scaling factors which aligns gSF with the reference values
+void ShapeChi2::printScalingSort() {
+    double e;
+    double factor;
+    //std::cout <<"Scaling factors to match data gSF to literature gSF:"<<std::endl;
+    std::vector <double> d;
+     for (int i = 0; i < gSF->gSF_sort.size() ;  i++) {
+         e = gSF->gSF_sort[i].egamma;
+         d = gSF_ref->InterpolValueSort(e);
+         factor = d[0] / ( sett->gSF_norm * gSF->gSF_sort[i].value );
+        // std::cout <<e <<" " <<factor<<std::endl;
+        // std::cout << "gSF value from data: " << sett->gSF_norm * gSF->gSF_sort[i].value<<std::endl;
+         //std::cout << "Interpolated value from Oslo data: " << d[0] <<std::endl;
+         //std::cout << "Peak ID: " << gSF->gSF_sort[i].peakID <<std::endl;
+     }
+}
+
 //chi2 minimization for sorted vector of gSF
 double ShapeChi2::minChi2Sort(double scale) {
     double chi2m = 0;
