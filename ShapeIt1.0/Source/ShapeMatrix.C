@@ -8,9 +8,8 @@ ShapeMatrix::ShapeMatrix(ShapeSetting* setting) {
 	esize = sett->exi_size[0];
     openMatrix();
     BrowseRootFile();
-    //clear fit parameter vectors
- 
 }
+
 
 //cleaning up before new "ShapeIt" run (but not while running different iterations during bin size and sliding window variation)
 
@@ -25,6 +24,7 @@ TH2* ShapeMatrix::GetInputMatrix (string title) {
     inputMatrix->SetTitle(title.c_str());
     return inputMatrix;
 }
+
 
 void ShapeMatrix::openMatrix(){
     dataFile = new TFile(sett->dataFileName.c_str(),"read");
@@ -175,8 +175,9 @@ void ShapeMatrix::FitIntegral(){
     fit_integral1Net.clear();
     fit_integral2Net.clear();
    
-    //normalization of integral to bin width
-    double integral_norm = ( eMax_x - eMin_x) / xbins;
+    //normalization of integral to bin width: the integration of the fit result is in keV whereas the matrix is integrated by bins
+    double integral_norm = diagEx->GetXaxis()->GetBinWidth(1);
+    
     //level 1
     for (int i = 0; i < ybins; i++) {
         if (integral1[i] == 0) {
@@ -192,7 +193,6 @@ void ShapeMatrix::FitIntegral(){
             
             //integration
             double integral_tot =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]) / integral_norm;
-            //double integral_tot =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]);
             
             fit_integral1.push_back(integral_tot);
             //integral of background, only: setting amplitude of Gauss to zero
@@ -223,8 +223,6 @@ void ShapeMatrix::FitIntegral(){
         else {
             //Gauss fit
             FitGauss(diagEx->ProjectionX("fit",i+1,i+1,"o"), i, 1);
-            
-           
             
             //integration
             double integral_tot =fit_result[1]->Integral(sett->levEne[2], sett->levEne[3]) / integral_norm;
@@ -442,10 +440,13 @@ void ShapeMatrix::Diag(){
 	delete gROOT->FindObject("diag_ex");
 	delete gROOT->FindObject("diag_ex_square");
 	delete gROOT->FindObject("diag_ex_cube");
-	
+	delete gROOT->FindObject("matrix_ex");
+    
 	//creating histograms;
     diag  = new TH1F("diag","Diagonal Projection",xbins, eMin_diag, eMax_y);
     diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
+    
+    
     diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
 	diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
     

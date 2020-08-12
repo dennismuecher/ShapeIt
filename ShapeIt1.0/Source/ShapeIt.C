@@ -15,7 +15,7 @@
 #include "ShapeMatrix.C"
 #include "ShapeGSF.C"
 #include "ShapeChi2.C"
-
+#include "ShapeRho.C"
 
 
 void ShapeIt() {

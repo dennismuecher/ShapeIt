@@ -23,8 +23,12 @@ class ShapeGSF {
 private:
     ShapeSetting *sett;
     ShapeMatrix *gSF_matrix;
+    TH2F* matrixEx;                               ///matrix using excitation energy binning set by user
+    
     double B = 1;                           //transfomration gSF scaling
     double alpha = 0;                       //trnasformation gSF exponential slope
+    
+    TGraphErrors* rhoDiagram;
    
 public:
 
@@ -52,6 +56,7 @@ public:
     TGraph* getRatioGraph();                //plot of peak area ratios
     void Transform(double B_t, double alpha_t);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
     void gSF_Sort();                                    //sorts gSF_sort vector by energy
-    
+    void Rho();
+    TGraphErrors* GetRhoDiagram();
 };
 #endif

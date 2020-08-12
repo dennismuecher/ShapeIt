@@ -367,7 +367,7 @@ double ShapeGSF::getBgRatio(int bin, int level) {
             return 0;
     }
     
-    if (level == 2 ) {
+    else if (level == 2 ) {
         
         double peak = gSF_matrix->integral2[bin];
         double backgr =gSF_matrix->fit_integral2Bg[bin];
@@ -415,7 +415,7 @@ void ShapeGSF::FillgSF() {
             
 	        //calculate gamma ray strength
 			double M1 =  getBgRatio(i, 1) * gSF_matrix->integral1Cube[i] * sett->getEffCor(gSF_t.egamma1, 1);
-			gSF_t.value1 = M1;
+            gSF_t.value1 = M1;
             gSF_t.dvalue1 = TMath::Power(1./gSF_matrix->integral1[i], 0.5)*gSF_t.value1;
             
             //recalculate gSF in case autofit is activated
@@ -441,7 +441,6 @@ void ShapeGSF::FillgSF() {
             gSF_t.value2 = 0;
             gSF_t.dvalue2 = 0;
             gSF_t.egamma2 = gSF_t.egamma1 = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize() - elevel2;
-            
         }
         else {
 			//calculate E_gamma
@@ -695,3 +694,93 @@ void ShapeGSF::Scale(double factor){
     }
 }
 
+
+//temp attempt to get level density from first generation matrix
+
+void ShapeGSF::Rho(){
+    TH2* fgMatrix;
+    double MeV=1;
+    rhoDiagram = new TGraphErrors();
+    TFile* fgFile =new TFile("../FirstGenerationFiles/Ge76_fg.root","read");
+    fgFile->GetObject("matrix1", fgMatrix);
+ 
+    TAxis *xaxis = fgMatrix->GetXaxis();
+    TAxis *yaxis = fgMatrix->GetYaxis();
+    
+    Int_t XNum  = fgMatrix->GetNbinsX();
+    Int_t YNum  = fgMatrix->GetNbinsY();
+    
+    double y_width = yaxis->GetBinWidth(YNum) * MeV;
+    
+    double eMax_x  =  ( fgMatrix->GetXaxis()->GetBinCenter(XNum) * MeV) + (fgMatrix->GetXaxis()->GetBinWidth(XNum) * MeV /2 ) ;
+    double eMax_y  =  ( fgMatrix->GetYaxis()->GetBinCenter(YNum) * MeV) + (fgMatrix->GetYaxis()->GetBinWidth(YNum) * MeV /2 ) ;
+    double eMin_x = fgMatrix->GetXaxis()->GetXmin();
+    double eMin_y = fgMatrix->GetYaxis()->GetXmin();
+    
+    double ene0 = sett->exiEne[0];
+    double ene1 = sett->exiEne[1];
+    double esize = sett->exi_size[0];
+   
+    double xbins = (int) (eMax_x - eMin_x) / fgMatrix->GetXaxis()->GetBinWidth(1);
+    int ybins = (int) ( ene1 - ene0 ) / esize;
+    std::cout <<"ybins: " <<ybins <<std::endl;
+
+    TH1F* rhoGraph = new TH1F("rho","rho",100,0,ene1);
+
+    
+    matrixEx= new TH2F("matrix_ex","Gamma ray energy vs excitation energy",xbins,eMin_x, eMax_x, ybins, ene0, ene1);
+    
+    //fill the diag matrices and histos by looping over fgMatrix
+    int counter = 0;
+    for (int j = 1; j < fgMatrix->GetNbinsY() + 1; j++) {
+        double Y = yaxis->GetBinCenter(j);
+       
+        if (Y > ene0 && Y < ene1) {
+            //std::cout <<"Y: " <<Y <<std::endl;
+            int y_t = (int) (Y - ene0) / esize;
+            //std::cout <<"y_t: " <<y_t <<std::endl;
+            
+            
+            double y_low = (ene0 + (y_t*esize))/y_width;
+            double y_high = (ene0 + ((y_t+1)*esize))/y_width;
+            
+            double integ = fgMatrix->Integral(1, XNum,y_low, y_high);
+
+            //std::cout <<"integ: " <<integ <<std::endl;
+            //std::cout <<"bin_low " << y_low  <<std::endl;
+            //std::cout <<"bin_high " << y_high <<std::endl;
+
+
+            for (int i = 1; i < fgMatrix->GetNbinsX() + 1; i++) {
+                double X = xaxis->GetBinCenter(i);
+                double eRho = Y - X;
+                if (eRho > 200 && eRho < ene1) {
+                double g = InterpolValueSort(X)[0];
+                if (g !=0 && integ !=0 && X!=0) {
+                    //double rho = fgMatrix->GetBinContent(i,j) /g /integ * eRho /TMath::Power(X,3);
+                    double rho = fgMatrix->GetBinContent(i,j) /g /integ  /TMath::Power(X,3);
+                    if (rho > 0) {
+                        //std::cout <<"Bin content: " <<fgMatrix->GetBinContent(i,j)<<std::endl;
+                        counter++;
+                        rhoGraph->Fill(eRho,rho);
+                        //rhoDiagram->SetPoint(rhoDiagram->GetN(),eRho,rho);
+                        //std::cout <<"E_x: " <<Y <<" "<<"E_g: " <<X<<" "<<"gSF: " <<g<< " "<<"rho: " <<rho<<std::endl;
+                    }
+                }
+                }
+            }
+        }
+    }
+    
+   
+    for(int i = 1; i <= rhoGraph->GetNbinsX(); i++ ) rhoDiagram->SetPoint(i-1, rhoGraph->GetBinCenter(i), rhoGraph->GetBinContent(i));
+    
+    
+    //rhoDiagram->Draw("A*");
+   // std::cout <<"Counter: " <<counter <<std::endl;
+    //rhoGraph->Draw("HIST");
+}
+
+TGraphErrors* ShapeGSF::GetRhoDiagram() {
+    return rhoDiagram;
+}

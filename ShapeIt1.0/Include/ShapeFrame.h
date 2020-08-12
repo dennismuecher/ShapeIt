@@ -5,6 +5,7 @@
 #include "../Include/ShapeMatrix.h"
 #include "../Include/ShapeGSF.h"
 #include "../Include/ShapeChi2.h"
+#include "../Include/ShapeRho.h"
 
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
@@ -52,6 +53,7 @@ enum ETestCommandIdentifiers {
     M_SETTING_SAVEAS,
     M_SETTING_PRINT,
     M_SETTING_OSLO,
+    M_SETTING_RHO,
 	M_SETTING_EFFI,
     M_SETTING_WIDTHRESET,
     M_DISPLAY_MAT,
@@ -70,6 +72,7 @@ enum ETestCommandIdentifiers {
 	M_DISPLAY_VERBOSE0,
 	M_DISPLAY_VERBOSE1,
 	M_DISPLAY_VERBOSE2,
+    M_DISPLAY_RHO,
     M_DISPLAY_EFFI
 
 };

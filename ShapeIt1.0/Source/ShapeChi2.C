@@ -66,7 +66,9 @@ double ShapeChi2::minChi2Sort(double scale) {
             chi2m += TMath::Power(scale * d[0] - (gSF->gSF_sort[i].value ),2) / TMath::Power(gSF->gSF_sort[i].dvalue,2);
         
     }
-    return ( chi2m / gSF->gSF_sort.size() );
+    //return ( chi2m / gSF->gSF_sort.size() );
+    return chi2m;
+
 }
 
 double ShapeChi2::minChi2(double scale) {

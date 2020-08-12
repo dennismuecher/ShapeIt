@@ -28,10 +28,12 @@ private:
     TH2* inputMatrix;                          //the input matrix in dataFile
     TH1F* diag;	                                //the matrix of (excitation energy - gamma-ray energy)
     TH2F* diagEx;                               ///diag matrix vs excitation energy
+    
     TH2F* diagExSquare;                           //diag matrix with factor E_g^2 for each entry vs excitation energy; used for calculating the average E_gamma for each bin
     TH2F* diagExCube;                           //diag matrix with factor E_g^3 for each entry vs excitation energy
     void diagMatrix();	                       //creates the diagonalized matrices
     void openMatrix();                         //opens the matrix defined in settings
+    void openMatrix(string fname);              //open root file with name fname
     std::vector <std::string> matrixName;    //names of all matrices found in dataFile
    
     int xbins, ybins;							//number of x and y bins for diagonalized matrices 

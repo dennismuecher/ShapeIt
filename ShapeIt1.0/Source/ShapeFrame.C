@@ -344,7 +344,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if ( sett_t->effiFileName.empty()  )
         OB[6]->SetEnabled(false);
     else
-        OB[6]->SetEnabled(false);
+        OB[6]->SetEnabled(true);
     if (sett_t->doEffi)
         OB[6]->SetState(kButtonDown);
     else
@@ -435,7 +435,8 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("S&ave Settings as ...", M_SETTING_SAVEAS);
     fSettingsFile->AddEntry("&Print Settings to terminal", M_SETTING_PRINT);
     fSettingsFile->AddSeparator();
-    fSettingsFile->AddEntry("L&oad Literature Values", M_SETTING_OSLO);
+    fSettingsFile->AddEntry("L&oad Literature Values gSF", M_SETTING_OSLO);
+    fSettingsFile->AddEntry("Load Literature Values &rho", M_SETTING_RHO);
     fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
@@ -472,6 +473,9 @@ void ShapeFrame::SetupMenu() {
     
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
+    
+    fDisplayFile->AddSeparator();
+    fDisplayFile->AddEntry("&Draw level density", M_DISPLAY_RHO);
     
     fDisplayFile->DisableEntry(M_DISPLAY_FITWIDTH);
     fDisplayFile->DisableEntry(M_DISPLAY_RATIO);
@@ -838,7 +842,6 @@ void ShapeFrame::ShapeItBaby() {
     
     //sort gSF_sort vector
     fitGSF->gSF_Sort();
-    
 	ShowGraph();
 }
 
@@ -881,7 +884,7 @@ void ShapeFrame::ShowGraph()
     if ( sett->doOslo ) {
         //apply transformation
         litGSF->Transform(transB->GetNumber(), transAlpha->GetNumber());
-        
+        litGSF->gSF_Sort();
         //autoscale gSF to literature values, if requested
         if (sett->doAutoScale) {
             lit_chi2  = AutoScale(0);
@@ -889,7 +892,7 @@ void ShapeFrame::ShowGraph()
             if (sett->verbose)
             std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
         }
-    
+   
     }
         
     TCanvas *fCanvas = fEcanvas->GetCanvas();
@@ -917,7 +920,7 @@ void ShapeFrame::ShowGraph()
 	//plot the multigraph
     g->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     g->Draw("A*");
-
+    
     fCanvas->Modified();
     fCanvas->Update();
     
@@ -928,6 +931,7 @@ void ShapeFrame::MatrixSelect(Int_t mnr)
 {
     matrix->SetMatrix(mnr);
     matrix->GetInputMatrix(mname)->Draw("colz");
+    matrix->Diag();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
     fCanvas->Modified();
@@ -937,6 +941,7 @@ void ShapeFrame::MatrixSelect(Int_t mnr)
 int ShapeFrame::MatrixSelector()
 {
 
+    int length_max = 0;             //maximum length of string; used to resize selector
     std::vector <std::string> s;
      s.clear();
     s = matrix->GetMatrixName();
@@ -948,10 +953,16 @@ int ShapeFrame::MatrixSelector()
         fMatrix->RemoveAll();
         for (int i = 0; i < s.size(); i++ ) {
            fMatrix->AddEntry(s[i].c_str(), i+1);
+            if ( s[i].length() > length_max ) {
+                length_max = s[i].length();
+            }
+            
 		   if ( s[i] == sett->matrixName )
 			   index = i+1;
         }   
-
+        if (length_max > 0)
+            fMatrix->Resize(length_max*8,20);
+        
         fMatrix->Connect("Selected(Int_t)", "ShapeFrame", this, "MatrixSelect(Int_t)");
     }
     
@@ -1157,7 +1168,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             }
             break;
         }
-		
+            
         //load energy-dependent effi parameters
 		case M_SETTING_EFFI: {
             static TString dir(".");
@@ -1252,6 +1263,10 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_DISPLAY_EFFI: {
             UpdateDisplay(10);
+            break;
+        }
+        case M_DISPLAY_RHO: {
+            UpdateDisplay(11);
             break;
         }
         case M_DISPLAY_PRINT:
@@ -1352,7 +1367,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             int pointC = 0;
             TGraph2D *dt = new TGraph2D();
             
-            for (int j = 0; j < 6; j++) {
+            for (int j = 0; j < 1; j++) {
                 
             for (int i  = 0; i < 11; i++) {
                 alphaX[i] = i*0.1 - 0.5;
@@ -1369,11 +1384,11 @@ void ShapeFrame::UpdateDisplay(int display) {
             ShapeItBaby();
             }
                 
-            TGraph* alphaPlot = new TGraph(21, alphaX, chi2Y);
+            TGraph* alphaPlot = new TGraph(11, alphaX, chi2Y);
             alphaPlot->SetMarkerStyle(4);
             alphaPlot->SetMarkerColor(kRed);
-            dt->Draw("collz");
-            //alphaPlot->Draw("AC*");
+            //dt->Draw("collz");
+            alphaPlot->Draw("APC*");
             break;
         }
         case 10: {
@@ -1383,6 +1398,34 @@ void ShapeFrame::UpdateDisplay(int display) {
             sett->eGraph->Draw("AC*");
             break;
         }
+        case 11: {
+            ShapeRho *rho = new ShapeRho(sett, matrix);
+            rho->Draw();
+            litGSF->Rho();
+            fitGSF->Rho();
+            double rho_scale = rho->Eval(2) / litGSF->GetRhoDiagram()->Eval(2000);
+            std::cout <<"Scale: " <<rho_scale <<std::endl;
+            
+            TGraphErrors* scaleGraph = new TGraphErrors;
+            for (int i=0;i<fitGSF->GetRhoDiagram()->GetN();i++) {
+                double X =fitGSF->GetRhoDiagram()->GetX()[i]/1000;
+                double Y =fitGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
+                if (X < 3.5) {
+                    X =litGSF->GetRhoDiagram()->GetX()[i]/1000;
+                    Y =litGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
+                }
+                scaleGraph->SetPoint(i,X,Y);
+                //litGSF->GetRhoDiagram()->GetY()[i] *= rho_scale;
+            }
+            scaleGraph->SetMarkerStyle(4);
+            scaleGraph->SetMarkerColor(kBlue);
+            rho->Draw(0.14,0.08,0.2);
+            rho->Draw();
+            //scaleGraph->Draw("C*");
+            
+            break;
+        }
+            
             
     }
     DrawMarker();
