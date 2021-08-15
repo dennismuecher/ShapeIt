@@ -1,7 +1,8 @@
 #ifndef SHAPEDIALOGALPHA_H
 #define SHAPEDIALOGALPHA_H
-#include "ShapeFrame.h"
+//#include "ShapeFrame.h"
 
+class ShapeFrame;
 class ShapeDialogAlpha {
     
     RQ_OBJECT("ShapeDialogAlpha")
@@ -15,9 +16,10 @@ private:
 
 public:
     ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, ShapeFrame *caller_obj, UInt_t w, UInt_t h, UInt_t options = kVerticalFrame);
+    
     virtual ~ShapeDialogAlpha();
     void CloseWindow();
-    double* GetTransform();   //returns values for slope and scaling factor
-
+    double GetAlphaTransform();
+    double GetBTransform();   
 };
 #endif

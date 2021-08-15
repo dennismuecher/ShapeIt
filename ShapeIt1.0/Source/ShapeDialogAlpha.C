@@ -30,11 +30,11 @@ ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, Shap
     fTransform[1]->AddFrame(t2, fR);
     
     //signals
-    //transBDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "ShowGraph()");
+    transBDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "TransGraph()");
     
     transAlphaDialog = new TGNumberEntry(fTransform[1], 0.0, 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-100, 100);
 
-    //transAlphaDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "ShowGraph()");
+    transAlphaDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "TransGraph()");
     fTransform[1]->AddFrame(transAlphaDialog, fR);
     TGLabel *t3 = new TGLabel(fTransform[1], " [1/MeV]");
     
@@ -64,12 +64,14 @@ ShapeDialogAlpha::~ShapeDialogAlpha()
     fMainDialog->DeleteWindow();  // deletes fMain
 }
 
-double* ShapeDialogAlpha::GetTransform()
+double ShapeDialogAlpha::GetAlphaTransform()
 {
-    double v[2];
-    v[0] = transAlphaDialog->GetNumber();
-    v[1] = transBDialog->GetNumber();
-    return v;
+    return transAlphaDialog->GetNumber();
+}
+
+double ShapeDialogAlpha::GetBTransform()
+{
+    return transBDialog->GetNumber();
 }
 
 void ShapeDialogAlpha::CloseWindow()

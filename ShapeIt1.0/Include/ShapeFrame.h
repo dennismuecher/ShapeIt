@@ -1,14 +1,6 @@
 #ifndef SHAPEFRAME_H
 #define SHAPEFRAME_H
 
-#include "../Include/ShapeSetting.h"
-#include "../Include/ShapeMatrix.h"
-#include "../Include/ShapeGSF.h"
-#include "../Include/ShapeChi2.h"
-#include "../Include/ShapeRho.h"
-//#include "../Include/ShapeDialogAlpha.h"
-
-
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
 #include <TGraphErrors.h>
@@ -38,10 +30,17 @@
 #include <TClass.h>
 #include <algorithm>
 
+#include "../Include/ShapeSetting.h"
+#include "../Include/ShapeMatrix.h"
+#include "../Include/ShapeGSF.h"
+#include "../Include/ShapeChi2.h"
+#include "../Include/ShapeRho.h"
+//#include "../Include/ShapeDialogAlpha.h"
 
 class TGWindow;
 class TGMainFrame;
 class TRootEmbeddedCanvas;
+class ShapeDialogAlpha;
 
 enum ETestCommandIdentifiers {
     M_FILE_ABOUT,
@@ -93,7 +92,7 @@ private:
     TRootEmbeddedCanvas *fMainCanvas;
     const TGPicture *infoPic;               //the info picture ("File->About")
     string absPath;
-    //ShapeDialogAlpha    *AlphaDialog;       //window to set transformation parameters
+    ShapeDialogAlpha    *AlphaDialog;       //window to set transformation parameters
     TRootEmbeddedCanvas *fEcanvas;
     TGNumberEntry       *energy[4]; //energies of the two discrete states; lower and upper limit
     TGNumberEntry       *exi[3];//excitation energies; lower and upper limit and interpolation energy
@@ -102,8 +101,7 @@ private:
     TGNumberEntry       *minContent; //mininmum number of counts an integration bin must have to be considered in the analysis
     TGNumberEntry       *scaling;           //scaling factor for gSF
     TGNumberEntry       *effCorr;              //efficiency factor for level 2
-    TGNumberEntry       *transB;              //transformation B parameter field
-    TGNumberEntry       *transAlpha;              //transformation alpha parameter field
+   
     
     TGCompositeFrame *fBin;
     TGCompositeFrame *fInter;
@@ -124,9 +122,8 @@ private:
 	int binSelect = 1;						//the bin selected in fbin combo (projection spectrum)
     TGComboBox *fInterCombo;
     
-    TGGroupFrame* fG[7];
+    TGGroupFrame* fG[6];
     TGCompositeFrame* fEnergy[8];
-    TGCompositeFrame* fTransform[2];
     TH1F *displayHisto;                      //points to the 1d histogram on display in the main canvas
     TH2 *inMatrix;							//the input matrix
     TFile* dataFile;							//the root file containing the input matrix
@@ -177,6 +174,7 @@ public:
     void Scale(Double_t scale);					//scale results of gSF and refresh display
     double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
     TGFileInfo fi;                              //file containing matrix
+    void TransGraph();
     TMultiGraph *wgraph ;
     double lit_chi2 = 0;                    //value of chi2 fit of lit gSF to fit gSF
 };

@@ -1,6 +1,6 @@
 #include "../Include/ShapeFrame.h"
 #include "../Source/ShapeInfo.C"
-//#include "ShapeDialogAlpha.C"
+#include "ShapeDialogAlpha.C"
 //trying to understand git branches
 
 double glo(double *x, double *par){
@@ -71,15 +71,13 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fG[2] = new TGGroupFrame(f1, new TGString("Options"),kVerticalFrame|kRaisedFrame);
     fG[3] = new TGGroupFrame(f1, new TGString("Integration bin"),kVerticalFrame|kRaisedFrame);
     fG[4] = new TGGroupFrame(f3, new TGString("Input Matrix"),kVerticalFrame|kRaisedFrame);
-    fG[5] = new TGGroupFrame(f1, new TGString("Transformation of Oslo Literature values"),kVerticalFrame|kRaisedFrame);
-    fG[6] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
+    fG[5] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
     
     for (int i = 0; i < 3; i++)
         fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
     for (int i = 3; i < 8; i++)
         fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
-    for (int i = 0; i < 2; i++)
-        fTransform[i] = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
+    
     //Mode
     
     fR[0] = new TGRadioButton(fG[0], new TGHotString("Integration"), 11);
@@ -221,32 +219,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     f1->AddFrame(fG[2], fL3 );
     f1->AddFrame(fG[1], fL3 );
     f1->AddFrame(fG[3], fL3);
-
-    
-    //transformation settings
-    
-    TGLabel *t1 = new TGLabel(fTransform[0], "gSF scale B");
-    fTransform[0]->AddFrame(t1, fR2);
-    transB = new TGNumberEntry(fTransform[0], 1.0, 9,31, TGNumberFormat::kNESReal,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
-    transB->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
-    fTransform[0]->AddFrame(transB, fR2);
-    fG[5]->AddFrame(fTransform[0], fL2);
-    
-    TGLabel *t2 = new TGLabel(fTransform[1], " slope Alpha");
-    fTransform[1]->AddFrame(t2, fR2);
-    transAlpha = new TGNumberEntry(fTransform[1], 0.0, 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-100, 100);
-    transAlpha->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
-    fTransform[1]->AddFrame(transAlpha, fR2);
-    TGLabel *t3 = new TGLabel(fTransform[1], " [1/MeV]");
-    fTransform[1]->AddFrame(t3, fR2);
-    
-    
-    fG[5]->AddFrame(fTransform[1], fL2);
-    
-    f1->AddFrame(fG[5], fL3);
     
     //display settings
-    fBin = new TGCompositeFrame(fG[6], 1, 1, kHorizontalFrame);
+    fBin = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
   
     fR[2] = new TGRadioButton(fBin, new TGHotString("Diagonal Projection"), 18);
     
@@ -257,9 +232,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fBinCombo->SetEnabled(false);
     fBin->AddFrame(fBinCombo, new TGLayoutHints( kLHintsTop, 0, 0, 1, 0));
    
-    fG[6]->AddFrame(fBin);
+    fG[5]->AddFrame(fBin);
     
-    f1->AddFrame(fG[6], fL3);
+    f1->AddFrame(fG[5], fL3);
     for (int i = 0 ; i < 3; i++)
         fR[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
 
@@ -330,9 +305,6 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     effCorr->SetNumber(sett_t->eff_corr);
     
     exi[2]->SetNumber(sett_t->sewingEne);
-
-    transB->SetNumber(sett_t->lit_norm);
-    transAlpha->SetNumber(sett_t->lit_alpha);
     
     for (int i = 0; i < 2; i++)
         fR[i]->SetState(kButtonUp);
@@ -397,9 +369,6 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
     sett_t->minCounts = minContent->GetNumber();
     sett_t->gSF_norm = scaling->GetNumber();
     sett_t->eff_corr = effCorr->GetNumber();
-    
-    sett_t->lit_norm = transB->GetNumber();
-    sett_t->lit_alpha = transAlpha->GetNumber();
     
     //options
     if (OB[0]->GetState() == kButtonDown)
@@ -919,20 +888,19 @@ double ShapeFrame::AutoScale(int mode) {
     return chi2_lit->getChi2();
 }
 
-/*void ShapeFrame::TransGraph()
+void ShapeFrame::TransGraph()
 {
     //update Literature value transformation settings
-    double *v = AlphaDialog->GetTransform();
-    sett->lit_alpha = v[0];
-    sett->lit_norm =  v[1];
-
+   
+    sett->lit_alpha = AlphaDialog->GetAlphaTransform();
+    sett->lit_norm =  AlphaDialog->GetBTransform();
     //apply transformation
     litGSF->Transform(sett->lit_norm, sett->lit_alpha);
     litGSF->gSF_Sort();
     
     //call ShowGraph()
     this->ShowGraph();
-}*/
+}
 
 //displays the results for gSF, literature values, resonance fit etc.
 void ShapeFrame::ShowGraph()
@@ -1273,7 +1241,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         
         case M_SETTING_TRAFO: {
-          //  AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200);
+            AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200);
             break;
         }
             
@@ -1518,7 +1486,6 @@ void ShapeFrame::AlphaChi2()
         
     for (int i  = 0; i < nOfPoints; i++) {
         alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
-        transAlpha->SetNumber(alphaX[pointC]);
         //update alpha in settings file
         sett->lit_alpha = alphaX[pointC];
 
