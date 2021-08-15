@@ -1,7 +1,7 @@
 #include "../Include/ShapeFrame.h"
 #include "../Source/ShapeInfo.C"
 //#include "ShapeDialogAlpha.C"
-
+//trying to understand git branches
 
 double glo(double *x, double *par){
   //par[0]: sigma

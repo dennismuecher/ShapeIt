@@ -146,7 +146,7 @@ bool ShapeGSF::CheckSewingEne() {
         return true;
 }
 
-//returns an interpolated value of gSF for the gamma ray energy ene
+// returns an interpolated value of gSF for the gamma ray energy ene
 std::vector <double> ShapeGSF::InterpolValue(double ene) {
     //first, find the closest gamma ray energy for which there is data on gSF
     double ene1 = 1E5;
