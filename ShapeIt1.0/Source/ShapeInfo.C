@@ -26,7 +26,7 @@ ShapeInfo::ShapeInfo(const TGWindow *p, const TGWindow *main, UInt_t w, UInt_t h
     // use hierarchical cleaning
     fMain->SetCleanup(kDeepCleanup);
     
-    fFrame1 = new TGVerticalFrame(fMain, 500, 428, kFixedWidth || kFixedHeight);
+    fFrame1 = new TGVerticalFrame(fMain, 500, 428, kFixedWidth | kFixedHeight);
     fC  = new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1);
     string picPath = path + "/info.jpg";
     ipic=(TGPicture *)gClient->GetPicture(picPath.c_str());

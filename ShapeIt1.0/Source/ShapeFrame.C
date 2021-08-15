@@ -1,5 +1,6 @@
 #include "../Include/ShapeFrame.h"
 #include "../Source/ShapeInfo.C"
+//#include "ShapeDialogAlpha.C"
 
 
 double glo(double *x, double *par){
@@ -21,6 +22,18 @@ double glo(double *x, double *par){
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
+    
+    //create canvas with scrollbars for mainframe
+    //fCanvasWindow = new TGCanvas(fMain, 900, 700);
+    //fMain->AddFrame(fCanvasWindow, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,2,2,0,2));
+    //fContainer = new TGCompositeFrame(fCanvasWindow->GetViewPort());
+    //fCanvasWindow->SetContainer(fContainer);
+    // create embedded canvas and place into the container
+    //fMainCanvas= new TRootEmbeddedCanvas(0,fContainer, 900, 700);
+    //fContainer->AddFrame(fMainCanvdas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY));
+    // use hierarchical cleaning for container
+    //fContainer->GetFrame()->SetCleanup(kDeepCleanup);
+    
     //take care about closing the window
     
     fMain->Connect("CloseWindow()", "ShapeFrame", this, "CloseWindow()");
@@ -34,8 +47,10 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     absPath = path;
     
     SetupMenu();
-    
+
     TGCompositeFrame* fSuper = new TGCompositeFrame(fMain, 900, 600, kHorizontalFrame | kFixedWidth);
+    
+
     f1 = new TGCompositeFrame(fSuper, 300, 700, kVerticalFrame | kFixedWidth);
     f2 = new TGCompositeFrame(fSuper, 300, 700, kVerticalFrame);
     
@@ -264,12 +279,16 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     //the drawing window
     fEcanvas = new TRootEmbeddedCanvas("Ecanvas",f2,600,600);
     fEcanvas->GetCanvas()->Connect("ProcessedEvent(Int_t,Int_t,Int_t,TObject*)",
-                               "ShapeFrame", this, "HandleMyCanvas(Int_t,Int_t,Int_t,TObject*)");
+                              "ShapeFrame", this, "HandleMyCanvas(Int_t,Int_t,Int_t,TObject*)");
     f2->AddFrame(fEcanvas, fL2);
-    
+    //fContainer->AddFrame(fECanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY));
     
     fSuper->AddFrame(f1, fL1);
     fSuper->AddFrame(f2, fL2);
+    //fContainer->AddFrame(f1, fL1);
+    //fContainer->AddFrame(f2, fL2);
+   
+    
     fMain->AddFrame(fSuper, fL2);
     // Set a name to the main frame
     fMain->SetWindowName("unsaved");
@@ -309,6 +328,12 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     minContent->SetNumber(sett_t->minCounts);
     scaling->SetNumber(sett_t->gSF_norm);
     effCorr->SetNumber(sett_t->eff_corr);
+    
+    exi[2]->SetNumber(sett_t->sewingEne);
+
+    transB->SetNumber(sett_t->lit_norm);
+    transAlpha->SetNumber(sett_t->lit_alpha);
+    
     for (int i = 0; i < 2; i++)
         fR[i]->SetState(kButtonUp);
     if (sett_t->mode == 1)
@@ -372,6 +397,9 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
     sett_t->minCounts = minContent->GetNumber();
     sett_t->gSF_norm = scaling->GetNumber();
     sett_t->eff_corr = effCorr->GetNumber();
+    
+    sett_t->lit_norm = transB->GetNumber();
+    sett_t->lit_alpha = transAlpha->GetNumber();
     
     //options
     if (OB[0]->GetState() == kButtonDown)
@@ -440,7 +468,8 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
-    
+    fSettingsFile->AddSeparator();
+    fSettingsFile->AddEntry("&Transformation ...", M_SETTING_TRAFO);
 
     fMenuBar->AddPopup("&Settings", fSettingsFile, fMenuBarItemLayout);
 
@@ -514,7 +543,19 @@ void ShapeFrame::BinSelect(Int_t sbin)
 	binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
-    diagHisto->Draw();
+    //display options for paper
+    gStyle->SetOptStat(0);
+    diagHisto->GetXaxis()->SetTitle("");
+    diagHisto->GetYaxis()->SetTitle("");
+    //diagHisto->GetXaxis()->SetRangeUser(200,1490);
+    //diagHisto->GetXaxis()->SetLabelSize(2);
+    diagHisto->GetXaxis()->SetNdivisions(5,5,0);
+    diagHisto->GetYaxis()->SetNdivisions(5,5,0);
+    diagHisto->Draw("Y+");
+    
+    //standard display
+    //diagHisto->Draw();
+
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
@@ -735,7 +776,7 @@ void ShapeFrame::DoNumberEntry() {
             
         }
         
-        //Trnasfomration has changed
+        //Trnasformation has changed
         if ( (id == 31) || (id == 32) ) {
             ShowGraph();
         }
@@ -789,7 +830,13 @@ void ShapeFrame::ShapeItBaby() {
 	fitGSF = new ShapeGSF(sett, matrix);
 	fitGSF->Update();
     
-	//status update: will have values for gSF
+	//check if sewing energy bin has no empty gSF values
+    if (fitGSF->CheckSewingEne() == false ) {
+        MessageBox("Error", "energy bin of the initial sewing energy has too small statistics; adapt the sewing energy!");
+        return;
+    }
+    
+    //status update: will have values for gSF
 	status = 2;
     
 	//enable Menu entry showing fit results for peak width and peak ratios
@@ -872,19 +919,33 @@ double ShapeFrame::AutoScale(int mode) {
     return chi2_lit->getChi2();
 }
 
+/*void ShapeFrame::TransGraph()
+{
+    //update Literature value transformation settings
+    double *v = AlphaDialog->GetTransform();
+    sett->lit_alpha = v[0];
+    sett->lit_norm =  v[1];
+
+    //apply transformation
+    litGSF->Transform(sett->lit_norm, sett->lit_alpha);
+    litGSF->gSF_Sort();
+    
+    //call ShowGraph()
+    this->ShowGraph();
+}*/
+
 //displays the results for gSF, literature values, resonance fit etc.
 void ShapeFrame::ShowGraph()
 {
 	//check status
 	if (status < 2)
 		return;
-    
-    //check  if autoscaling is requested
-    
+        
     if ( sett->doOslo ) {
-        //apply transformation
-        litGSF->Transform(transB->GetNumber(), transAlpha->GetNumber());
-        litGSF->gSF_Sort();
+        
+        // transform literature values using B and alpha
+        litGSF->Transform(sett->lit_norm, sett->lit_alpha);
+        
         //autoscale gSF to literature values, if requested
         if (sett->doAutoScale) {
             lit_chi2  = AutoScale(0);
@@ -914,8 +975,10 @@ void ShapeFrame::ShowGraph()
 	}
 	
     //add literature values to graph
-    if (sett->doOslo)
+    if (sett->doOslo) {
+        litGSF->gSF_Sort();
         g->Add(litGSF->plotLit(),"3A");
+    }
     
 	//plot the multigraph
     g->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
@@ -1185,7 +1248,20 @@ void ShapeFrame::HandleMenu(Int_t id)
             }
             break;
         }
-		
+            //load level density file
+        case M_SETTING_RHO: {
+            static TString dir(".");
+            TGFileInfo fi_sett;
+            fi_sett.fFileTypes = filetypes_t;
+            fi_sett.fIniDir    = StrDup(dir);
+            
+            new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
+            if (fi_sett.fFilename) {
+                sett->rhoFileName = fi_sett.fFilename;
+                UpdateGuiSetting(sett);
+            }
+            break;
+        }
 		
 		
             
@@ -1193,7 +1269,14 @@ void ShapeFrame::HandleMenu(Int_t id)
             sett->doWidthCal = 0;
             sett->ResetWidth();
             OB[5]->SetEnabled(false);
+            break;
         }
+        
+        case M_SETTING_TRAFO: {
+          //  AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200);
+            break;
+        }
+            
             
         
         case M_DISPLAY_MAT:
@@ -1258,6 +1341,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
         case M_DISPLAY_TRAFO: {
+            
             UpdateDisplay(9);
             break;
         }
@@ -1361,34 +1445,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             break;
         }
         case 9: {
-            //some hard-coded stuff here....needs to be fixed
-            double alphaX[11];
-            double chi2Y[11];
-            int pointC = 0;
-            TGraph2D *dt = new TGraph2D();
-            
-            for (int j = 0; j < 1; j++) {
-                
-            for (int i  = 0; i < 11; i++) {
-                alphaX[i] = i*0.1 - 0.5;
-                transAlpha->SetNumber(alphaX[i]);
-                ShowGraph();
-                chi2Y[i] = lit_chi2;
-                pointC++;
-                dt->SetPoint(pointC,alphaX[i],exi[0]->GetNumber(),lit_chi2);
-                
-            }
-           
-            exi[0]->SetNumber(exi[0]->GetNumber() - 200);
-            UpdateSetting(sett);
-            ShapeItBaby();
-            }
-                
-            TGraph* alphaPlot = new TGraph(11, alphaX, chi2Y);
-            alphaPlot->SetMarkerStyle(4);
-            alphaPlot->SetMarkerColor(kRed);
-            //dt->Draw("collz");
-            alphaPlot->Draw("APC*");
+            AlphaChi2();
             break;
         }
         case 10: {
@@ -1400,26 +1457,35 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 11: {
             ShapeRho *rho = new ShapeRho(sett, matrix);
-            rho->Draw();
-            litGSF->Rho();
-            fitGSF->Rho();
-            double rho_scale = rho->Eval(2) / litGSF->GetRhoDiagram()->Eval(2000);
-            std::cout <<"Scale: " <<rho_scale <<std::endl;
+            //rho->Draw();
+            //litGSF->Rho();
+            //fitGSF->Rho();
+            //double rho_scale = rho->Eval(2) / litGSF->GetRhoDiagram()->Eval(2000);
+            //std::cout <<"Scale: " <<rho_scale <<std::endl;
             
-            TGraphErrors* scaleGraph = new TGraphErrors;
-            for (int i=0;i<fitGSF->GetRhoDiagram()->GetN();i++) {
-                double X =fitGSF->GetRhoDiagram()->GetX()[i]/1000;
-                double Y =fitGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
-                if (X < 3.5) {
-                    X =litGSF->GetRhoDiagram()->GetX()[i]/1000;
-                    Y =litGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
-                }
-                scaleGraph->SetPoint(i,X,Y);
+            //TGraphErrors* scaleGraph = new TGraphErrors;
+            //for (int i=0;i<fitGSF->GetRhoDiagram()->GetN();i++) {
+              //  double X =fitGSF->GetRhoDiagram()->GetX()[i]/1000;
+                //double Y =fitGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
+                //if (X < 3.5) {
+                  //  X =litGSF->GetRhoDiagram()->GetX()[i]/1000;
+                    //Y =litGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
+                //}
+                //scaleGraph->SetPoint(i,X,Y);
                 //litGSF->GetRhoDiagram()->GetY()[i] *= rho_scale;
-            }
-            scaleGraph->SetMarkerStyle(4);
-            scaleGraph->SetMarkerColor(kBlue);
-            rho->Draw(0.14,0.08,0.2);
+            //}
+            //scaleGraph->SetMarkerStyle(4);
+            //scaleGraph->SetMarkerColor(kBlue);
+            
+            //88Kr
+            //rho->Draw(0.03,-0.045,0.10);
+            
+            //76Ge
+            //rho->Draw(0.045,-0.01,0.10);
+            
+            //88Kr unfolding in y
+            rho->Draw(0.4,0.3,0.5);
+            
             rho->Draw();
             //scaleGraph->Draw("C*");
             
@@ -1432,6 +1498,57 @@ void ShapeFrame::UpdateDisplay(int display) {
     fCanvas->Modified();
     fCanvas->Update();
 }
+
+void ShapeFrame::AlphaChi2()
+{
+    //some hard-coded stuff here....needs to be fixed
+    
+    double alpha_bak = sett->lit_alpha;
+    double exi_bak = sett->exiEne[0];
+    double const alphaRange = 1; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
+    int const nOfPoints = 40; //number of steps in the chi2 evaluation
+    int const nOfExi = 15; //number of excitation energies
+    double const exiStep = 100; //step size (in keV) by which the excitation energy is lowered in each iteration
+    double alphaX[nOfPoints*nOfExi];
+    double chi2Y[nOfPoints*nOfExi];
+    double enes[nOfPoints*nOfExi];
+    int pointC = 0;
+    
+    for (int j = 0; j < nOfExi; j++) {
+        
+    for (int i  = 0; i < nOfPoints; i++) {
+        alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
+        transAlpha->SetNumber(alphaX[pointC]);
+        //update alpha in settings file
+        sett->lit_alpha = alphaX[pointC];
+
+        //apply transformation
+        ShowGraph();
+        chi2Y[pointC] = lit_chi2;
+        enes[pointC] = sett->exiEne[0];
+        pointC++;
+        //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " <<lit_chi2 <<  std::endl;
+    }
+   
+    sett->exiEne[0] = sett->exiEne[0] - exiStep;
+    UpdateGuiSetting(sett);
+    ShapeItBaby();
+    }
+        
+    TGraph* alphaPlot = new TGraph(nOfPoints, alphaX, chi2Y);
+    TGraph2D *dt = new TGraph2D(nOfPoints*nOfExi, alphaX, enes, chi2Y);
+
+    alphaPlot->SetMarkerStyle(4);
+    alphaPlot->SetMarkerColor(kRed);
+    dt->Draw("colz");
+    //alphaPlot->Draw("APC*");
+    
+    //reset values to before
+    sett->exiEne[0] = exi_bak;
+    sett->lit_alpha = alpha_bak;
+    UpdateGuiSetting(sett);
+}
+
 
 void ShapeFrame::CloseWindow()
 {

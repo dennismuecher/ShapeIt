@@ -6,6 +6,8 @@
 #include "../Include/ShapeGSF.h"
 #include "../Include/ShapeChi2.h"
 #include "../Include/ShapeRho.h"
+//#include "../Include/ShapeDialogAlpha.h"
+
 
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
@@ -56,6 +58,7 @@ enum ETestCommandIdentifiers {
     M_SETTING_RHO,
 	M_SETTING_EFFI,
     M_SETTING_WIDTHRESET,
+    M_SETTING_TRAFO,
     M_DISPLAY_MAT,
     M_DISPLAY_DIAG,
     M_DISPLAY_DIAGCUBE,
@@ -85,8 +88,12 @@ class ShapeFrame {
     RQ_OBJECT("ShapeFrame")
 private:
     TGMainFrame         *fMain;
+    TGCanvas            *fCanvasWindow;
+    TGCompositeFrame    *fContainer;
+    TRootEmbeddedCanvas *fMainCanvas;
     const TGPicture *infoPic;               //the info picture ("File->About")
     string absPath;
+    //ShapeDialogAlpha    *AlphaDialog;       //window to set transformation parameters
     TRootEmbeddedCanvas *fEcanvas;
     TGNumberEntry       *energy[4]; //energies of the two discrete states; lower and upper limit
     TGNumberEntry       *exi[3];//excitation energies; lower and upper limit and interpolation energy
@@ -143,7 +150,6 @@ private:
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);
-
     virtual ~ShapeFrame();
     int GetBinSelect() {return binSelect;}						//returns binSelect
 	void SetBinSelect(int tBinSelect) {binSelect = tBinSelect;}		//set binSelect
@@ -158,7 +164,7 @@ public:
     void MatrixSelect(Int_t mnr);
     void BinSelect(Int_t sbin);
 	void HandleVerboseMenu(int vLevel);							//takes care about the verbose level menu
-
+    void AlphaChi2();                                           //chi2 fit of slope alpha to literature data
     void fBinComboDraw(TGComboBox *combo);
     void UpdateDisplay();
     void UpdateDisplay(int display);
@@ -167,7 +173,8 @@ public:
     void ShapeItBaby();
     void PrintMessage();
 	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
-	void Scale(Double_t scale);					//scale results of gSF and refresh display
+    void ShowGraph(double norm, double slope);   //applies literature value transformation and updates gSF graph
+    void Scale(Double_t scale);					//scale results of gSF and refresh display
     double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
     TGFileInfo fi;                              //file containing matrix
     TMultiGraph *wgraph ;

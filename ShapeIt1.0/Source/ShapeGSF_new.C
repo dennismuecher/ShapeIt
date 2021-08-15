@@ -19,8 +19,6 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), 
 }
 
 
-
-
 //scales the gSF pair at position i to the one at position i-1
 void ShapeGSF::SewNext(Int_t i) {
     if (i < levGraph[0]->GetN()-1) {
@@ -28,6 +26,7 @@ void ShapeGSF::SewNext(Int_t i) {
     }
         
 }
+
 
 
 void ShapeGSF::DoInterpol() {
@@ -215,7 +214,8 @@ void ShapeGSF::FillgSF() {
             }
         }
         
-        levGraph[0]->SetPoint(i, egamma, value);
+        levGraph[0]->SetPoint(i, egamma, value); MupP2Fupp
+        
         levGraph[0]->SetPointErrors(i, 0, dvalue);
         
         if (getBgRatio(i, 2) * gSF_matrix->integral2[i] < sett->minCounts || gSF_matrix->integral2[i] == 0 ) {

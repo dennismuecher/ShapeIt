@@ -139,6 +139,8 @@ void ShapeSetting::SaveSettings() {
     outfile << "doBackground " << doBackground <<"\n";
     outfile << "verbose " << verbose<<"\n";
     outfile << "gSF_norm " << gSF_norm<<"\n";
+    outfile << "lit_norm " << lit_norm<<"\n";
+    outfile << "lit_alpha " << lit_alpha<<"\n";
     outfile << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
     outfile << "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     outfile << "bg_level1 " << bgEne[0][0] <<" "<< bgEne[0][1] <<" "<< bgEne[0][2] <<" "<< bgEne[0][3] <<"\n";
@@ -154,6 +156,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "minCounts " << minCounts <<"\n";
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
+    outfile << "rhoFileName " << rhoFileName <<"\n";
 	
     outfile.close();
     if (verbose)
@@ -163,6 +166,10 @@ void ShapeSetting::SaveSettings() {
 void ShapeSetting::ReadSettings() {
     if (verbose)
         std::cout <<"\nREADING FROM INPUT FILE: " <<endl;
+    
+    //clear fileNames; currently for rhoFileName, only, due to backwards compatibility
+    rhoFileName.clear();
+    
     std::ifstream inp (settFileName.c_str());
     if (inp.is_open()) {
         string word, line;
@@ -204,6 +211,8 @@ void ShapeSetting::ReadSettings() {
             if (word == "doBackground" ) isstr >> doBackground ;
             if (word == "verbose" ) isstr >> verbose;
             if (word == "gSF_norm" ) isstr >> gSF_norm;
+            if (word == "lit_norm" ) isstr >> lit_norm;
+            if (word == "lit_alpha" ) isstr >> lit_alpha;
             if (word == "level1" ) { isstr >> levEne[0]; isstr >>levEne[1];}
 			if (word == "level1_2" ) { isstr >> levEne_2[0]; isstr >>levEne_2[1];}
             if (word == "level2" ) { isstr >> levEne[2]; isstr >>levEne[3];}
@@ -219,8 +228,12 @@ void ShapeSetting::ReadSettings() {
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
-			
-        
+            if (word == "rhoFileName" ) {
+                string pName;
+                rhoFileName.clear();
+                while (isstr >>pName)
+                    rhoFileName+=" "+pName;
+            }
         }
         if (verbose)
                 PrintSettings();
@@ -234,7 +247,8 @@ void ShapeSetting::ReadSettings() {
 void ShapeSetting::PrintSettings(){
     std::cout  << "root file name " << dataFileName<<"\n";
     std::cout  << "matrixName " << matrixName<<"\n";
-    std::cout  << "Literature values " << osloFileName<<"\n";
+    std::cout  << "Literature values gSF " << osloFileName<<"\n";
+    std::cout  << "Literature values level density " << rhoFileName<<"\n";
     std::cout  << "Efficiency correction " << effiFileName<<"\n";
     std::cout  << "MeV: " << MeV<<"\n";
     std::cout  << "mode " << mode << "\n";
@@ -249,6 +263,8 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doBackground " << doBackground <<"\n";
     std::cout  << "verbose " << verbose<<"\n";
     std::cout  << "gSF norm " << gSF_norm<<"\n";
+    std::cout  << "lit norm " << lit_norm<<"\n";
+    std::cout  << "lit alpha " << lit_alpha<<"\n";
     std::cout  << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
 	std::cout  <<  "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     std::cout  << "left background level1 " << bgEne[0][0] <<"-" << bgEne[0][1] <<"\n";

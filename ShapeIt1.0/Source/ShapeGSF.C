@@ -136,7 +136,15 @@ std::vector <double> ShapeGSF::InterpolValueSort(double ene) {
     return result;
 }
 
-
+//this function returns false if any gSF value in the bin of the sewing starting point is zero
+bool ShapeGSF::CheckSewingEne() {
+    
+    int i = gSF_matrix->energyToBinY(sett->sewingEne);
+    if ( gSF[i].value1 * gSF[i].value2 == 0 ) 
+        return false;
+    else
+        return true;
+}
 
 //returns an interpolated value of gSF for the gamma ray energy ene
 std::vector <double> ShapeGSF::InterpolValue(double ene) {
@@ -555,14 +563,15 @@ void ShapeGSF::gSF_Collect() {
         s.egamma = gSF[binRange[0]+i-1].egamma1;
         s.value = gSF[binRange[0]+i-1].value1;
         //adding a 10% systematic uncertainty due to fluctuations
-        s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.1 * s.value );
+        //this should not be hard-coded!!
+        s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.15 * s.value );
 		s.peakID = 1;
         gSF_sort.push_back(s);
         
         s.egamma = gSF[binRange[0]+i-1].egamma2;
         s.value = gSF[binRange[0]+i-1].value2;
         //adding a 10% systematic uncertainty due to fluctuations
-        s.dvalue = gSF[binRange[0]+i-1].dvalue2 + ( 0.1 * s.value );
+        s.dvalue = gSF[binRange[0]+i-1].dvalue2 + ( 0.15 * s.value );
 		s.peakID = 2;
         gSF_sort.push_back(s);
     }

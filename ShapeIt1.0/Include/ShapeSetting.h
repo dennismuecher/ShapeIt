@@ -31,6 +31,9 @@ public:
 	
 	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
 	double gSF_norm = 1 ;				//normalization factor for gSF
+    double lit_norm = 1 ;                //normalization factor for Oslo literature value
+    double lit_alpha = 0 ;                //transformation "slope" parameter for literature values
+
 	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
 	double levEne_2[4] = {0, 0, 0, 0};						//energies for doublet peaks level 1 and level 2 (upper, lower)	
 	double bgEne[2][4];                      //background regions for level 1 and level 2

@@ -57,6 +57,7 @@ public:
     void Transform(double B_t, double alpha_t);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
     void gSF_Sort();                                    //sorts gSF_sort vector by energy
     void Rho();
+    bool CheckSewingEne();
     TGraphErrors* GetRhoDiagram();
 };
 #endif

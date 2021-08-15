@@ -7,22 +7,37 @@ ShapeRho::ShapeRho(ShapeSetting* t_setting, ShapeMatrix* t_matrix) {
 }
 
 void ShapeRho::Read() {
-    rhoGraph = new TGraphErrors("../OsloFiles/leveldensity_76Ge_EB_ShapeIt.txt","%lg %lg %lg");
-    rhoGraph->SetPoint(rhoGraph->GetN(), e_snail, rho_snail);
-    rhoGraph->SetPointError(rhoGraph->GetN()-1, 0, drho_snail);
+    if (m_sett->rhoFileName !="") {
+        rhoGraph = new TGraphErrors(m_sett->rhoFileName.c_str(),"%lg %lg %lg");
+        rhoGraph->SetPoint(rhoGraph->GetN(), e_snail, rho_snail);
+        rhoGraph->SetPointError(rhoGraph->GetN()-1, 0, drho_snail);
+        //if (sett->verbose)
+            std::cout <<"Read " << rhoGraph->GetN() <<" data points from level density file " <<m_sett->rhoFileName.c_str() <<std::endl;
+    }
+    else {
+        std::cout <<"No level density file given!"<<std::endl;
+        rhoGraph = 0;
+    }
 }
 
 void ShapeRho::Draw() {
+    if (!rhoGraph)
+        return;
     rhoGraph->SetMarkerStyle(4);
     rhoGraph->SetMarkerColor(kRed);
     rhoGraph->SetTitle("level density; energy (MeV); level density (1/MeV)");
     rhoGraph->SetFillColorAlpha(4,0.5);
     rhoGraph->SetFillStyle(3010);
-    rhoGraph->Draw("P3*");
+    if (rhoGraph)
+        rhoGraph->Draw("P3*");
 }
 
 void ShapeRho::Draw(double alpha, double alpha_l, double alpha_h) {
 
+
+    if (!rhoGraph)
+        return;
+    
 TGraphErrors* graph_t_mid = Transform(1,alpha);
 TGraphErrors* graph_t_low =Transform(1,alpha_l);
 TGraphErrors* graph_t_high = Transform(1,alpha_h);
@@ -46,6 +61,12 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
     graph_t->SetFillColorAlpha(kRed,0.5);
     graph_t->SetFillStyle(3010);
     graph_t->Draw("aP3*");
+
+    //printing results to terminal
+    std::cout <<"Results for transformed level density: \n" <<std::endl;
+    for (int i=0; i < graph_t->GetN(); i++) {
+        std::cout << graph_t->GetX()[i] <<" " <<graph_t->GetY()[i] <<" " <<graph_t->GetEYhigh()[i] << " " << graph_t->GetEYlow()[i] <<std::endl;
+    }
 }
 
 
