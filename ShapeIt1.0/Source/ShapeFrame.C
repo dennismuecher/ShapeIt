@@ -49,7 +49,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     else
         ww = 0.8*ww;
     
-    if ( hh >= 600 || hh <400 )
+    if ( hh >= 600 || hh < 400 )
         hh = 600;
     
     TGCompositeFrame* fSuper = new TGCompositeFrame(fMain, ww, hh, kHorizontalFrame | kFixedWidth);
@@ -118,8 +118,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     //initialize background regions
     double bg1[4]={260,360,700,800};
     double bg2[4]={850,950,1350,1450};
-    //double bg1[4]={900,1000,1400,1500};
-    //double bg2[4]={1700,1800,2200,2300};
+
     sett->setBgEne1(bg1);
     sett->setBgEne2(bg2);
     
