@@ -245,10 +245,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     f1->AddFrame(fPicture,new TGLayoutHints(kLHintsLeft,
                                             1, 1, 1, 1));
     //the botton Message window
-    fEMessage = new TRootEmbeddedCanvas("Messages",f1,300,200);
+    //fEMessage = new TRootEmbeddedCanvas("Messages",f1,300,200);
     
-    f1->AddFrame(fEMessage,new TGLayoutHints(kLHintsExpandY,
-                                             5,5,3,4));
+    //f1->AddFrame(fEMessage,new TGLayoutHints(kLHintsExpandY,5,5,3,4));
     //right half of main window
     
     //the drawing window
