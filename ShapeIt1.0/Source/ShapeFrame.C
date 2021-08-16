@@ -894,6 +894,7 @@ void ShapeFrame::TransGraph()
    
     sett->lit_alpha = AlphaDialog->GetAlphaTransform();
     sett->lit_norm =  AlphaDialog->GetBTransform();
+
     //apply transformation
     litGSF->Transform(sett->lit_norm, sett->lit_alpha);
     litGSF->gSF_Sort();
@@ -1241,7 +1242,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         
         case M_SETTING_TRAFO: {
-            AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200);
+            AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200, sett->lit_norm, sett->lit_alpha);
             break;
         }
             

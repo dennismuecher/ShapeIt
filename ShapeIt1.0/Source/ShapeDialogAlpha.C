@@ -1,7 +1,7 @@
 #include "../Include/ShapeDialogAlpha.h"
 #include "../Include/ShapeFrame.h"
 
-ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, ShapeFrame *caller_obj, UInt_t w, UInt_t h, UInt_t options)
+ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, ShapeFrame *caller_obj, UInt_t w, UInt_t h, double b_init, double alpha_init, UInt_t options)
 {
     fMainDialog = new TGTransientFrame(p, main, w, h, options);
     fMainDialog->Connect("CloseWindow()", "ShapeDialogAlpha", this, "CloseWindow()");
@@ -22,7 +22,7 @@ ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, Shap
     
     TGLabel *t1 = new TGLabel(fTransform[0], "gSF scale B");
     fTransform[0]->AddFrame(t1, fR);
-    transBDialog = new TGNumberEntry(fTransform[0], 1.0, 9,31, TGNumberFormat::kNESReal,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+    transBDialog = new TGNumberEntry(fTransform[0], b_init, 9,31, TGNumberFormat::kNESReal,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
     
     fTransform[0]->AddFrame(transBDialog, fR);
 
@@ -32,7 +32,7 @@ ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, Shap
     //signals
     transBDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "TransGraph()");
     
-    transAlphaDialog = new TGNumberEntry(fTransform[1], 0.0, 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-100, 100);
+    transAlphaDialog = new TGNumberEntry(fTransform[1], alpha_init, 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-100, 100);
 
     transAlphaDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "TransGraph()");
     fTransform[1]->AddFrame(transAlphaDialog, fR);
