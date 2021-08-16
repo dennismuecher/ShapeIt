@@ -22,18 +22,7 @@ double glo(double *x, double *par){
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
-    
-    //create canvas with scrollbars for mainframe
-    //fCanvasWindow = new TGCanvas(fMain, 900, 700);
-    //fMain->AddFrame(fCanvasWindow, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,2,2,0,2));
-    //fContainer = new TGCompositeFrame(fCanvasWindow->GetViewPort());
-    //fCanvasWindow->SetContainer(fContainer);
-    // create embedded canvas and place into the container
-    //fMainCanvas= new TRootEmbeddedCanvas(0,fContainer, 900, 700);
-    //fContainer->AddFrame(fMainCanvdas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY));
-    // use hierarchical cleaning for container
-    //fContainer->GetFrame()->SetCleanup(kDeepCleanup);
-    
+  
     //take care about closing the window
     
     fMain->Connect("CloseWindow()", "ShapeFrame", this, "CloseWindow()");
@@ -47,10 +36,24 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     absPath = path;
     
     SetupMenu();
-
-    TGCompositeFrame* fSuper = new TGCompositeFrame(fMain, 900, 600, kHorizontalFrame | kFixedWidth);
     
-
+    //get resolution of display to sset window size
+    Int_t qq;
+    UInt_t ww;
+    UInt_t hh;
+    gVirtualX->GetWindowSize(gVirtualX->GetDefaultRootWindow(), qq, qq, ww, hh);
+    
+    //check if display width resolution makes sense; if so, set ww to 80% of display size
+    if ( ww < 800 || ww > 6000)
+        ww = 800;
+    else
+        ww = 0.8*ww;
+    
+    if ( hh >= 600 || hh <400 )
+        hh = 600;
+    
+    TGCompositeFrame* fSuper = new TGCompositeFrame(fMain, ww, hh, kHorizontalFrame | kFixedWidth);
+    
     f1 = new TGCompositeFrame(fSuper, 300, 700, kVerticalFrame | kFixedWidth);
     f2 = new TGCompositeFrame(fSuper, 300, 700, kVerticalFrame);
     
@@ -186,7 +189,6 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fEnergy[7]->AddFrame(effCorr, fR2);
     fG[3]->AddFrame(fEnergy[7], fL2);
     
-    
     //options
     fInter = new TGCompositeFrame(fG[2], 1, 1, kHorizontalFrame);
     OB[0] = new TGCheckButton(fInter, new TGHotString("Sewing ex. energy [keV]"), 14);
@@ -222,10 +224,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     
     //display settings
     fBin = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
-  
     fR[2] = new TGRadioButton(fBin, new TGHotString("Diagonal Projection"), 18);
-    
     fBin->AddFrame(fR[2], new TGLayoutHints( kLHintsTop, 2, 2 , 3, 2));
+    
     //Combo box for displaying bin spectra
     fBinCombo = new TGComboBox(fBin, 80);
     fBinComboDraw(fBinCombo);
@@ -244,25 +245,18 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
     f1->AddFrame(fPicture,new TGLayoutHints(kLHintsLeft,
                                             1, 1, 1, 1));
-    //the botton Message window
-    //fEMessage = new TRootEmbeddedCanvas("Messages",f1,300,200);
     
-    //f1->AddFrame(fEMessage,new TGLayoutHints(kLHintsExpandY,5,5,3,4));
     //right half of main window
     
     //the drawing window
-    fEcanvas = new TRootEmbeddedCanvas("Ecanvas",f2,600,600);
+    fEcanvas = new TRootEmbeddedCanvas("Ecanvas",f2,100,100);
     fEcanvas->GetCanvas()->Connect("ProcessedEvent(Int_t,Int_t,Int_t,TObject*)",
                               "ShapeFrame", this, "HandleMyCanvas(Int_t,Int_t,Int_t,TObject*)");
     f2->AddFrame(fEcanvas, fL2);
-    //fContainer->AddFrame(fECanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY));
     
     fSuper->AddFrame(f1, fL1);
     fSuper->AddFrame(f2, fL2);
-    //fContainer->AddFrame(f1, fL1);
-    //fContainer->AddFrame(f2, fL2);
-   
-    
+  
     fMain->AddFrame(fSuper, fL2);
     // Set a name to the main frame
     fMain->SetWindowName("unsaved");
