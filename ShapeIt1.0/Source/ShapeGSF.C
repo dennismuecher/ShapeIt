@@ -83,7 +83,7 @@ std::vector <double> ShapeGSF::InterpolValueSort(double ene) {
             val1 = t_val;
             dval1 = t_dval;
             index_l = i;
-            if (sett->verbose > 1)
+            if (sett->verbose > 2)
                 std::cout <<"Found closer energy smaller than ene: " <<ene1<< " with value: " <<val1 <<   std::endl;
         }
         
@@ -98,7 +98,7 @@ std::vector <double> ShapeGSF::InterpolValueSort(double ene) {
             val2 = t_val;
             dval2 = t_dval;
             index_r = j;
-            if (sett->verbose > 1)
+            if (sett->verbose > 2)
                 std::cout <<"Found closer energy higher than ene: " <<ene2<< " with value: " <<val2 <<   std::endl;
         }
     }
@@ -298,26 +298,38 @@ void ShapeGSF::DoInterpol() {
             
             gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
             gSF[i].value1 = y_norm;
-            
-            if (sett->verbose > 1)
-                std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
+    
         }
         
         //calculate slope for next iteration
-        if (slope == 0)
+        
+          if (sett->verbose > 1) {
+              std::cout <<"Interpolation of bin " << i << std::endl;
+              std::cout <<"\nValues of gSF after interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+              std::cout <<"\nValues of gSF after interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
+          }
+          if (slope == 0)
             slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
         else {
             slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
+            //slope of previous bin
+            double slope_prev = ( gSF[i+1].value1-gSF[i+1].value2 ) / ( gSF[i+1].egamma1 - gSF[i+1].egamma2 );
         if (sett->verbose > 1)
             std::cout << "\nSlope for interpolation:" <<slope<<endl;
-          
+        
         // do average interpolation
-          //dy is the difference in gSF between gSF[i+1].value1 and the point along the line, connecting the pair gSF[i], at the same energy gSF[i+1].egamma1; the idea is to shift gSF[i] by dy/2, which we call the "average" interpolation
-          double dy = gSF[i].value1
-          - ( slope * ( gSF[i].egamma1 - gSF[i+1].egamma2 ) )
-          - gSF[i+1].value2;
-         gSF[i].value1 = gSF[i].value1 - (dy / 2.);
-          gSF[i].value2 = gSF[i].value2 - (dy / 2.);
+        //dy is the difference in gSF between gSF[i+1].value1 and the point along the line, connecting the pair gSF[i], at the same energy gSF[i+1].egamma1; the idea is to shift gSF[i] by dy/2, which we call the "average" interpolation
+            double scale_avg = 1;
+            scale_avg = ( 2 * gSF[i+1].value2 + ( (gSF[i].egamma1 - gSF[i+1].egamma2) * slope_prev ) ) / ( 2 * gSF[i].value1 - ( (gSF[i].egamma1 - gSF[i+1].egamma2) * slope ) );
+            
+            gSF[i].value1 = gSF[i].value1 * scale_avg;
+            gSF[i].value2 = gSF[i].value2 * scale_avg;
+            
+            if (sett->verbose > 1) {
+                std::cout <<"Calculating average interpolation " << std::endl;
+                std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+                std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
+            }
           }
     }
     
@@ -359,21 +371,33 @@ void ShapeGSF::DoInterpol() {
             
             if (sett->verbose > 1)
                 std::cout << "\nSlope for interpolation:" <<slope<<endl;
-            if (sett->verbose > 1)
-                std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
         }
+          
+          if (sett->verbose > 1) {
+              std::cout <<"Interpolation of bin " << i << std::endl;
+              std::cout <<"\nValues of gSF after interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+              std::cout <<"\nValues of gSF after interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
+          }
+          
         if (slope == 0)
             slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
         else {
               slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-          
+            //slope of previous bin
+            double slope_prev = ( gSF[i-1].value1-gSF[i-1].value2 ) / ( gSF[i-1].egamma1 - gSF[i-1].egamma2 );
+            
         // do average interpolation
-        //dy is the difference in gSF between gSF[i].value2 and the point along the line, connecting the pair gSF[i+1], at the same energy gSF[i].egamma2; the idea is to shift gSF[i+1] by dy/2, which we call the "average" interpolation
-        double dy = gSF[i].value2
-        + ( slope * ( gSF[i-1].egamma1 - gSF[i].egamma2 ) )
-        - gSF[i-1].value1;
-        gSF[i].value1 = gSF[i].value1 - (dy / 2.);
-        gSF[i].value2 = gSF[i].value2 - (dy / 2.);
+       
+        double scale_avg = 1;
+        scale_avg = ( 2 * gSF[i-1].value1 - ( (gSF[i-1].egamma1 - gSF[i].egamma2) * slope_prev ) ) / ( 2 * gSF[i].value2 + ( (gSF[i-1].egamma1 - gSF[i].egamma2) * slope ) );
+        
+        gSF[i].value1 = gSF[i].value1 * scale_avg;
+        gSF[i].value2 = gSF[i].value2 * scale_avg;
+        if (sett->verbose > 1) {
+                std::cout <<"Calculating average interpolation " << std::endl;
+                std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+                std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
+            }
         }
     }
 }
