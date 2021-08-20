@@ -16,8 +16,6 @@
 #include "ShapeGSF.C"
 #include "ShapeChi2.C"
 #include "ShapeRho.C"
-//#include "ShapeDialogAlpha.C"
-
 
 void ShapeIt() {
     static const string path = gSystem->pwd();

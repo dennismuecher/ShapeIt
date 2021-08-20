@@ -304,11 +304,21 @@ void ShapeGSF::DoInterpol() {
         }
         
         //calculate slope for next iteration
-      
-        slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-        
+        if (slope == 0)
+            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
+        else {
+            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
         if (sett->verbose > 1)
             std::cout << "\nSlope for interpolation:" <<slope<<endl;
+          
+        // do average interpolation
+          //dy is the difference in gSF between gSF[i+1].value1 and the point along the line, connecting the pair gSF[i], at the same energy gSF[i+1].egamma1; the idea is to shift gSF[i] by dy/2, which we call the "average" interpolation
+          double dy = gSF[i].value1
+          - ( slope * ( gSF[i].egamma1 - gSF[i+1].egamma2 ) )
+          - gSF[i+1].value2;
+         gSF[i].value1 = gSF[i].value1 - (dy / 2.);
+          gSF[i].value2 = gSF[i].value2 - (dy / 2.);
+          }
     }
     
     //interpolate from interEne to higher energies
@@ -352,9 +362,19 @@ void ShapeGSF::DoInterpol() {
             if (sett->verbose > 1)
                 std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
         }
-        //calculate slope for next iteration
-        slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-
+        if (slope == 0)
+            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
+        else {
+              slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
+          
+        // do average interpolation
+        //dy is the difference in gSF between gSF[i].value2 and the point along the line, connecting the pair gSF[i+1], at the same energy gSF[i].egamma2; the idea is to shift gSF[i+1] by dy/2, which we call the "average" interpolation
+        double dy = gSF[i].value2
+        + ( slope * ( gSF[i-1].egamma1 - gSF[i].egamma2 ) )
+        - gSF[i-1].value1;
+        gSF[i].value1 = gSF[i].value1 - (dy / 2.);
+        gSF[i].value2 = gSF[i].value2 - (dy / 2.);
+        }
     }
 }
 

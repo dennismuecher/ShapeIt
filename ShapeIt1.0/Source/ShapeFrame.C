@@ -1,7 +1,6 @@
 #include "../Include/ShapeFrame.h"
 #include "../Source/ShapeInfo.C"
 #include "ShapeDialogAlpha.C"
-//trying to understand git branches
 
 double glo(double *x, double *par){
   //par[0]: sigma
@@ -774,13 +773,10 @@ void ShapeFrame::ShapeItBaby() {
 	//update matrix
 	matrix->Diag();
 	
-	int kmax = 5;	//number of steps in sliding window
-	int k = 2; //determines if sliding window loop will be done
-	if (sett->doSlidingWindow)
-		k = kmax;
-
+	int kmax = 6;	//number of steps in sliding window; should not be hard-coded....needs fixing
+	
 	//setting display mode
-	UpdateDisplay(6);
+	UpdateDisplay(6);   //is this good for anything?
   
 	//update settings accordings to the GUI settings
 	UpdateSetting(sett);
@@ -811,12 +807,15 @@ void ShapeFrame::ShapeItBaby() {
     
 	//the chi2 fitting object
 	ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
-       
-	//loop over exi_size
+    
+    //collect results
+    fitGSF->gSF_Collect();
+	
+    //loop over exi_size
 	do {
 		//sliding window
-		for (int i = 1; i < k; i++) {
-			
+		for (int i = 2; i < kmax; i++) {
+            if (!sett->doSlidingWindow) break;
 			// the sliding window moves from the inital position in kmax steps to the end position, which is one bin to the "left"
 			// the high energy is kept at the initital value, at all times
 			matrix->SetEne0( sett->exiEne[0] - (double) (i-1) * matrix->GetESize() / (kmax-1)); 
@@ -1452,8 +1451,6 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             break;
         }
-            
-            
     }
     DrawMarker();
     fCanvas->Modified();
