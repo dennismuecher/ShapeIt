@@ -188,17 +188,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fG[3]->AddFrame(fEnergy[7], fL2);
     
     //options
-    fInter = new TGCompositeFrame(fG[2], 1, 1, kHorizontalFrame);
-    OB[0] = new TGCheckButton(fInter, new TGHotString("Sewing ex. energy [keV]"), 14);
-    OB[0]->SetState(kButtonDown);
-    fInter->AddFrame(OB[0], new TGLayoutHints( kLHintsTop, 2, 2 , 3, 2));
-    OB[0]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
-    
-    exi[2] = new TGNumberEntry(fInter, 4500, 9,30, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,100, 99999);
-    exi[2]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
-    fInter->AddFrame(exi[2], new TGLayoutHints( kLHintsTop, 0, 0, 1, 0));
-    fG[2]->AddFrame(fInter);
-
+    OB[0] = new TGCheckButton(fG[2], new TGHotString("Sewing Interpolation"), 14);
     OB[1] = new TGCheckButton(fG[2], new TGHotString("Display expectation"), 15);
     OB[2] = new TGCheckButton(fG[2], new TGHotString("Sliding window variation"), 21);
     OB[3] = new TGCheckButton(fG[2], new TGHotString("Bin size variation"), 22);
@@ -207,7 +197,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     OB[5]->SetEnabled(false);
     OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
     OB[6]->SetEnabled(false);
-    for (int i = 1 ; i < 7; i++) {
+    for (int i = 0 ; i < 7; i++) {
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
     }
@@ -294,9 +284,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     minContent->SetNumber(sett_t->minCounts);
     scaling->SetNumber(sett_t->gSF_norm);
     effCorr->SetNumber(sett_t->eff_corr);
-    
-    exi[2]->SetNumber(sett_t->sewingEne);
-    
+        
     for (int i = 0; i < 2; i++)
         fR[i]->SetState(kButtonUp);
     if (sett_t->mode == 1)
@@ -351,8 +339,6 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
         sett_t->levEne[i] = energy[i]->GetNumber();
     for (int i = 0; i < 2; i++)
         sett_t->exiEne[i] = exi[i]->GetNumber();
-
-    sett_t->sewingEne = exi[2]->GetNumber();
     
     sett_t->exi_size[0] = bin[0]->GetNumber();
     sett_t->exi_size[1] = bin[1]->GetNumber();
@@ -727,15 +713,6 @@ void ShapeFrame::DoNumberEntry() {
             UpdateSetting(sett);
         }
         
-        if (id ==30) {
-            if (exi[2]->GetNumber() < exi[0]->GetNumber())
-                exi[2]->SetNumber(exi[0]->GetNumber());
-            if (exi[2]->GetNumber() > exi[1]->GetNumber())
-                exi[2]->SetNumber(exi[1]->GetNumber());
-            UpdateSetting(sett);
-            
-        }
-        
         //Trnasformation has changed
         if ( (id == 31) || (id == 32) ) {
             ShowGraph();
@@ -786,12 +763,6 @@ void ShapeFrame::ShapeItBaby() {
 	//calculate gamma ray strength function
 	fitGSF = new ShapeGSF(sett, matrix);
 	fitGSF->Update();
-    
-	//check if sewing energy bin has no empty gSF values
-    if (fitGSF->CheckSewingEne() == false ) {
-        MessageBox("Error", "energy bin of the initial sewing energy has too small statistics; adapt the sewing energy!");
-        return;
-    }
     
     //status update: will have values for gSF
 	status = 2;

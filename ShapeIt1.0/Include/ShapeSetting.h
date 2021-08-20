@@ -43,7 +43,6 @@ public:
     double widthCal[2][2];                  //parameters for width calibration
     int nOfBins = 1;
     double eff_corr = 1;					//correction factor for level 2;
-    double sewingEne = 4500;                 //starting energy for sewing procedure
     int minCounts = 0;                      //minimum number of counts required in a bin to be considered
 	
 	void SetMeV(bool b) {MeV = (b) ? 1000 : 1;}		//set MeV=1000 in case of b true

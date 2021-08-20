@@ -152,7 +152,6 @@ void ShapeSetting::SaveSettings() {
     outfile << "excitation_bin_2 " << exi_size[1] <<"\n";
     outfile << "nOfBins " << nOfBins <<"\n";
     outfile << "eff_corr " << eff_corr <<"\n";
-    outfile << "sewingEne " << sewingEne <<"\n";
     outfile << "minCounts " << minCounts <<"\n";
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
@@ -224,7 +223,6 @@ void ShapeSetting::ReadSettings() {
             if (word == "excitation_bin_2" ) isstr >> exi_size[1] ;
             if (word == "nOfBins" ) isstr >> nOfBins ;
             if (word == "eff_corr" ) isstr >> eff_corr ;
-            if (word == "sewingEne" ) isstr >> sewingEne ;
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
@@ -278,7 +276,6 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "excitation_bin_2 " << exi_size[1] <<"\n";
     std::cout  << "nOfBins " << nOfBins <<"\n";
     std::cout  << "eff_corr " << eff_corr <<"\n";
-    std::cout  << "sewingEne " << sewingEne <<"\n";
     std::cout  << "minCounts " << minCounts <<"\n";
     std::cout  << "doWidthCal " << doWidthCal <<"\n";
     std::cout  << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";

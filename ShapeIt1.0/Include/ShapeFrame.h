@@ -104,7 +104,6 @@ private:
    
     
     TGCompositeFrame *fBin;
-    TGCompositeFrame *fInter;
     TGCompositeFrame *f1;
     TGCompositeFrame *f2;
     TGLayoutHints *fL1;

@@ -136,16 +136,6 @@ std::vector <double> ShapeGSF::InterpolValueSort(double ene) {
     return result;
 }
 
-//this function returns false if any gSF value in the bin of the sewing starting point is zero
-bool ShapeGSF::CheckSewingEne() {
-    
-    int i = gSF_matrix->energyToBinY(sett->sewingEne);
-    if ( gSF[i].value1 * gSF[i].value2 == 0 ) 
-        return false;
-    else
-        return true;
-}
-
 // returns an interpolated value of gSF for the gamma ray energy ene
 std::vector <double> ShapeGSF::InterpolValue(double ene) {
     //first, find the closest gamma ray energy for which there is data on gSF
@@ -259,145 +249,72 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
     return result;
 }
 
+
 void ShapeGSF::DoInterpol() {
     if (sett->verbose)
         std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
     
-    //slope of the last two points
+    //slope of the actual two points
     double slope = 0;
     
-    //interpolate from interEne to lower energies
-      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i > (-1) ; i--) {
-        //do nothing for the first loop
-        if ( slope != 0 ) {
-            
-            //this is the interpolated value for gSF
-            double y_norm = ( gSF[i].egamma1 -gSF[i+1].egamma1 ) * slope  + gSF[i+1].value1;
-            if (gSF[i].value1 <= 0) {
-                //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value2 anymore, so the entire bin, and all following bins, are ignored
-                //erase all elements in gSF from current bin onwards
-                binRange[0] = i+2; //will not include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting lowest active bin to "<< i+2 <<std::endl;
-                break;
-            }
-            else if (gSF[i].value2 <= 0) {
-                //in this case, gSF[i].value1 could still be useful, but interpolation beyond this bin will not be useful, so all earlier bins will be ignored
-                gSF[i].value2 = 0; gSF[i].egamma2 = 0;
-                gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
-                gSF[i].value1 = y_norm;
-                //binRange[0] = i+1;//will include the current bin and terminate the interpolation
-                binRange[0] = i+2;//will NOT include the current bin and terminate the interpolation
-                if (sett->verbose > 1)
-                    std::cout <<"Setting lowest active bin to "<< i+1 <<std::endl;
-                break;
-            }
-            
-            gSF[i].value2 = gSF[i].value2 * y_norm / gSF[i].value1;
-            gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value1;
-            
-            gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
-            gSF[i].value1 = y_norm;
+    // find first pair with both gSF values not zero
+    int i_start = 0;
+    for (i_start = 0; i_start < gSF_matrix->GetYBins(); i_start++) {
+        if ( gSF[i_start].value1 > 0 && gSF[i_start].value2 >= 0)
+            break;
+    }
+    if (i_start == gSF_matrix->GetYBins() - 1 ) {
+        std::cout <<"No non-zero pairs of gSF values in this iteration!" <<std::endl;
+        return;
+    }
+    binRange[0] = i_start+1;
+    //interpolate from bin i_start+1 to higher energies; there is nothing to do for the first non-zero bin
     
+    for (int i = i_start + 1; i < gSF_matrix->GetYBins(); i++) {
+       
+        //this is the interpolated value for gSF
+        double y_norm = ( gSF[i].egamma2 -gSF[i-1].egamma2 ) * slope  + gSF[i-1].value2;
+        
+        if ( gSF[i].value1 <= 0 || gSF[i].value2 <= 0 ) {
+            //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value1 anymore, so the entire bin, and all following bins, are ignored
+            binRange[1] = i; //will not include the current bin
+            if (sett->verbose > 1)
+                std::cout <<"Setting number of active bins to "<< i <<std::endl;
+            break;
         }
         
-        //calculate slope for next iteration
-        
-          if (sett->verbose > 1) {
-              std::cout <<"Interpolation of bin " << i << std::endl;
-              std::cout <<"\nValues of gSF after interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
-              std::cout <<"\nValues of gSF after interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
-          }
-          if (slope == 0)
-            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
         else {
-            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-            //slope of previous bin
-            double slope_prev = ( gSF[i+1].value1-gSF[i+1].value2 ) / ( gSF[i+1].egamma1 - gSF[i+1].egamma2 );
+            //both gSF values are > 0
+            gSF[i].value1 = gSF[i].value1 * y_norm / gSF[i].value2;
+            gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value2;
+            gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value2;
+            gSF[i].value2 = y_norm;
+        }
+        
         if (sett->verbose > 1)
             std::cout << "\nSlope for interpolation:" <<slope<<endl;
         
-        // do average interpolation
-        //dy is the difference in gSF between gSF[i+1].value1 and the point along the line, connecting the pair gSF[i], at the same energy gSF[i+1].egamma1; the idea is to shift gSF[i] by dy/2, which we call the "average" interpolation
-            double scale_avg = 1;
-            scale_avg = ( 2 * gSF[i+1].value2 + ( (gSF[i].egamma1 - gSF[i+1].egamma2) * slope_prev ) ) / ( 2 * gSF[i].value1 - ( (gSF[i].egamma1 - gSF[i+1].egamma2) * slope ) );
-            
-            gSF[i].value1 = gSF[i].value1 * scale_avg;
-            gSF[i].value2 = gSF[i].value2 * scale_avg;
-            
-            if (sett->verbose > 1) {
-                std::cout <<"Calculating average interpolation " << std::endl;
-                std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
-                std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
-            }
-          }
-    }
-    
-    //interpolate from interEne to higher energies
-    slope = 0;
-      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i < gSF_matrix->GetYBins(); i++) {
-        //do nothing for the first loop
-        if ( slope != 0 ) {
-            
-            //this is the interpolated value for gSF
-            double y_norm = ( gSF[i].egamma2 -gSF[i-1].egamma2 ) * slope  + gSF[i-1].value2;
-            
-            if (gSF[i].value2 <= 0) {
-                //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value1 anymore, so the entire bin, and all following bins, are ignored
-                binRange[1] = i; //will not include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting number of active bins to "<< i <<std::endl;
-                break;
-            }
-            else if (gSF[i].value1 <= 0) {
-                //in this case, gSF[i].value2 could still be useful, but interpolation beyond this bin will not be useful, so all following bins will be ignored
-                gSF[i].value1 = 0; gSF[i].egamma1 = 0;
-                gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value2;
-                gSF[i].value2 = y_norm;
-                //binRange[1] = i+1; //will include the current bin
-                binRange[1] = i; //will NOT include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting number of active bins to "<< i+1 <<std::endl;
-                break;
-            }
-            else {
-                //both gSF values are > 0
-                gSF[i].value1 = gSF[i].value1 * y_norm / gSF[i].value2;
-                gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value2;
-                gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value2;
-                gSF[i].value2 = y_norm;
-                
-            }
-            
-            if (sett->verbose > 1)
-                std::cout << "\nSlope for interpolation:" <<slope<<endl;
+        if (sett->verbose > 1) {
+            std::cout <<"Interpolation of bin " << i << std::endl;
+            std::cout <<"\nValues of gSF after interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+            std::cout <<"\nValues of gSF after interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
         }
-          
-          if (sett->verbose > 1) {
-              std::cout <<"Interpolation of bin " << i << std::endl;
-              std::cout <<"\nValues of gSF after interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
-              std::cout <<"\nValues of gSF after interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
-          }
-          
-        if (slope == 0)
-            slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-        else {
-              slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-            //slope of previous bin
-            double slope_prev = ( gSF[i-1].value1-gSF[i-1].value2 ) / ( gSF[i-1].egamma1 - gSF[i-1].egamma2 );
-            
-        // do average interpolation
-       
+       //slope of actual pair
+        slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
+        //slope of previous pair
+        double slope_prev = ( gSF[i-1].value1-gSF[i-1].value2 ) / ( gSF[i-1].egamma1 - gSF[i-1].egamma2 );
+        
+        // do average interpolation; this scaling makes the interpolation independent of the direction
+        
         double scale_avg = 1;
         scale_avg = ( 2 * gSF[i-1].value1 - ( (gSF[i-1].egamma1 - gSF[i].egamma2) * slope_prev ) ) / ( 2 * gSF[i].value2 + ( (gSF[i-1].egamma1 - gSF[i].egamma2) * slope ) );
         
         gSF[i].value1 = gSF[i].value1 * scale_avg;
         gSF[i].value2 = gSF[i].value2 * scale_avg;
         if (sett->verbose > 1) {
-                std::cout <<"Calculating average interpolation " << std::endl;
-                std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
-                std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
-            }
+            std::cout <<"Calculating average interpolation " << std::endl;
+            std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+            std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
         }
     }
 }
