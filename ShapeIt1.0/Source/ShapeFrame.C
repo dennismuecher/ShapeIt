@@ -227,7 +227,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     for (int i = 0 ; i < 3; i++)
         fR[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
 
-    //show logo
+    //show ShapeIt Button
     TGPictureButton *fPicture = new TGPictureButton(f1,
                                                     gClient->GetPicture("logo2.jpg"), 20);
     fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
@@ -930,12 +930,13 @@ void ShapeFrame::MatrixSelect(Int_t mnr)
     fCanvas->cd();
     fCanvas->Modified();
     fCanvas->Update();
+    std::cout <<"selected(int)!"<<std::endl;
 }
 
 int ShapeFrame::MatrixSelector()
 {
 
-    int length_max = 0;             //maximum length of string; used to resize selector
+    int length_max = 15;             //maximum length of string; used to resize selector
     std::vector <std::string> s;
      s.clear();
     s = matrix->GetMatrixName();
@@ -954,8 +955,8 @@ int ShapeFrame::MatrixSelector()
 		   if ( s[i] == sett->matrixName )
 			   index = i+1;
         }   
-        if (length_max > 0)
-            fMatrix->Resize(length_max*8,20);
+        if (length_max > 15)
+          fMatrix->Resize(length_max*8,20);
         
         fMatrix->Connect("Selected(Int_t)", "ShapeFrame", this, "MatrixSelect(Int_t)");
     }

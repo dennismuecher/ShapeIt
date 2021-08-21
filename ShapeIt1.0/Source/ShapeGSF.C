@@ -523,7 +523,7 @@ void ShapeGSF::gSF_Collect() {
         
         s.egamma = gSF[binRange[0]+i-1].egamma1;
         s.value = gSF[binRange[0]+i-1].value1;
-        //adding a 10% systematic uncertainty due to fluctuations
+        //adding a 15% systematic uncertainty due to fluctuations
         //this should not be hard-coded!!
         s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.15 * s.value );
 		s.peakID = 1;
