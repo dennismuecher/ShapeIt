@@ -147,20 +147,29 @@ void ShapeGSF_new::FillgSF() {
 
 //creates the graph of all gSF data; for this, first interpolate the individual runs, if requested by user; then add them to a multigraph
 TMultiGraph* ShapeGSF_new::getMultGraph() {
+    
     for (int i = 0; i < levGraph.size(); i++) {
-       
-        levGraph_1[i]->SetMarkerStyle(22);
-        levGraph_1[i]->SetMarkerSize(2);
-        levGraph_1[i]->SetMarkerColor(6);
-        levGraph_2[i]->SetMarkerStyle(22);
-        levGraph_2[i]->SetMarkerSize(2);
+    //create temporary graphs to apply scales and transformations; this way the original gSF values remain unchanged
+        TGraphErrors *m_lev1 = levGraph_1[i];
+        TGraphErrors *m_lev2 = levGraph_2[i];
+        m_lev1->SetMarkerStyle(22);
+        m_lev1->SetMarkerSize(2);
+        m_lev1->SetMarkerColor(6);
+        m_lev2->SetMarkerStyle(22);
+        m_lev2->SetMarkerSize(2);
         if (m_sett->colour)
-            levGraph_2[i]->SetMarkerColor(7);
+            m_lev2->SetMarkerColor(7);
         else
-            levGraph_2[i]->SetMarkerColor(6);
-         
-        multGraph->Add(levGraph_1[i],"P");
-        multGraph->Add(levGraph_2[i],"P");
+            m_lev2->SetMarkerColor(6);
+        
+        for (int i = 0; i < m_lev1->GetN(); i++) {
+            m_lev1->GetY()[i] *= m_sett->gSF_norm;
+            m_lev1->GetEY()[i] *= m_sett->gSF_norm;
+            m_lev2->GetY()[i] *= m_sett->gSF_norm;
+            m_lev2->GetEY()[i] *= m_sett->gSF_norm;
+        }
+        multGraph->Add(m_lev1,"P");
+        multGraph->Add(m_lev2,"P");
 
     }
     //add literature values to graph
