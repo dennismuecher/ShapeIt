@@ -249,6 +249,10 @@ std::vector <double> ShapeGSF::InterpolValue(double ene) {
     return result;
 }
 
+// returns an interpolated value of gSF for the gamma ray energy ene
+std::vector <double> ShapeGSF::InterpolValue(double ene) {
+    return 1;
+}
 
 void ShapeGSF::DoInterpol() {
     if (sett->verbose)

@@ -1,154 +1,248 @@
-#include "../Include/ShapeGSF.h"
-#include <algorithm>
+#include "../Include/ShapeGSF_new.h"
+//#include <algorithm>
 
 //constructor using setting file and a matrix
-ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
+ShapeGSF_new::ShapeGSF_new(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
 {
-    nOfLevels = 2;
-    levGraph[0] = new TGraph();
-    levGraph[1] = new TGraph();
-    mergeGraph = new TGraph();
+    //levGraph_1[0] = new TGraphErrors();
+    //levGraph_2[0] = new TGraphErrors();
+    multGraph = new TMultiGraph();
+    multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
+    litGraph = new TGraphErrors();
 }
 
-//constructor using setting file; in this case use literature values to fill levGraph[0]
-ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
+//reads the literature values for gSF
+void ShapeGSF_new::ReadLit()
 {
-    nOfLevels = 1;
-    levGraph[0] = new TGraph();
-    mergeGraph = new TGraph();
-}
-
-
-//scales the gSF pair at position i to the one at position i-1
-void ShapeGSF::SewNext(Int_t i) {
-    if (i < levGraph[0]->GetN()-1) {
-        double scale = levGraph[1]->GetPointY(i) / levGraph[0]
+    //read file data into gSF
+    if (m_sett->osloFileName == "") {
+        std::cout << "No Literature File loaded!"<<std::endl;
+        return NULL;
     }
+    
+    if (m_sett->verbose)
+        std::cout <<"\nReading OSLO DATA... " <<endl;
+    ifstream inp;
+    inp.open(m_sett->osloFileName.c_str());
+    if (inp.is_open() ) {
         
+        double e_gamma;
+        double oslo_gSF_high, oslo_gSF_low;
+        
+        while ( !inp.eof() ) {
+            inp >> e_gamma >> oslo_gSF_high >>oslo_gSF_low;
+            litGraph->SetPoint(litGraph->GetN(), e_gamma,
+                                    ( oslo_gSF_high + oslo_gSF_low ) / 2 );
+            
+            litGraph->SetPointError(litGraph->GetN() - 1, 0,
+                                    ( oslo_gSF_high - oslo_gSF_low ) / 2 );
+        }
+        if (m_sett->verbose)
+            litGraph->Print();
+    }
+}
+
+//merges levGraph_1 and levGraph_2 into levGraph and sorts by energies
+/*void ShapeGSF_new::Merge() {
+    
+    TObjArray *mergeGraph = new TObjArray(2);
+    mergeGraph->Add(levGraph_1[j]);
+    mergeGraph->Add(levGraph_2[j]);
+    std::cout <<"Printing results for levGraph 1: " <<std::endl;
+    levGraph_1[j]->Print();
+    std::cout <<"Printing results for levGraph 2: " <<std::endl;
+    levGraph_2[j]->Print();
+    levGraph[j]->Merge(mergeGraph);
+    std::cout <<"Printing results for levGraph merge: " <<std::endl;
+    levGraph[j]->Print();
+    
+    //sort
+    levGraph[j]->Sort();
+}*/
+
+//fills the actual vector of levGraph_1 and levGraph_2 with values; also fills levGraph
+void ShapeGSF_new::FillgSF() {
+   
+    m_matrix->Integrate();
+    m_matrix->IntegrateBg();
+    m_matrix->IntegrateSquare();
+    m_matrix->IntegrateCube();
+    
+    //if autofit or background subtraction is set, perform autofit using Gauss
+    if (m_sett->mode == 2 || m_sett->doBackground)
+        m_matrix->FitIntegral();
+    
+    double elevel1 = ( m_sett->levEne[0] + m_sett->levEne[1] ) / 2;
+    double elevel2 = ( m_sett->levEne[2] + m_sett->levEne[3] ) / 2;
+    double egamma1, egamma2;
+    double gSF1, dgSF1, gSF2, dgSF2;
+    
+    //create new vector element; j is the the index of the first empty container, i.e. "Update" will fill a new vector container
+    
+    levGraph.push_back(new TGraphErrors());
+    levGraph_1.push_back(new TGraphErrors());
+    levGraph_2.push_back(new TGraphErrors());
+    int j = levGraph_1.size() - 1;
+    
+    std::cout <<"levGraph_1.size(): " << levGraph_1.size() << std::endl;
+    
+    for (int i = 0; i < m_matrix->integral1Cube.size(); i++ ) {
+
+        //if any of the two peak areas is below minCounts, skip this entire gSF pair
+        if ( getBgRatio(i, 1) * m_matrix->integral1[i] < m_sett->minCounts ||
+             getBgRatio(i, 2) * m_matrix->integral2[i] < m_sett->minCounts)
+            continue;
+
+        //calculating the average E_g, weighted by gSF, i.e. egamma_avg = SUM (E_g*gSF) / SUM(gSF). E_g*gSF is contained in the gSFSquare matrix
+        egamma1 = m_matrix->integral1Square[i] / m_matrix->integral1Cube[i];
+        egamma2 = m_matrix->integral2Square[i] / m_matrix->integral2Cube[i];
+
+        //calculate gamma ray strength
+        gSF1 = getBgRatio(i, 1) * m_matrix->integral1Cube[i] * m_sett->getEffCor(egamma1, 1);
+        dgSF1 = TMath::Power(1./m_matrix->integral1[i], 0.5) * gSF1;
+
+        gSF2 = getBgRatio(i, 2) * m_matrix->integral2Cube[i] * m_sett->getEffCor(egamma2, 2);
+        dgSF2 = TMath::Power(1./m_matrix->integral2[i], 0.5) * gSF2;
+
+        //recalculate gSF in case autofit is activated
+        if (m_sett->mode == 2 && m_sett->doBackground) {
+            gSF1 = m_sett->getEffCor(egamma1, 1) * m_matrix->fit_integral1Net[i] * m_matrix->integral1Cube[i]  / m_matrix->integral1[i];
+            
+            gSF2 = m_sett->getEffCor(egamma2, 2) * m_matrix->fit_integral2Net[i] * m_matrix->integral2Cube[i] / m_matrix->integral2[i];
+                
+            if (m_matrix->fit_integral1Net[i] < 0 || m_matrix->fit_integral2Net[i] < 0) {
+                    std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
+                continue;
+            }
+        }
+        //autofit without background
+        else if( m_sett->mode == 2 && !m_sett->doBackground) {
+            gSF1 = m_sett->getEffCor(egamma1, 1) * m_matrix->fit_integral1[i] * m_matrix->integral1Cube[i]  / m_matrix->integral1[i];
+            
+            gSF2 = m_sett->getEffCor(egamma2, 2) * m_matrix->fit_integral2[i] * m_matrix->integral2Cube[i]  / m_matrix->integral2[i];
+            
+            if (m_matrix->fit_integral1[i] < 0 || m_matrix->fit_integral2[i] < 0) {
+                std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
+                continue;
+            }
+        }
+        
+        //filling results into levGraph vector;
+        
+        levGraph_1[j]->SetPoint(levGraph_1[j]->GetN(), egamma1, gSF1);
+        levGraph_1[j]->SetPointError(levGraph_1[j]->GetN()-1, 0, dgSF1);
+        levGraph_2[j]->SetPoint(levGraph_2[j]->GetN(), egamma2, gSF2);
+        levGraph_2[j]->SetPointError(levGraph_2[j]->GetN()-1, 0, dgSF2);
+
+        if (m_sett->verbose) {
+            std::cout <<"Bin: " <<i+1<<std::endl;
+            std::cout <<"energies: " <<egamma1 << " " << egamma2 <<std::endl;
+            std::cout <<"gSF1: " <<gSF1 << "+- " << dgSF1 <<std::endl;
+            std::cout <<"gSF2: " <<gSF2 << "+- " << dgSF2 <<std::endl;
+        }
+    }
+    
+}
+
+//creates the graph of all gSF data; for this, first interpolate the individual runs, if requested by user; then add them to a multigraph
+TMultiGraph* ShapeGSF_new::getMultGraph() {
+    for (int i = 0; i < levGraph.size(); i++) {
+        if (m_sett->doInterpol)
+            DoInterpol(i);
+        levGraph_1[i]->SetMarkerStyle(22);
+        levGraph_1[i]->SetMarkerSize(2);
+        levGraph_1[i]->SetMarkerColor(6);
+        levGraph_2[i]->SetMarkerStyle(22);
+        levGraph_2[i]->SetMarkerSize(2);
+        if (m_sett->colour)
+            levGraph_2[i]->SetMarkerColor(7);
+        else
+            levGraph_2[i]->SetMarkerColor(6);
+         
+        multGraph->Add(levGraph_1[i]);
+        multGraph->Add(levGraph_2[i]);
+
+    }
+    //add literature values to graph
+    if (m_sett->doOslo) {
+        ReadLit();
+        multGraph->Add(litGraph,"3A");
+    }
+    
+    return ( multGraph );
 }
 
 
+double ShapeGSF_new::Slope(int i) {
+    int j = levGraph_1.size()-1;
+    return ( levGraph_1[j]->GetPointY(i) - levGraph_2[j]->GetPointY(i) ) /
+    ( levGraph_1[j]->GetPointX(i) - levGraph_2[j]->GetPointX(i) );
+}
 
-void ShapeGSF::DoInterpol() {
-    if (sett->verbose)
+void ShapeGSF_new::DoInterpol(int m_i) {
+    if (m_sett->verbose)
         std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
     
-    //slope of the last two points
-    double slope = 0;
-    
-    //interpolate from interEne to lower energies
-      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i > (-1) ; i--) {
-        //do nothing for the first loop
-        if ( slope != 0 ) {
-            
-            //this is the interpolated value for gSF
-            double y_norm = ( gSF[i].egamma1 -gSF[i+1].egamma1 ) * slope  + gSF[i+1].value1;
-            if (gSF[i].value1 <= 0) {
-                //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value2 anymore, so the entire bin, and all following bins, are ignored
-                //erase all elements in gSF from current bin onwards
-                binRange[0] = i+2; //will not include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting lowest active bin to "<< i+2 <<std::endl;
-                break;
-            }
-            else if (gSF[i].value2 <= 0) {
-                //in this case, gSF[i].value1 could still be useful, but interpolation beyond this bin will not be useful, so all earlier bins will be ignored
-                gSF[i].value2 = 0; gSF[i].egamma2 = 0;
-                gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
-                gSF[i].value1 = y_norm;
-                //binRange[0] = i+1;//will include the current bin and terminate the interpolation
-                binRange[0] = i+2;//will NOT include the current bin and terminate the interpolation
-                if (sett->verbose > 1)
-                    std::cout <<"Setting lowest active bin to "<< i+1 <<std::endl;
-                break;
-            }
-            
-            gSF[i].value2 = gSF[i].value2 * y_norm / gSF[i].value1;
-            gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value1;
-            
-            gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value1;
-            gSF[i].value1 = y_norm;
-            
-            if (sett->verbose > 1)
-                std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
-        }
-        
-        //calculate slope for next iteration
-      
-        slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-        
-        if (sett->verbose > 1)
-            std::cout << "\nSlope for interpolation:" <<slope<<endl;
+    int j = m_i;
+    int k = levGraph_1[j]->GetN();
+    //if there is only one pair of non-zero gSF values, don't do anything
+    if (k < 2) {
+        std::cout <<"Nothing to interpolate in this iteration!" <<std::endl;
+        return;
     }
     
-    //interpolate from interEne to higher energies
-    slope = 0;
-      for (int i = gSF_matrix->energyToBinY(sett->sewingEne); i < gSF_matrix->GetYBins(); i++) {
-        //do nothing for the first loop
-        if ( slope != 0 ) {
-            
-            //this is the interpolated value for gSF
-            double y_norm = ( gSF[i].egamma2 -gSF[i-1].egamma2 ) * slope  + gSF[i-1].value2;
-            
-            if (gSF[i].value2 <= 0) {
-                //in case the count rates are zero (or neagtive) the gSF value could still be defined through interpolation, but its error bar would not be defined anymore. One also cannot interpolate gSF[i].value1 anymore, so the entire bin, and all following bins, are ignored
-                binRange[1] = i; //will not include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting number of active bins to "<< i <<std::endl;
-                break;
-            }
-            else if (gSF[i].value1 <= 0) {
-                //in this case, gSF[i].value2 could still be useful, but interpolation beyond this bin will not be useful, so all following bins will be ignored
-                gSF[i].value1 = 0; gSF[i].egamma1 = 0;
-                gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value2;
-                gSF[i].value2 = y_norm;
-                //binRange[1] = i+1; //will include the current bin
-                binRange[1] = i; //will NOT include the current bin
-                if (sett->verbose > 1)
-                    std::cout <<"Setting number of active bins to "<< i+1 <<std::endl;
-                break;
-            }
-            else {
-                //both gSF values are > 0
-                gSF[i].value1 = gSF[i].value1 * y_norm / gSF[i].value2;
-                gSF[i].dvalue1 = gSF[i].dvalue1 * y_norm / gSF[i].value2;
-                gSF[i].dvalue2 = gSF[i].dvalue2 * y_norm / gSF[i].value2;
-                gSF[i].value2 = y_norm;
-                
-            }
-            
-            if (sett->verbose > 1)
-                std::cout << "\nSlope for interpolation:" <<slope<<endl;
-            if (sett->verbose > 1)
-                std::cout <<"\nValues of gSF after interpolation: "<< gSF[i].value1 <<" "<< gSF[i].value2 << endl;
+    //interpolate from first bin to higher energies; there is nothing to do for the first bin
+    for (int i = 1; i < k; i++) {
+        
+        //this is the interpolated value for gSF
+        double gSF2 = ( levGraph_2[j]->GetPointX(i) - levGraph_2[j]->GetPointX(i-1)) * Slope(i-1)  + levGraph_2[j]->GetPointY(i-1);
+        double gSF1 = levGraph_1[j]->GetPointY(i) * gSF2 / levGraph_2[j]->GetPointY(i);
+        double dgSF1 = levGraph_1[j]->GetEY()[i] * gSF2 / levGraph_2[j]->GetPointY(i);
+        double dgSF2 = levGraph_2[j]->GetEY()[i] * gSF2 / levGraph_2[j]->GetPointY(i);
+    
+       if (m_sett->verbose > 1) {
+            std::cout <<"Interpolation of bin " << i << std::endl;
+            std::cout <<"\nValues of gSF after interpolation, peak 1: "<< levGraph_1[j]->GetPointX(i) <<" "<< gSF1 << endl;
+            std::cout <<"\nValues of gSF after interpolation, peak 2: "<< levGraph_2[j]->GetPointX(i) <<" "<< gSF2 << endl;
         }
-        //calculate slope for next iteration
-        slope = ( gSF[i].value1-gSF[i].value2 ) / ( gSF[i].egamma1 - gSF[i].egamma2 );
-
+       
+        
+        // do average interpolation; this scaling makes the interpolation independent of the direction
+        
+        double scale_avg = ( 2 * levGraph_1[j]->GetPointY(i-1) - ( ( levGraph_1[j]->GetPointX(i-1) - levGraph_2[j]->GetPointX(i)) * Slope(i-1) ) ) / ( 2 * levGraph_2[j]->GetPointY(i) + ( (levGraph_1[j]->GetPointX(i-1) - levGraph_2[j]->GetPointX(i)) * Slope(i) ) );
+        
+        levGraph_1[j]->SetPoint(i, levGraph_1[j]->GetPointX(i), levGraph_1[j]->GetPointY(i) * scale_avg );
+        levGraph_2[j]->SetPoint(i, levGraph_2[j]->GetPointX(i), levGraph_2[j]->GetPointY(i) * scale_avg );
+        
+        /*if (sett->verbose > 1) {
+           std::cout <<"Calculating average interpolation " << std::endl;
+          std::cout <<"\nValues of gSF after average interpolation, peak 1: "<< gSF[i].egamma1 <<" "<< gSF[i].value1 << endl;
+          std::cout <<"\nValues of gSF after average interpolation, peak 2: "<< gSF[i].egamma2 <<" "<< gSF[i].value2 << endl;
+        }*/
     }
 }
 
 //calculates the ratio of Peak to background for bin i
 
-double ShapeGSF::getBgRatio(int bin, int level) {
+double ShapeGSF_new::getBgRatio(int bin, int level) {
     
-    if (!sett->doBackground)
+    if (!m_sett->doBackground)
         return 1;
     
     if (level == 1 ) {
         
-        double peak = gSF_matrix->integral1[bin];
-        double backgr = gSF_matrix->fit_integral1Bg[bin];
+        double peak = m_matrix->integral1[bin];
+        double backgr = m_matrix->fit_integral1Bg[bin];
         if (peak > 0)
             return (peak - backgr) / peak;
         else
             return 0;
     }
     
-    if (level == 2 ) {
+    else if (level == 2 ) {
         
-        double peak = gSF_matrix->integral2[bin];
-        double backgr =gSF_matrix->fit_integral2Bg[bin];
+        double peak = m_matrix->integral2[bin];
+        double backgr =m_matrix->fit_integral2Bg[bin];
         if (peak > 0)
             return (peak - backgr) / peak;
         else
@@ -158,151 +252,69 @@ double ShapeGSF::getBgRatio(int bin, int level) {
 }
 
 
-void ShapeGSF::FillgSF() {
-    
-    gSF_matrix->Integrate();
-    gSF_matrix->IntegrateBg();
-    gSF_matrix->IntegrateSquare();
-    gSF_matrix->IntegrateCube();
-    
-    //if autofit or background subtraction is set, perform autofit using Gauss
-    if (sett->mode == 2 || sett->doBackground)
-        gSF_matrix->FitIntegral();
-    
-    double elevel1 = ( sett->levEne[0] + sett->levEne[1] ) / 2;
-    double elevel2 = ( sett->levEne[2] + sett->levEne[3] ) / 2;
-    double egamma1, egamma2;
-    
-    for (int i = 0; i < gSF_matrix->integral1Cube.size(); i++ ) {
-        
-        double egamma = 0;
-        double value = 0;
-        double dvalue = 0;
-        if (getBgRatio(i, 1) * gSF_matrix->integral1[i] < sett->minCounts || gSF_matrix->integral1[i] == 0 ) {
-                
-            egamma = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize()  - elevel1;
-            value = 0;
-            dvalue = 0;
-        }
-        else {
-			
-            //calculate E_gamma
-            //this is the better way of calculating E_gamma by calculating the average E_g, weighted by gSF, i.e. egamma_avg = SUM (E_g*gSF) / SUM(gSF). E_g*gSF is contained in the gSFSquare matrix
-            egamma = gSF_matrix->integral1Square[i] / gSF_matrix->integral1Cube[i];
-            //this calculates the average E_gamma just using the middle of each excitation bin; not the preferred way as it doesn't take into account of feeding as a function iof excitation energy
-            //gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
-            
-            //calculate gamma ray strength
-            value =  getBgRatio(i, 1) * gSF_matrix->integral1Cube[i];
-            dvalue = TMath::Power(1./gSF_matrix->integral1[i], 0.5) * value;
-            
-            //recalculate gSF in case autofit is activated
-            if (sett->mode == 2 && sett->doBackground) {
-                value = gSF_matrix->fit_integral1Net[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
-                
-                if (gSF_matrix->fit_integral1Net[i] < 0) {
-                    std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
-                    value = 0;
-                }
-            }
-            else if( sett->mode == 2 && !sett->doBackground) {
-                value = gSF_matrix->fit_integral1[i] * gSF_matrix->integral1Cube[i]  / gSF_matrix->integral1[i];
-                if (gSF_matrix->fit_integral1[i] < 0) {
-                    std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
-                    value = 0;
-                }
-            }
-        }
-        
-        levGraph[0]->SetPoint(i, egamma, value); MupP2Fupp
-        
-        levGraph[0]->SetPointErrors(i, 0, dvalue);
-        
-        if (getBgRatio(i, 2) * gSF_matrix->integral2[i] < sett->minCounts || gSF_matrix->integral2[i] == 0 ) {
+//returns a graph displaying the peak area ratios for level 1 and level 2 for each bin, taking into account the actual settings (interation autofit, background subtraction)
 
-            egamma = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize() - elevel2;
-            value = 0;
-            dvalue = 0;
-        }
-        else {
-            
-            //calculate E_gamma
-            //this is the better way of calculating E_gamma by calculating the average E_g, weighted by gSF, i.e. egamma_avg = SUM (E_g*gSF) / SUM(gSF). E_g*gSF is contained in the gSFSquare matrix
-            egamma = gSF_matrix->integral2Square[i] / gSF_matrix->integral2Cube[i];
-
-            //this calculates the average E_gamma just using the middle of each excitation bin; not the preferred way as it doesn't take into account of feeding as a function iof excitation energy
-            //gSF_t.egamma1 = ( gSF_matrix->ybins[i] + gSF_matrix->ybins[i+1] ) / 2 - elevel1;
-            
-            //calculate gamma ray strength
-            
-            value = getBgRatio(i, 2) * gSF_matrix->integral2Cube[i] * sett->getEffCor(egamma);
-            dvalue = TMath::Power(1./gSF_matrix->integral2[i], 0.5) * value;
-            
-            //recalculate gSF in case autofit is activated
-            
-            if (sett->mode == 2 && sett->doBackground) {
-                
-                //gSF_t.value2 = sett->eff_corr * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i]  / gSF_matrix->integral2[i];
-                value = sett->getEffCor(egamma) * gSF_matrix->fit_integral2Net[i] * gSF_matrix->integral2Cube[i] / gSF_matrix->integral2[i];
-                if (gSF_matrix->fit_integral2Net[i] < 0) {
-                    std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
-                    value = 0;
-                }
-            }
-            else if (sett->mode == 2 && !sett->doBackground) {
-                value = sett->getEffCor(egamma) * gSF_matrix->fit_integral2[i] * gSF_matrix->integral2Cube[i]  / gSF_matrix->integral2[i];
-                if (gSF_matrix->fit_integral2[i] < 0) {
-                    std::cout <<"Fit result smaller than zero, skipping this event" <<std::endl;
-                    value= 0;
-                }
-            }
-        }
-        
-        levGraph[1]->SetPoint(i, egamma, value, dvalue);
-        levGraph[1]->SetPointErrors(i, 0, dvalue);
-
-        if (sett->verbose) {
-            std::cout <<"Bin: " <<i+1<<std::endl;
-            std::cout <<"energies: " <<levGraph[0]->GetPointX(i) << " " << levGraph[1]->GetPointX(i) <<std::endl;
-            std::cout <<"gSF1: " <<levGraph[0]->GetPointY(i) << "+- " << levGraph[0]->GetPointEY(i) <<std::endl;
-            std::cout <<"gSF2: " <<levGraph[1]->GetPointY(i) << "+- " << levGraph[1]->GetPointEY(i) <<std::endl;
-
-        }
+/*TGraph* ShapeGSF::getRatioGraph() {
+    double x[p_ratio.size()];
+    double y[p_ratio.size()];
+   
+    for (int i =0; i < p_ratio.size(); i++) {
+        x[i] = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize();
+        y[i] = p_ratio[i];
     }
-}
+    TGraph *T = new TGraph(p_ratio.size(), x, y);
+    return T;
+}*/
 
-void ShapeGSF::GetMergeGraph() {
-    for (int i = 0; i < levGraph[0]->GetN(); i++) {
-        for (int l = 0 ; l < nOfLevels; l++) {
-            mergeGraph->SetPoint(i, levGraph[l]->GetPointX(i), levGraph[l]->GetPointY(i) );
-            mergeGraph->SetPointErrors(i, levGraph[l]->GetPointEX(i), levGraph[l]->GetPointEY(i) );
-        }
+
+/*//collects the values of gSF and egamma in a vector
+void ShapeGSF::gSF_Collect() {
+    
+    int nOfActiveBins = (binRange[1] - binRange[0] +1);
+    gSF_sor s;
+    for (int i = 0; i < nOfActiveBins ; i++ ) {
+        
+        s.egamma = gSF[binRange[0]+i-1].egamma1;
+        s.value = gSF[binRange[0]+i-1].value1;
+        //adding a 15% systematic uncertainty due to fluctuations
+        //this should not be hard-coded!!
+        s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.15 * s.value );
+        s.peakID = 1;
+        gSF_sort.push_back(s);
+        
+        s.egamma = gSF[binRange[0]+i-1].egamma2;
+        s.value = gSF[binRange[0]+i-1].value2;
+        //adding a 10% systematic uncertainty due to fluctuations
+        s.dvalue = gSF[binRange[0]+i-1].dvalue2 + ( 0.15 * s.value );
+        s.peakID = 2;
+        gSF_sort.push_back(s);
     }
-}
+}*/
+
+
 
 //prints the gSF values, sorted for egamma
-void ShapeGSF::gSF_Print() {
-    
+void ShapeGSF_new::Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
-    mergeGraph()->Sort();
-    for (int i = 0; i < mergeGraph->GetN(); i++ )
-        std::cout << mergeGraph->GetPointX(i) <<"     "<< sett->gSF_norm * ( mergeGraph->GetPointY(i) + mergeGraph->GetPointEY(i) ) <<"     " << sett->gSF_norm *  (mergeGraph->GetPointY(i) - mergeGraph->GetPointEY(i) ) << std::endl;
+    int j = levGraph_1.size()-1;
+    levGraph_1[j]->Print();
+    levGraph_2[j]->Print();
 }
 
 //transforms all gSF values via B*exp(alpha E_gamma)
-void ShapeGSF::Transform(double B_t, double alpha_t) {
+void ShapeGSF_new::Transform(double B_t, double alpha_t) {
     
     //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
-    for (int i = 0; i < gSF_sort.size() ; i++ ) {
+   /* for (int i = 0; i < gSF_sort.size() ; i++ ) {
         gSF_sort[i].value =  B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].value;
         gSF_sort[i].dvalue = B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].dvalue;
     }
     B = B_t;
-    alpha = alpha_t;
+    alpha = alpha_t;*/
 }
 
 //provides a plot of gSF read from a file
-TGraphErrors* ShapeGSF::plotLit() {
+/*TGraphErrors* ShapeGSF::plotLit() {
     
     int nOfPoints = gSF_sort.size();
     
@@ -319,84 +331,26 @@ TGraphErrors* ShapeGSF::plotLit() {
     lit_data->SetFillColor(4);
     lit_data->SetFillStyle(3010);
     return lit_data;
-}
+}*/
 
-
-//creats TGraphError using the sorted data and drawing option for plotitng a band
-TMultiGraph* ShapeGSF::gSF_SortHisto(bool colour) {
-    std::sort(gSF_sort.begin(), gSF_sort.end(), compare);
-    int nOfPoints = gSF_sort.size();
+void ShapeGSF_new::Scale(double factor){
+    int j = levGraph_1.size()-1;
     
-	//nOfPoints must always be an even number, or something is terribly wrong
-	
-	if (nOfPoints % 2 != 0) {
-		std::cout <<"This is a bug! The number of gSF data points is not an even number! " <<std::endl;
-		exit(0);
-	}
-	
-	TMultiGraph *mg = new TMultiGraph();
-	
-	nOfPoints = nOfPoints / 2;
-		
-	double x1[nOfPoints], y1[nOfPoints];
-	double dx1[nOfPoints], dy1[nOfPoints];
-    	
-	double x2[nOfPoints], y2[nOfPoints];
-	double dx2[nOfPoints], dy2[nOfPoints];
-    int id_1 = 0;
-	int id_2 = 0;	
-	for (int i = 0; i < 2*nOfPoints ; i++ ) {
-        	
-		if ( gSF_sort[i].peakID == 1 ) {
-			x1[id_1] = gSF_sort[i].egamma;
-			y1[id_1] = gSF_sort[i].value * sett->gSF_norm;
-			dx1[id_1] = 1;
-			dy1[id_1] = gSF_sort[i].dvalue * sett->gSF_norm;
-			id_1++;
-		}
-		else {
-			x2[id_2] = gSF_sort[i].egamma;
-			y2[id_2] = gSF_sort[i].value * sett->gSF_norm;
-			dx2[id_2] = 1;
-			dy2[id_2] = gSF_sort[i].dvalue * sett->gSF_norm;
-			id_2++;
-		}
-	}	
-	TGraphErrors *gSFPlot_1 = new TGraphErrors(nOfPoints,x1,y1,dx1,dy1);
-    gSFPlot_1->SetMarkerStyle(22);
-    gSFPlot_1->SetMarkerSize(2);
-    gSFPlot_1->SetMarkerColor(6);
-	
-	mg->Add(gSFPlot_1,"P");
-	 
-  	TGraphErrors *gSFPlot_2 = new TGraphErrors(nOfPoints,x2,y2,dx2,dy2);
-    gSFPlot_2->SetMarkerStyle(22);
-    gSFPlot_2->SetMarkerSize(2);
-    if (colour) 
-		gSFPlot_2->SetMarkerColor(7);
-	else
-		gSFPlot_2->SetMarkerColor(6);
-    mg->Add(gSFPlot_2,"P");
-	
-	return mg;
-}
-
-//scales the sorted vector of gSF
-void ShapeGSF::ScaleSort(double factor){
-    
-    for (int i = 0; i < gSF_sort.size(); i++) {
-        gSF_sort[i].value = gSF_sort[i].value * factor;
-        gSF_sort[i].dvalue = gSF_sort[i].dvalue * factor;
+    for (int i = 0; i < levGraph_1[j]->GetN(); i++) {
+        levGraph_1[j]->GetY()[i] *= factor;
+        levGraph_2[j]->GetY()[i] *= factor;
+        levGraph_1[j]->GetEY()[i] *= factor;
+        levGraph_2[j]->GetEY()[i] *= factor;
     }
 }
 
-void ShapeGSF::Scale(double factor){
-    
-    for (int i = 0; i < gSF_matrix->GetYBins(); i++) {
-        gSF[i].value1 = gSF[i].value1 * factor;
-        gSF[i].value2 = gSF[i].value2 * factor;
-        gSF[i].dvalue1 = gSF[i].dvalue1 * factor;
-        gSF[i].dvalue2 = gSF[i].dvalue2 * factor;
-    }
-}
+
+
+
+
+
+
+
+
+
 

@@ -13,8 +13,8 @@
 #include "ShapeFrame.C"
 #include "ShapeSetting.C"
 #include "ShapeMatrix.C"
-#include "ShapeGSF.C"
-#include "ShapeChi2.C"
+#include "ShapeGSF_new.C"
+//#include "ShapeChi2.C"
 #include "ShapeRho.C"
 
 void ShapeIt() {

@@ -761,9 +761,9 @@ void ShapeFrame::ShapeItBaby() {
 	sett->nOfBins = sett->SizeToBin();
 
 	//calculate gamma ray strength function
-	fitGSF = new ShapeGSF(sett, matrix);
-	fitGSF->Update();
-    
+	gSF = new ShapeGSF_new(sett, matrix);
+    gSF->FillgSF();
+
     //status update: will have values for gSF
 	status = 2;
     
@@ -777,10 +777,10 @@ void ShapeFrame::ShapeItBaby() {
 	string t = "gamma ray strength function " + mname;
     
 	//the chi2 fitting object
-	ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
+	//ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
     
     //collect results
-    fitGSF->gSF_Collect();
+    //fitGSF->gSF_Collect();
 	
     //loop over exi_size
 	do {
@@ -796,15 +796,12 @@ void ShapeFrame::ShapeItBaby() {
 			matrix->Diag();
             
 			//recalculate gSF values
-			fitGSF->Update();
+			gSF->FillgSF();
 
 			//scale fitGSF to refernce data set
-			fitGSF->Scale(1/chi2->GetScale());
+			//fitGSF->Scale(1/chi2->GetScale());
 
-			//collect results
-			fitGSF->gSF_Collect();
-			//}
-			
+						
 		}
 		//check if bin size should be varried 
 		if (!sett->doBinVariation) break;
@@ -814,19 +811,15 @@ void ShapeFrame::ShapeItBaby() {
 		
 	} while (matrix->GetESize() <= sett->exi_size[1]);
     
-    //create new ShapeGSF object containing the lit values
-    if (sett->doOslo)
-        litGSF = new ShapeGSF(sett);
-    
-    //sort gSF_sort vector
-    fitGSF->gSF_Sort();
-	ShowGraph();
+    //display results
+    ShowGraph();
 }
 
 //scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
 double ShapeFrame::AutoScale(int mode) {
     
     double scale_t = 1;
+    /*
     //create new chi2 object
     ShapeChi2 *chi2_lit = new ShapeChi2(fitGSF, litGSF, sett);
     
@@ -847,21 +840,21 @@ double ShapeFrame::AutoScale(int mode) {
     //print correction factors, if required
     chi2_lit->printScalingSort();
     
-    return chi2_lit->getChi2();
+    return chi2_lit->getChi2();*/
+    return 1;
 }
 
 void ShapeFrame::TransGraph()
 {
     //update Literature value transformation settings
    
-    sett->lit_alpha = AlphaDialog->GetAlphaTransform();
-    sett->lit_norm =  AlphaDialog->GetBTransform();
+    //sett->lit_alpha = AlphaDialog->GetAlphaTransform();
+    //sett->lit_norm =  AlphaDialog->GetBTransform();
 
     //apply transformation
-    litGSF->Transform(sett->lit_norm, sett->lit_alpha);
-    litGSF->gSF_Sort();
+    //litGSF->Transform(sett->lit_norm, sett->lit_alpha);
+    //litGSF->gSF_Sort();
     
-    //call ShowGraph()
     this->ShowGraph();
 }
 
@@ -875,27 +868,24 @@ void ShapeFrame::ShowGraph()
     if ( sett->doOslo ) {
         
         // transform literature values using B and alpha
-        litGSF->Transform(sett->lit_norm, sett->lit_alpha);
+        gSF->Transform(sett->lit_norm, sett->lit_alpha);
         
         //autoscale gSF to literature values, if requested
         if (sett->doAutoScale) {
-            lit_chi2  = AutoScale(0);
+            //lit_chi2  = AutoScale(0);
             
-            if (sett->verbose)
-            std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
+            //if (sett->verbose)
+            //std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
         }
    
     }
         
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
-
-	//add gSF graph with two different colours 
-	TMultiGraph* g = fitGSF->gSF_SortHisto(sett->colour);
 	
     //fit giant resonance formula if requested
 	
-	if (sett->doGRF) {
+	/*if (sett->doGRF) {
 		TF1 *fitGDR = new TF1("fitGDR",glo,3000,6000,3);
 		fitGDR->SetParameter(0,300);
 		fitGDR->SetParameter(1,5);
@@ -903,17 +893,11 @@ void ShapeFrame::ShowGraph()
 		//fitGDR->SetParameter(3,0.5);
 		fitGDR->SetLineColor(1);
 		g->Fit(fitGDR," "," ",3000,6000);   
-	}
-	
-    //add literature values to graph
-    if (sett->doOslo) {
-        litGSF->gSF_Sort();
-        g->Add(litGSF->plotLit(),"3A");
-    }
+	}*/
     
 	//plot the multigraph
-    g->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
-    g->Draw("A*");
+  
+    gSF->getMultGraph()->Draw("A*");
     
     fCanvas->Modified();
     fCanvas->Update();
@@ -1287,7 +1271,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_DISPLAY_PRINT:
             if (status > 1)
-                fitGSF->gSF_Print();
+                gSF->Print();
             else
                 std::cout <<"ShapeIt, first! No values to show" <<std::endl;
             break;
@@ -1367,12 +1351,12 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 8: {
             if (status > 1) {
-                TGraph* T = fitGSF->getRatioGraph();
+                /*TGraph* T = fitGSF->getRatioGraph();
                 T->SetMarkerStyle(23);
                 T->SetMarkerSize(2);
                 T->SetMarkerColor(2);
                 T->SetTitle("Peak area 1 / Peak area 2" );
-                T->Draw("AP");
+                T->Draw("AP");*/
             }
             break;
         }

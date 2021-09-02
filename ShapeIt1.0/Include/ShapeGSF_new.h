@@ -3,37 +3,43 @@
 #include "../Include/ShapeSetting.h"
 #include "../Include/ShapeMatrix.h"
 #include <TGraphErrors.h>
+#include <TMultiGraph.h>
+#include <TObjArray.h>
 
-class ShapeGSF {
+//#include <TContainer.h>
+
+
+class ShapeGSF_new {
     
 private:
     ShapeSetting *m_sett;
-    ShapeMatrix *m_gsfMatrix;
+    ShapeMatrix *m_matrix;
 
-    int nOfLevel = 1;                           // number of levels used in analysis
     double m_B = 1;                           //transfomration gSF scaling
     double m_alpha = 0;                       //trnasformation gSF exponential slope
    
 public:
 
+    TMultiGraph* multGraph;                         //the graph containing all gSF data of all levGraph
+    TGraphErrors* litGraph;
+    ShapeGSF_new(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
     
-    ShapeGSF(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
-    ShapeGSF(ShapeSetting* t_setting);
-    
-    std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for level1 and level2
-    
-    TGraphErrors* mergeGraph;
-    
+    void ReadLit();
     void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix
-    
-    void DoInterpol();
-    
-    void Update();                                    //refills the gSF values
-    
-    void gsfPrint();
-    
-    void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
+    TMultiGraph* getMultGraph();                        //returns the multGrap
+            
+    double Slope(int i);
+    void Merge();
 
-    
+    void DoInterpol(int m_i);
+    double getBgRatio(int bin, int level);
+
+    void Print();
+    void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
+    void Scale(double factor);
+  
+    std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
+    std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2
+    std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for both levels
 };
 #endif
