@@ -31,7 +31,7 @@ public:
     double Slope(int i);
     void Merge();
 
-    void DoInterpol(int m_i);
+    void DoInterpol();
     double getBgRatio(int bin, int level);
 
     void Print();

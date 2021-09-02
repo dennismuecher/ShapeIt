@@ -128,7 +128,7 @@ void ShapeGSF_new::FillgSF() {
         }
         
         //filling results into levGraph vector;
-        
+        //this adds a 10% systemnatic uncertainty; should not be hard coded!
         levGraph_1[j]->SetPoint(levGraph_1[j]->GetN(), egamma1, gSF1);
         levGraph_1[j]->SetPointError(levGraph_1[j]->GetN()-1, 0, dgSF1);
         levGraph_2[j]->SetPoint(levGraph_2[j]->GetN(), egamma2, gSF2);
@@ -141,14 +141,14 @@ void ShapeGSF_new::FillgSF() {
             std::cout <<"gSF2: " <<gSF2 << "+- " << dgSF2 <<std::endl;
         }
     }
-    
+    if (m_sett->doInterpol)
+        DoInterpol();
 }
 
 //creates the graph of all gSF data; for this, first interpolate the individual runs, if requested by user; then add them to a multigraph
 TMultiGraph* ShapeGSF_new::getMultGraph() {
     for (int i = 0; i < levGraph.size(); i++) {
-        if (m_sett->doInterpol)
-            DoInterpol(i);
+       
         levGraph_1[i]->SetMarkerStyle(22);
         levGraph_1[i]->SetMarkerSize(2);
         levGraph_1[i]->SetMarkerColor(6);
@@ -159,8 +159,8 @@ TMultiGraph* ShapeGSF_new::getMultGraph() {
         else
             levGraph_2[i]->SetMarkerColor(6);
          
-        multGraph->Add(levGraph_1[i]);
-        multGraph->Add(levGraph_2[i]);
+        multGraph->Add(levGraph_1[i],"P");
+        multGraph->Add(levGraph_2[i],"P");
 
     }
     //add literature values to graph
@@ -179,11 +179,11 @@ double ShapeGSF_new::Slope(int i) {
     ( levGraph_1[j]->GetPointX(i) - levGraph_2[j]->GetPointX(i) );
 }
 
-void ShapeGSF_new::DoInterpol(int m_i) {
+void ShapeGSF_new::DoInterpol() {
     if (m_sett->verbose)
         std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
     
-    int j = m_i;
+    int j = levGraph_1.size() -1 ;
     int k = levGraph_1[j]->GetN();
     //if there is only one pair of non-zero gSF values, don't do anything
     if (k < 2) {
@@ -211,8 +211,13 @@ void ShapeGSF_new::DoInterpol(int m_i) {
         
         double scale_avg = ( 2 * levGraph_1[j]->GetPointY(i-1) - ( ( levGraph_1[j]->GetPointX(i-1) - levGraph_2[j]->GetPointX(i)) * Slope(i-1) ) ) / ( 2 * levGraph_2[j]->GetPointY(i) + ( (levGraph_1[j]->GetPointX(i-1) - levGraph_2[j]->GetPointX(i)) * Slope(i) ) );
         
-        levGraph_1[j]->SetPoint(i, levGraph_1[j]->GetPointX(i), levGraph_1[j]->GetPointY(i) * scale_avg );
-        levGraph_2[j]->SetPoint(i, levGraph_2[j]->GetPointX(i), levGraph_2[j]->GetPointY(i) * scale_avg );
+        //levGraph_1[j]->SetPoint(i, levGraph_1[j]->GetPointX(i), levGraph_1[j]->GetPointY(i) * scale_avg );
+        //levGraph_2[j]->SetPoint(i, levGraph_2[j]->GetPointX(i), levGraph_2[j]->GetPointY(i) * scale_avg );
+        levGraph_1[j]->SetPointY(i, levGraph_1[j]->GetPointY(i) * scale_avg );
+        levGraph_1[j]->SetPointError(i, 0, levGraph_1[j]->GetEY()[i] * scale_avg );
+        levGraph_2[j]->SetPointY(i, levGraph_2[j]->GetPointY(i) * scale_avg );
+        levGraph_2[j]->SetPointError(i, 0, levGraph_2[j]->GetEY()[i] * scale_avg );
+
         
         /*if (sett->verbose > 1) {
            std::cout <<"Calculating average interpolation " << std::endl;
@@ -252,46 +257,6 @@ double ShapeGSF_new::getBgRatio(int bin, int level) {
 }
 
 
-//returns a graph displaying the peak area ratios for level 1 and level 2 for each bin, taking into account the actual settings (interation autofit, background subtraction)
-
-/*TGraph* ShapeGSF::getRatioGraph() {
-    double x[p_ratio.size()];
-    double y[p_ratio.size()];
-   
-    for (int i =0; i < p_ratio.size(); i++) {
-        x[i] = gSF_matrix->GetEne0() + ( i + 0.5) * gSF_matrix->GetESize();
-        y[i] = p_ratio[i];
-    }
-    TGraph *T = new TGraph(p_ratio.size(), x, y);
-    return T;
-}*/
-
-
-/*//collects the values of gSF and egamma in a vector
-void ShapeGSF::gSF_Collect() {
-    
-    int nOfActiveBins = (binRange[1] - binRange[0] +1);
-    gSF_sor s;
-    for (int i = 0; i < nOfActiveBins ; i++ ) {
-        
-        s.egamma = gSF[binRange[0]+i-1].egamma1;
-        s.value = gSF[binRange[0]+i-1].value1;
-        //adding a 15% systematic uncertainty due to fluctuations
-        //this should not be hard-coded!!
-        s.dvalue = gSF[binRange[0]+i-1].dvalue1 + ( 0.15 * s.value );
-        s.peakID = 1;
-        gSF_sort.push_back(s);
-        
-        s.egamma = gSF[binRange[0]+i-1].egamma2;
-        s.value = gSF[binRange[0]+i-1].value2;
-        //adding a 10% systematic uncertainty due to fluctuations
-        s.dvalue = gSF[binRange[0]+i-1].dvalue2 + ( 0.15 * s.value );
-        s.peakID = 2;
-        gSF_sort.push_back(s);
-    }
-}*/
-
-
 
 //prints the gSF values, sorted for egamma
 void ShapeGSF_new::Print() {
@@ -312,26 +277,6 @@ void ShapeGSF_new::Transform(double B_t, double alpha_t) {
     B = B_t;
     alpha = alpha_t;*/
 }
-
-//provides a plot of gSF read from a file
-/*TGraphErrors* ShapeGSF::plotLit() {
-    
-    int nOfPoints = gSF_sort.size();
-    
-    double x[nOfPoints], y[nOfPoints];
-    double dx[nOfPoints], dy[nOfPoints];
-
-    for (int i = 0; i < nOfPoints ; i++ ) {
-        x[i] = gSF_sort[i].egamma;
-        y[i] = gSF_sort[i].value;
-        dx[i] = 1;
-        dy[i] = gSF_sort[i].dvalue;
-    }
-    TGraphErrors *lit_data = new TGraphErrors(nOfPoints,x,y,dx,dy);
-    lit_data->SetFillColor(4);
-    lit_data->SetFillStyle(3010);
-    return lit_data;
-}*/
 
 void ShapeGSF_new::Scale(double factor){
     int j = levGraph_1.size()-1;
