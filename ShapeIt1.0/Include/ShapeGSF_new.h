@@ -9,7 +9,7 @@
 //#include <TContainer.h>
 
 
-class ShapeGSF_new {
+class ShapeGSF {
     
 private:
     ShapeSetting *m_sett;

@@ -1,14 +1,13 @@
-#include "../Include/ShapeGSF_new.h"
-//#include <algorithm>
+#include "../Include/ShapeGSF.h"
 
 //constructor using setting file and a matrix
-ShapeGSF_new::ShapeGSF_new(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
+ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
 {
     litGraph = new TGraphErrors();
 }
 
 //reads the literature values for gSF
-void ShapeGSF_new::ReadLit()
+void ShapeGSF::ReadLit()
 {
     //read file data into gSF
     if (m_sett->osloFileName == "") {
@@ -50,7 +49,7 @@ dS/dc = -2*1/da1*(b1-c*a1)*a1-...--2*1/dan*(bn-c*an)*an =!0
 --> c = (a1*b1/da1+...+an*bn/dan)/(a1^2/da1+...+an^2/dan) is the scaling factor
  */
 
-double ShapeGSF_new::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
+double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
     double c1 = 0, c2 = 0;
     std::vector<double> a;
     std::vector<double> da;
@@ -80,7 +79,7 @@ double ShapeGSF_new::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
 
 
 //fills the actual vector of levGraph_1 and levGraph_2 with values; also fills levGraph
-void ShapeGSF_new::FillgSF() {
+void ShapeGSF::FillgSF() {
    
     m_matrix->Integrate();
     m_matrix->IntegrateBg();
@@ -169,7 +168,7 @@ void ShapeGSF_new::FillgSF() {
 }
 
 //merges levGraph1 and levGraph2 into one graph and sorts by energy; used for normalization of all graphs
-void ShapeGSF_new::Merge() {
+void ShapeGSF::Merge() {
     
     for (int i = 0; i < levGraph_1.size(); i++) {
         TObjArray *mArray = new TObjArray();
@@ -182,7 +181,7 @@ void ShapeGSF_new::Merge() {
 }
 
 //creates the graph of all gSF data; for this, first interpolate the individual runs, if requested by user; then add them to a multigraph
-TMultiGraph* ShapeGSF_new::getMultGraph() {
+TMultiGraph* ShapeGSF::getMultGraph() {
     
     //define Multigraph
     TMultiGraph* multGraph = new TMultiGraph();
@@ -234,14 +233,14 @@ TMultiGraph* ShapeGSF_new::getMultGraph() {
     return ( multGraph );
 }
 
-double ShapeGSF_new::Slope(int i) {
+double ShapeGSF::Slope(int i) {
     int j = levGraph_1.size()-1;
     return ( levGraph_1[j]->GetPointY(i) - levGraph_2[j]->GetPointY(i) ) /
     ( levGraph_1[j]->GetPointX(i) - levGraph_2[j]->GetPointX(i) );
 }
 
 //this is doing the sewing of gSF data
-void ShapeGSF_new::DoInterpol() {
+void ShapeGSF::DoInterpol() {
     if (m_sett->verbose)
         std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
     
@@ -267,7 +266,7 @@ void ShapeGSF_new::DoInterpol() {
 
 //calculates the ratio of Peak to background for bin i
 
-double ShapeGSF_new::getBgRatio(int bin, int level) {
+double ShapeGSF::getBgRatio(int bin, int level) {
     
     if (!m_sett->doBackground)
         return 1;
@@ -295,7 +294,7 @@ double ShapeGSF_new::getBgRatio(int bin, int level) {
 }
 
 //prints the gSF values, sorted for egamma
-void ShapeGSF_new::Print() {
+void ShapeGSF::Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
     int j = levGraph_1.size()-1;
     levGraph_1[j]->Print();
@@ -303,7 +302,7 @@ void ShapeGSF_new::Print() {
 }
 
 //transforms all gSF values via B*exp(alpha E_gamma)
-void ShapeGSF_new::Transform(double B_t, double alpha_t) {
+void ShapeGSF::Transform(double B_t, double alpha_t) {
     
     //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
    /* for (int i = 0; i < gSF_sort.size() ; i++ ) {
@@ -314,7 +313,7 @@ void ShapeGSF_new::Transform(double B_t, double alpha_t) {
     alpha = alpha_t;*/
 }
 
-void ShapeGSF_new::Scale(int j, double factor){
+void ShapeGSF::Scale(int j, double factor){
 
     for (int i = 0; i < levGraph_1[j]->GetN(); i++) {
         levGraph_1[j]->GetY()[i] *= factor;
@@ -326,7 +325,7 @@ void ShapeGSF_new::Scale(int j, double factor){
 
 //scales all graphs with factor with respect to the raw data; the previous scaling was scale_bak
 
-void ShapeGSF_new::ScaleAll(double factor){
+void ShapeGSF::ScaleAll(double factor){
 
     for (int j = 0; j < levGraph_1.size(); j++) {
         Scale(j, factor / scale_bak);
