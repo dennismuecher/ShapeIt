@@ -4,6 +4,9 @@
 ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
 {
     litGraph = new TGraphErrors();
+    if (m_sett->doOslo) {
+        ReadLit();
+    }
 }
 
 //reads the literature values for gSF
@@ -187,9 +190,9 @@ TMultiGraph* ShapeGSF::getMultGraph() {
     TMultiGraph* multGraph = new TMultiGraph();
     multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     
-    //add literature values to graph
+    //add literature values to graph; also applies transformation
     if (m_sett->doOslo) {
-        ReadLit();
+        Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(litGraph,"3A");
     }
     
@@ -306,11 +309,11 @@ void ShapeGSF::Transform(double B_t, double alpha_t) {
     
     //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
    for (int i = 0; i < litGraph->GetN() ; i++ ) {
-        litGraph->GetY()[i] *=  B_t / B * TMath::Exp(( alpha_t - alpha) * litGraph->GetX()[i] / 1000.);
-       litGraph->GetEY()[i] *=  B_t / B * TMath::Exp(( alpha_t - alpha) * litGraph->GetX()[i] / 1000.);
+        litGraph->GetY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
+       litGraph->GetEY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
     }
-    B = B_t;
-    alpha = alpha_t;*/
+    m_B = B_t;
+    m_alpha = alpha_t;
 }
 
 void ShapeGSF::Scale(int j, double factor){
