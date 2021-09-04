@@ -33,7 +33,6 @@
 #include "../Include/ShapeSetting.h"
 #include "../Include/ShapeMatrix.h"
 #include "../Include/ShapeGSF_new.h"
-//#include "../Include/ShapeChi2.h"
 #include "../Include/ShapeRho.h"
 //#include "../Include/ShapeDialogAlpha.h"
 
@@ -142,6 +141,7 @@ private:
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF_new *gSF;							//contains the gSF results from the data
     bool gSF_band = false;                    //if true, display gSF as error band
+    double scale_bak;                           //stores the actual scaling value;
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);

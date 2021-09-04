@@ -172,7 +172,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     
     TGLabel *l7 = new TGLabel(fEnergy[6], "   gSF scaling");
     fEnergy[6]->AddFrame(l7, fR2);
-    scaling = new TGNumberEntry(fEnergy[6], 0.012, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 9999999);
+    scaling = new TGNumberEntry(fEnergy[6], 0.012, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEAPositive,TGNumberFormat::kNELLimitMinMax,0, 9999999);
     scaling->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[6]->AddFrame(scaling, fR2);
     fG[3]->AddFrame(fEnergy[6], fL2);
@@ -312,10 +312,14 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->doWidthCal)
         OB[5]->SetState(kButtonDown);
     
-    if (sett->doAutoScale)
+    if (sett->doAutoScale) {
         autoScale->SetState(kButtonDown);
-    else
+        scaling->SetState(false);
+    }
+    else {
         autoScale->SetState(kButtonUp);
+        scaling->SetState(true);
+    }
     
     if ( sett_t->effiFileName.empty()  )
         OB[6]->SetEnabled(false);
@@ -561,6 +565,7 @@ void ShapeFrame::DoRadio()
         case 40:
             sett->doAutoScale = !sett->doAutoScale;
             ShowGraph();
+            UpdateGuiSetting(sett);
             break;
 
     }
@@ -687,6 +692,11 @@ void ShapeFrame::DoNumberEntry() {
 		
         //scaling factor has changed
 		if (id == 10) {
+            if (scaling->GetNumber() == 0 ) {
+                scaling->SetNumber(0.9*scale_bak);
+                std::cout <<"scaling zero event detected!" <<std::endl;
+            }
+            scale_bak = scaling->GetNumber();
 			 UpdateSetting(sett);
 			 ShowGraph();
 		 }
@@ -772,15 +782,6 @@ void ShapeFrame::ShapeItBaby() {
 		fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
     
 	fDisplayFile->EnableEntry(M_DISPLAY_RATIO);
-    
-	//this multigraph shows all the individual gSF plots
-	string t = "gamma ray strength function " + mname;
-    
-	//the chi2 fitting object
-	//ShapeChi2 *chi2 = new ShapeChi2(fitGSF, sett);
-    
-    //collect results
-    //fitGSF->gSF_Collect();
 	
     //loop over exi_size
 	do {
@@ -797,11 +798,6 @@ void ShapeFrame::ShapeItBaby() {
             
 			//recalculate gSF values
 			gSF->FillgSF();
-
-			//scale fitGSF to refernce data set
-			//fitGSF->Scale(1/chi2->GetScale());
-
-						
 		}
 		//check if bin size should be varried 
 		if (!sett->doBinVariation) break;
@@ -813,35 +809,6 @@ void ShapeFrame::ShapeItBaby() {
     
     //display results
     ShowGraph();
-}
-
-//scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
-double ShapeFrame::AutoScale(int mode) {
-    
-    double scale_t = 1;
-    /*
-    //create new chi2 object
-    ShapeChi2 *chi2_lit = new ShapeChi2(fitGSF, litGSF, sett);
-    
-    if (chi2_lit->GetScale() == 0) {
-        std::cout <<"Error: Chi2 scaling factor is zero!" <<std::endl;
-        return -1;
-    }
-    
-    else if (mode == 0) {
-        scale_t = 1 / chi2_lit->GetScale();
-        sett->gSF_norm = scale_t;
-        scaling->SetNumber(scale_t);
-    }
-
-    else if (mode == 1)
-        litGSF->ScaleSort(chi2_lit->GetScale());
-    
-    //print correction factors, if required
-    chi2_lit->printScalingSort();
-    
-    return chi2_lit->getChi2();*/
-    return 1;
 }
 
 void ShapeFrame::TransGraph()
@@ -865,21 +832,6 @@ void ShapeFrame::ShowGraph()
 	if (status < 2)
 		return;
         
-    if ( sett->doOslo ) {
-        
-        // transform literature values using B and alpha
-        gSF->Transform(sett->lit_norm, sett->lit_alpha);
-        
-        //autoscale gSF to literature values, if requested
-        if (sett->doAutoScale) {
-            //lit_chi2  = AutoScale(0);
-            
-            //if (sett->verbose)
-            //std::cout <<"Chi2 result for fitting literature values: " << lit_chi2 <<std::endl;
-        }
-   
-    }
-        
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
 	
@@ -896,12 +848,10 @@ void ShapeFrame::ShowGraph()
 	}*/
     
 	//plot the multigraph
-  
     gSF->getMultGraph()->Draw("A*");
     
     fCanvas->Modified();
     fCanvas->Update();
-    
 }
 
 
@@ -1437,7 +1387,7 @@ void ShapeFrame::AlphaChi2()
 
         //apply transformation
         ShowGraph();
-        chi2Y[pointC] = lit_chi2;
+        //chi2Y[pointC] = lit_chi2; NEEDS TO BE CHANGED
         enes[pointC] = sett->exiEne[0];
         pointC++;
         //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " <<lit_chi2 <<  std::endl;
