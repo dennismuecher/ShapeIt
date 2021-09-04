@@ -301,13 +301,13 @@ void ShapeGSF::Print() {
     levGraph_2[j]->Print();
 }
 
-//transforms all gSF values via B*exp(alpha E_gamma)
+//transforms literature gSF values via B*exp(alpha E_gamma)
 void ShapeGSF::Transform(double B_t, double alpha_t) {
     
     //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
-   /* for (int i = 0; i < gSF_sort.size() ; i++ ) {
-        gSF_sort[i].value =  B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].value;
-        gSF_sort[i].dvalue = B_t / B * TMath::Exp(( alpha_t - alpha) * gSF_sort[i].egamma / 1000.) *gSF_sort[i].dvalue;
+   for (int i = 0; i < litGraph->GetN() ; i++ ) {
+        litGraph->GetY()[i] *=  B_t / B * TMath::Exp(( alpha_t - alpha) * litGraph->GetX()[i] / 1000.);
+       litGraph->GetEY()[i] *=  B_t / B * TMath::Exp(( alpha_t - alpha) * litGraph->GetX()[i] / 1000.);
     }
     B = B_t;
     alpha = alpha_t;*/

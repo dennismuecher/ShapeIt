@@ -815,14 +815,10 @@ void ShapeFrame::TransGraph()
 {
     //update Literature value transformation settings
    
-    //sett->lit_alpha = AlphaDialog->GetAlphaTransform();
-    //sett->lit_norm =  AlphaDialog->GetBTransform();
-
-    //apply transformation
-    //litGSF->Transform(sett->lit_norm, sett->lit_alpha);
-    //litGSF->gSF_Sort();
+    sett->lit_alpha = AlphaDialog->GetAlphaTransform();
+    sett->lit_norm =  AlphaDialog->GetBTransform();
     
-    this->ShowGraph();
+    ShowGraph();
 }
 
 //displays the results for gSF, literature values, resonance fit etc.
