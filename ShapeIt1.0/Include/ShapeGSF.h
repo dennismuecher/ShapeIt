@@ -21,7 +21,7 @@ private:
 public:
 
     TGraphErrors* litGraph;
-    ShapeGSF_new(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
+    ShapeGSF(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
     
     void ReadLit();
     void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix

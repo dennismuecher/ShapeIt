@@ -32,7 +32,7 @@
 
 #include "../Include/ShapeSetting.h"
 #include "../Include/ShapeMatrix.h"
-#include "../Include/ShapeGSF_new.h"
+#include "../Include/ShapeGSF.h"
 #include "../Include/ShapeRho.h"
 //#include "../Include/ShapeDialogAlpha.h"
 
@@ -139,7 +139,7 @@ private:
     TH1D* diagHisto;
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
-    ShapeGSF_new *gSF;							//contains the gSF results from the data
+    ShapeGSF *gSF;							//contains the gSF results from the data
     bool gSF_band = false;                    //if true, display gSF as error band
     double scale_bak;                           //stores the actual scaling value;
     

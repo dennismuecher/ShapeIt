@@ -771,7 +771,7 @@ void ShapeFrame::ShapeItBaby() {
     sett->nOfBins = sett->SizeToBin();
 
     //calculate gamma ray strength function
-    gSF = new ShapeGSF_new(sett, matrix);
+    gSF = new ShapeGSF(sett, matrix);
     gSF->FillgSF();
 
     //status update: will have values for gSF
