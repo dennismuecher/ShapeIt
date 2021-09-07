@@ -442,7 +442,9 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
     fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
-    fDisplayFile->AddEntry("Show gSF &error band", M_DISPLAY_BAND);
+    fDisplayFile->AddEntry("Show gSF &average", M_DISPLAY_AVG);
+    fDisplayFile->AddEntry("Show gSF single data", M_DISPLAY_SINGLE);
+    fDisplayFile->CheckEntry(M_DISPLAY_SINGLE);
     fDisplayFile->AddEntry("Use &Two-Colour Display", M_DISPLAY_COLOUR);
     fDisplayFile->CheckEntry(M_DISPLAY_COLOUR);
     
@@ -1175,15 +1177,22 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_DISPLAY_VERBOSE2:
             HandleVerboseMenu(2);
             break;
-        case M_DISPLAY_BAND: {
-            gSF_band = !gSF_band;
-            if (gSF_band)
-                fDisplayFile->CheckEntry(M_DISPLAY_BAND);
+        case M_DISPLAY_AVG: {
+            sett->displayAvg = !sett->displayAvg;
+            if (sett->displayAvg)
+                fDisplayFile->CheckEntry(M_DISPLAY_AVG);
             else
-                fDisplayFile->UnCheckEntry(M_DISPLAY_BAND);
+                fDisplayFile->UnCheckEntry(M_DISPLAY_AVG);
             break;
         }
-        
+        case M_DISPLAY_SINGLE: {
+            sett->displaySingle = !sett->displaySingle;
+            if (sett->displaySingle)
+                fDisplayFile->CheckEntry(M_DISPLAY_SINGLE);
+            else
+                fDisplayFile->UnCheckEntry(M_DISPLAY_SINGLE);
+            break;
+        }
         
         case M_DISPLAY_COLOUR: {
             sett->colour = !sett->colour;

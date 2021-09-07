@@ -134,6 +134,8 @@ void ShapeSetting::SaveSettings() {
     outfile << "doAutoScale " << doAutoScale<<"\n";
 	outfile << "colour " << colour<<"\n";
 	outfile << "doGRF " << doGRF<<"\n";
+    outfile << "displayAverage " << displayAvg<<"\n";
+    outfile << "displaySingle " << displaySingle<<"\n";
     outfile << "doSlidingWindow " << doSlidingWindow <<"\n";
     outfile << "doBinVariation " << doBinVariation <<"\n";
     outfile << "doBackground " << doBackground <<"\n";
@@ -205,6 +207,8 @@ void ShapeSetting::ReadSettings() {
             if (word == "doAutoScale" ) isstr >> doAutoScale;
 			if (word == "colour" ) isstr >> colour;
             if (word == "doGRF" ) isstr >> doGRF;
+            if (word == "displayAverage" ) isstr >> displayAvg;
+            if (word == "displaySingle" ) isstr >> displaySingle;
             if (word == "doSlidingWindow" ) isstr >> doSlidingWindow ;
             if (word == "doBinVariation" ) isstr >> doBinVariation ;
             if (word == "doBackground" ) isstr >> doBackground ;
@@ -256,6 +260,8 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doAutoScale " << doAutoScale<<"\n";
 	std::cout  << "colour " << colour<<"\n";
     std::cout  << "doGRF " << doGRF<<"\n";
+    std::cout  << "displayAverage " << displayAvg<<"\n";
+    std::cout  << "displaySingle " << displaySingle<<"\n";
     std::cout  << "doSlidingWindow " << doSlidingWindow <<"\n";
     std::cout  << "doBinVariation " << doBinVariation <<"\n";
     std::cout  << "doBackground " << doBackground <<"\n";

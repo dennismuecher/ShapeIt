@@ -66,7 +66,8 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_TRAFO,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
-    M_DISPLAY_BAND,
+    M_DISPLAY_AVG,
+    M_DISPLAY_SINGLE,
     M_DISPLAY_RATIO,
     M_DISPLAY_GRF,
 	M_DISPLAY_COLOUR,
@@ -140,7 +141,6 @@ private:
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *gSF;							//contains the gSF results from the data
-    bool gSF_band = false;                    //if true, display gSF as error band
     double scale_bak;                           //stores the actual scaling value;
     
 public:

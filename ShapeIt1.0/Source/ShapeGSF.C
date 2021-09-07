@@ -300,12 +300,14 @@ TMultiGraph* ShapeGSF::getMultGraph() {
         if (i != 0) {
             Scale(i, Norm(levGraph[i], levGraph[0] ) );
         }
-        
-       multGraph->Add(levGraph_1[i],"P");
-       multGraph->Add(levGraph_2[i],"P");
+        if (m_sett->displaySingle) {
+            multGraph->Add(levGraph_1[i],"P");
+            multGraph->Add(levGraph_2[i],"P");
+        }
     }
     Merge();
-    multGraph->Add(Smooth(100),"P");
+    if (m_sett->displayAvg)
+        multGraph->Add(Smooth(100),"P");
     return ( multGraph );
 }
 
