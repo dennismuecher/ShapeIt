@@ -4,6 +4,7 @@
 ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
 {
     litGraph = new TGraphErrors();
+    levGraphAll = new TGraphErrors();
     if (m_sett->doOslo) {
         ReadLit();
     }
@@ -187,14 +188,15 @@ void ShapeGSF::Merge() {
 void ShapeGSF::MergeAll() {
     TObjArray *mArray = new TObjArray();
     for (int i = 0; i < levGraph.size(); i++) mArray->Add(levGraph[i]);
-    levGraphAll = new TGraphErrors();
+    levGraphAll->Set(0);
     levGraphAll->Merge(mArray);
     levGraphAll->Sort();
 }
 
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
 TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
-    MergeAll();levGraphAll->Print();
+    MergeAll();
+    levGraphAll->Print();
     auto nPoints = levGraphAll->GetN();
     TGraphAsymmErrors* levGraphSmooth = new TGraphAsymmErrors();
     double m_e = levGraphAll->GetX()[0] + res;
@@ -301,10 +303,9 @@ TMultiGraph* ShapeGSF::getMultGraph() {
         
        multGraph->Add(levGraph_1[i],"P");
        multGraph->Add(levGraph_2[i],"P");
-        multGraph->Add(Smooth(100),"P");
-        
     }
-   
+    Merge();
+    multGraph->Add(Smooth(100),"P");
     return ( multGraph );
 }
 
