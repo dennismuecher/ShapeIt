@@ -172,7 +172,7 @@ void ShapeGSF::FillgSF() {
 
 //merges levGraph1 and levGraph2 into one graph and sorts by energy; used for normalization of all graphs
 void ShapeGSF::Merge() {
-    
+
     for (int i = 0; i < levGraph_1.size(); i++) {
         TObjArray *mArray = new TObjArray();
         mArray->Add(levGraph_1[i]);
@@ -182,6 +182,77 @@ void ShapeGSF::Merge() {
         levGraph[i]->Sort();
     }
 }
+
+//merge all lelvGraphs into single graph "levGraphAll"
+void ShapeGSF::MergeAll() {
+    TObjArray *mArray = new TObjArray();
+    for (int i = 0; i < levGraph.size(); i++) mArray->Add(levGraph[i]);
+    levGraphAll = new TGraphErrors();
+    levGraphAll->Merge(mArray);
+    levGraphAll->Sort();
+}
+
+//returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
+TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
+    MergeAll();levGraphAll->Print();
+    auto nPoints = levGraphAll->GetN();
+    TGraphAsymmErrors* levGraphSmooth = new TGraphAsymmErrors();
+    double m_e = levGraphAll->GetX()[0] + res;
+    std::vector <int> i_bin;          //the point number limits of levGraphAll belonging to the bins with size res
+    i_bin.push_back(0);             //first bin always starts at zero
+    for(int i =1; i < nPoints; i++) {
+        if (levGraphAll->GetX()[i] > m_e) {
+            i_bin.push_back(i);
+            m_e += res;
+            i--;
+        }
+    }
+    
+    //now calculate the average gSF values for each bin
+    
+    for (int i = 0 ; i < i_bin.size() -1; i++) {
+        double x = 0, y = 0;
+        for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
+            x += levGraphAll->GetX()[j];
+            y += levGraphAll->GetY()[j];
+        }
+        int nOfP = i_bin[i+1] - i_bin[i];     //number of points in this bin
+        if (nOfP ==0) continue;
+        x = x / nOfP;
+        y = y / nOfP;
+        levGraphSmooth->AddPoint(x,y);
+        
+        //calculate errors with respect to average y
+        
+        int upper = 0, lower = 0;
+        double dyl=0,dyh=0;
+        for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
+            if ( levGraphAll->GetY()[j] > y) {
+                dyh += TMath::Power(levGraphAll->GetY()[j]
+                                +levGraphAll->GetEY()[j]
+                                -y, 2);
+                upper++;
+            }
+            else {
+                dyl += TMath::Power(levGraphAll->GetY()[j]
+                                -levGraphAll->GetEY()[j]
+                                -y, 2);
+                lower++;
+            }
+            
+        }
+        dyh = TMath::Sqrt(dyh) / upper;
+        dyl = TMath::Sqrt(dyl) /lower;
+        levGraphSmooth->SetPointError(levGraphSmooth->GetN()-1,
+                                      0, 0, dyl, dyh);
+    }
+        
+    levGraphSmooth->SetMarkerStyle(22);
+    levGraphSmooth->SetMarkerSize(2);
+    levGraphSmooth->SetMarkerColor(1);
+    return (levGraphSmooth);
+}
+
 
 //creates the graph of all gSF data; for this, first interpolate the individual runs, if requested by user; then add them to a multigraph
 TMultiGraph* ShapeGSF::getMultGraph() {
@@ -228,10 +299,11 @@ TMultiGraph* ShapeGSF::getMultGraph() {
             Scale(i, Norm(levGraph[i], levGraph[0] ) );
         }
         
-        multGraph->Add(levGraph_1[i],"P");
-        multGraph->Add(levGraph_2[i],"P");
+       multGraph->Add(levGraph_1[i],"P");
+       multGraph->Add(levGraph_2[i],"P");
+        multGraph->Add(Smooth(100),"P");
+        
     }
-   
    
     return ( multGraph );
 }

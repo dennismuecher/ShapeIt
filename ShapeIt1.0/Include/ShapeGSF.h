@@ -4,7 +4,11 @@
 #include "../Include/ShapeMatrix.h"
 #include <TGraphErrors.h>
 #include <TMultiGraph.h>
+#include <TGraphAsymmErrors.h>
+
 #include <TObjArray.h>
+#include <TH1.h>
+
 
 //#include <TContainer.h>
 
@@ -38,9 +42,13 @@ public:
     void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
     void Scale(int j, double factor);
     void ScaleAll(double factor);
+    TGraphAsymmErrors* Smooth(int res);
+    void MergeAll();
 
     std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
     std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2
     std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for both levels
+    TGraphErrors *levGraphAll;                      //contains all gSF data points from all iterations
+    
 };
 #endif

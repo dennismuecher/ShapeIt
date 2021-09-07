@@ -845,7 +845,8 @@ void ShapeFrame::ShowGraph()
     
     //plot the multigraph
     gSF->getMultGraph()->Draw("A*");
-    
+    //gSF->getMultGraph();
+    //gSF->Smooth(50)->Draw("P,same");
     fCanvas->Modified();
     fCanvas->Update();
 }
