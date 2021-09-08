@@ -1,3 +1,15 @@
+/* ***********************************************************************
+* Copyright (C) 2019-2021, Dennis Muecher.                               *
+* All rights reserved.                                                   *
+*                                                                        *
+* This program is free software: you can redistribute it and/or modify   *
+* it under the terms of the GNU General Public License as published by   *
+* the Free Software Foundation, either version 3 of the License, or      *
+* (at your option) any later version.                                    *
+* You should have received a copy of the GNU General Public License      *
+* along with this program. If not, see  http://www.gnu.org/licenses/.    *
+*************************************************************************/
+
 #ifndef SHAPEGSF_H
 #define SHAPEGSF_H
 #include "../Include/ShapeSetting.h"
@@ -49,6 +61,7 @@ public:
     std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2
     std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for both levels
     TGraphErrors *levGraphAll;                      //contains all gSF data points from all iterations
+    TGraphAsymmErrors* levGraphSmooth;          //contains all smoothed gSF data points from all iterations
     
 };
 #endif

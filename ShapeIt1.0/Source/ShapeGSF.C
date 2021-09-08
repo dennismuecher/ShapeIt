@@ -1,3 +1,15 @@
+/* ***********************************************************************
+* Copyright (C) 2019-2021, Dennis Muecher.                               *
+* All rights reserved.                                                   *
+*                                                                        *
+* This program is free software: you can redistribute it and/or modify   *
+* it under the terms of the GNU General Public License as published by   *
+* the Free Software Foundation, either version 3 of the License, or      *
+* (at your option) any later version.                                    *
+* You should have received a copy of the GNU General Public License      *
+* along with this program. If not, see  http://www.gnu.org/licenses/.    *
+*************************************************************************/
+
 #include "../Include/ShapeGSF.h"
 
 //constructor using setting file and a matrix
@@ -5,6 +17,7 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), 
 {
     litGraph = new TGraphErrors();
     levGraphAll = new TGraphErrors();
+    levGraphSmooth = new TGraphAsymmErrors();
     if (m_sett->doOslo) {
         ReadLit();
     }
@@ -196,9 +209,8 @@ void ShapeGSF::MergeAll() {
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
 TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
     MergeAll();
-    levGraphAll->Print();
     auto nPoints = levGraphAll->GetN();
-    TGraphAsymmErrors* levGraphSmooth = new TGraphAsymmErrors();
+    
     double m_e = levGraphAll->GetX()[0] + res;
     std::vector <int> i_bin;          //the point number limits of levGraphAll belonging to the bins with size res
     i_bin.push_back(0);             //first bin always starts at zero
@@ -306,8 +318,12 @@ TMultiGraph* ShapeGSF::getMultGraph() {
         }
     }
     Merge();
-    if (m_sett->displayAvg)
+    
+    //add smoothed graph, if requested
+    if (m_sett->displayAvg) {
         multGraph->Add(Smooth(100),"P");
+    }
+    
     return ( multGraph );
 }
 
