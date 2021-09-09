@@ -1385,12 +1385,11 @@ void ShapeFrame::UpdateDisplay(int display) {
 void ShapeFrame::AlphaChi2()
 {
     //some hard-coded stuff here....needs to be fixed
-    
     double alpha_bak = sett->lit_alpha;
     double exi_bak = sett->exiEne[0];
     double const alphaRange = 1; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
-    int const nOfPoints = 40; //number of steps in the chi2 evaluation
-    int const nOfExi = 15; //number of excitation energies
+    int const nOfPoints = 3; //number of steps in the chi2 evaluation
+    int const nOfExi = 5; //number of excitation energies
     double const exiStep = 100; //step size (in keV) by which the excitation energy is lowered in each iteration
     double alphaX[nOfPoints*nOfExi];
     double chi2Y[nOfPoints*nOfExi];
@@ -1398,32 +1397,32 @@ void ShapeFrame::AlphaChi2()
     int pointC = 0;
     
     for (int j = 0; j < nOfExi; j++) {
-        
+
     for (int i  = 0; i < nOfPoints; i++) {
+
         alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
         //update alpha in settings file
         sett->lit_alpha = alphaX[pointC];
 
         //apply transformation
         ShowGraph();
-        //chi2Y[pointC] = lit_chi2; NEEDS TO BE CHANGED
+        chi2Y[pointC] = gSF->getChi2(0);
         enes[pointC] = sett->exiEne[0];
+
         pointC++;
-        //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " <<lit_chi2 <<  std::endl;
+        std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
     }
    
     sett->exiEne[0] = sett->exiEne[0] - exiStep;
     UpdateGuiSetting(sett);
     ShapeItBaby();
     }
-        
     TGraph* alphaPlot = new TGraph(nOfPoints, alphaX, chi2Y);
     TGraph2D *dt = new TGraph2D(nOfPoints*nOfExi, alphaX, enes, chi2Y);
-
-    alphaPlot->SetMarkerStyle(4);
+      alphaPlot->SetMarkerStyle(4);
     alphaPlot->SetMarkerColor(kRed);
-    dt->Draw("colz");
-    //alphaPlot->Draw("APC*");
+    //dt->Draw("colz");
+    alphaPlot->Draw("APC*");
     
     //reset values to before
     sett->exiEne[0] = exi_bak;

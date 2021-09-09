@@ -56,6 +56,8 @@ public:
     void ScaleAll(double factor);
     TGraphAsymmErrors* Smooth(int res);
     void MergeAll();
+    double getChi2(int n);
+
 
     std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
     std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2

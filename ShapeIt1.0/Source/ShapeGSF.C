@@ -56,16 +56,6 @@ void ShapeGSF::ReadLit()
     }
 }
 
-/*
-returns a scaling factor for the gSF values in T1 to best match those values of T2
- the weighted (error of T1 da_n) squared difference of the two graphs is given by
-S = (1/da1*(b1-c*a1)^2 - 1/da2(b2-c*a2)^2 - ... - dan(bn-c*an)^2)/(1/da1+..+1/dan)
-with a_n and b_n the y values of the two graphs and c is the scaling factor we are looking for
-we are looking for the minimum of S with respect to c, so the derivate has to be zero:
-dS/dc = -2*1/da1*(b1-c*a1)*a1-...--2*1/dan*(bn-c*an)*an =!0
---> c = (a1*b1/da1+...+an*bn/dan)/(a1^2/da1+...+an^2/dan) is the scaling factor
- */
-
 double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
     double c1 = 0, c2 = 0;
     std::vector<double> a;
@@ -94,7 +84,39 @@ double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
     }
 }
 
+//returns the chi2, comparing the smooth gSF to the Oslo literature data; n is the number of degrees of freedom
 
+double ShapeGSF::getChi2(int n){
+    double chi2 = 0;
+    for (int i = 0; i < levGraphSmooth->GetN(); i++) {
+        //get interpolated value for Oslo data at actual energy
+        double x = levGraphSmooth->GetX()[i];
+        double y = levGraphSmooth->GetY()[i];
+        double dyh = levGraphSmooth->GetErrorYhigh(i);
+        double dyl = levGraphSmooth->GetErrorYlow(i);
+        double dy = (dyh + dyl)/2;
+        double y_oslo = litGraph->Eval(x);
+        std::cout <<"x in getChi2: " <<x<<std::endl;
+        std::cout <<"y in getChi2: " <<y<<std::endl;
+        std::cout <<"dy in getChi2: " <<dy<<std::endl;
+        std::cout <<"y_oslo in getChi2: " <<y_oslo<<std::endl;
+
+
+        if (dy == 0) {
+            std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
+        }
+        else
+            chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
+    }
+    if (n == 0)
+        n = levGraphSmooth->GetN();
+    chi2 = chi2 / n;
+    std::cout <<"chi2 in getChi2: " <<chi2<<std::endl;
+
+    return (chi2);
+}
+        
 //fills the actual vector of levGraph_1 and levGraph_2 with values; also fills levGraph
 void ShapeGSF::FillgSF() {
    
@@ -208,6 +230,7 @@ void ShapeGSF::MergeAll() {
 
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
 TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
+    levGraphSmooth->Set(0);
     MergeAll();
     auto nPoints = levGraphAll->GetN();
     
@@ -255,8 +278,18 @@ TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
             }
             
         }
-        dyh = TMath::Sqrt(dyh) / upper;
+        
         dyl = TMath::Sqrt(dyl) /lower;
+        
+        if (dyh == 0) {
+            dyh = dyl;
+        }
+        else {
+            dyh = TMath::Sqrt(dyh) / upper;
+        }
+       // std::cout <<"dyh in smooth: " <<dyh<<std::endl;
+       // std::cout <<"dyl in smooth: " <<dyl<<std::endl;
+
         levGraphSmooth->SetPointError(levGraphSmooth->GetN()-1,
                                       0, 0, dyl, dyh);
     }

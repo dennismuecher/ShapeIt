@@ -16,8 +16,6 @@
 #include "../Include/ShapeMatrix.h"
 #include "../Include/ShapeGSF.h"
 
-
-
 class ShapeChi2 {
     
 private:
