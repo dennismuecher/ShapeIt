@@ -42,7 +42,7 @@ public:
     void ReadLit();
     void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix
     TMultiGraph* getMultGraph();                        //returns the multGrap
-            
+    TGraphAsymmErrors* getSmoothGraph()     {return (levGraphSmooth);}            
     double Slope(int i);
     void Merge();
     double Norm(TGraphErrors* T1, TGraphErrors* T2 );
@@ -54,10 +54,9 @@ public:
     void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
     void Scale(int j, double factor);
     void ScaleAll(double factor);
-    TGraphAsymmErrors* Smooth(int res);
+    void Smooth(int res);
     void MergeAll();
     double getChi2(int n);
-
 
     std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
     std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2

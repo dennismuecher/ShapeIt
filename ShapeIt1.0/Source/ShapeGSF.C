@@ -96,11 +96,9 @@ double ShapeGSF::getChi2(int n){
         double dyl = levGraphSmooth->GetErrorYlow(i);
         double dy = (dyh + dyl)/2;
         double y_oslo = litGraph->Eval(x);
-        std::cout <<"x in getChi2: " <<x<<std::endl;
-        std::cout <<"y in getChi2: " <<y<<std::endl;
-        std::cout <<"dy in getChi2: " <<dy<<std::endl;
-        std::cout <<"y_oslo in getChi2: " <<y_oslo<<std::endl;
-
+   
+        if (x < m_sett->exiEne[0]-m_sett->levEne[0])
+            continue;
 
         if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
@@ -109,11 +107,13 @@ double ShapeGSF::getChi2(int n){
         else
             chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
     }
+    //the number of data points in the smooth graph
     if (n == 0)
         n = levGraphSmooth->GetN();
-    chi2 = chi2 / n;
-    std::cout <<"chi2 in getChi2: " <<chi2<<std::endl;
+    
+    
 
+    //std::cout <<"chi2 in getChi2: " <<chi2<<std::endl;    
     return (chi2);
 }
         
@@ -228,8 +228,9 @@ void ShapeGSF::MergeAll() {
     levGraphAll->Sort();
 }
 
+
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
-TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
+void ShapeGSF::Smooth(int res) {
     levGraphSmooth->Set(0);
     MergeAll();
     auto nPoints = levGraphAll->GetN();
@@ -287,8 +288,6 @@ TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
         else {
             dyh = TMath::Sqrt(dyh) / upper;
         }
-       // std::cout <<"dyh in smooth: " <<dyh<<std::endl;
-       // std::cout <<"dyl in smooth: " <<dyl<<std::endl;
 
         levGraphSmooth->SetPointError(levGraphSmooth->GetN()-1,
                                       0, 0, dyl, dyh);
@@ -297,7 +296,10 @@ TGraphAsymmErrors* ShapeGSF::Smooth(int res) {
     levGraphSmooth->SetMarkerStyle(22);
     levGraphSmooth->SetMarkerSize(2);
     levGraphSmooth->SetMarkerColor(1);
-    return (levGraphSmooth);
+    for (int j = 0; j < levGraphSmooth->GetN(); j++) {
+        double dy = ( levGraphSmooth->GetEYhigh()[j] + levGraphSmooth->GetEYlow()[j] ) / 2;
+        //std::cout <<levGraphSmooth->GetX()[j]<< " " <<levGraphSmooth->GetY()[j] << " " << dy <<std::endl;
+    }
 }
 
 
@@ -354,7 +356,8 @@ TMultiGraph* ShapeGSF::getMultGraph() {
     
     //add smoothed graph, if requested
     if (m_sett->displayAvg) {
-        multGraph->Add(Smooth(100),"P");
+        Smooth(50);
+        multGraph->Add(getSmoothGraph(),"P");
     }
     
     return ( multGraph );
