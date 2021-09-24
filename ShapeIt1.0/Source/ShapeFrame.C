@@ -839,6 +839,11 @@ void ShapeFrame::ShapeItBaby() {
         
         //change bin size
         matrix->SetESize( matrix->GetESize() + 50 );
+        //update matrix and recalculate gSF in case doSlidingWindow is not active; otherwise this is done in the sliding window loop
+        if (!sett->doSlidingWindow) {
+            matrix->Diag();
+            gSF->FillgSF();
+        }
         
     } while (matrix->GetESize() <= sett->exi_size[1]);
     

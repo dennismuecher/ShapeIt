@@ -252,47 +252,72 @@ void ShapeGSF::Smooth(int res) {
     
     for (int i = 0 ; i < i_bin.size() -1; i++) {
         double x = 0, y = 0;
+        double dy = 0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
             x += levGraphAll->GetX()[j];
             y += levGraphAll->GetY()[j];
+            dy += TMath::Power(levGraphAll->GetEY()[j] , 2);
         }
         int nOfP = i_bin[i+1] - i_bin[i];     //number of points in this bin
         if (nOfP ==0) continue;
         x = x / nOfP;
         y = y / nOfP;
+        //this error is the error of the mean value, based on the propagation of the indiviual errors, only; this does not take into account the fluctuations in the data points (i.e. the standard deviation)
+        dy = TMath::Sqrt(dy) / nOfP;
         levGraphSmooth->SetPoint(i,x,y);
         
-        //calculate errors with respect to average y
         
-        int upper = 0, lower = 0;
+        double st_dev = 0;
+        for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
+            st_dev += TMath::Power(levGraphAll->GetY()[j] - y, 2);
+        }
+        st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
+        
+        //calculate max errors including errors of individual data points
+
         double dyl=0,dyh=0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
-            if ( levGraphAll->GetY()[j] > y) {
+                //difference of average to upper error bar
+                double m_dyh = levGraphAll->GetY()[j] + levGraphAll->GetEY()[j] - y;
+                if (m_dyh > dyh)
+                    dyh = m_dyh;
+                //difference of average to lower error bar
+                double m_dyl = y - levGraphAll->GetY()[j] + levGraphAll->GetEY()[j];
+                if (m_dyl > dyl)
+                dyl = m_dyl;
+        }
+        levGraphSmooth->SetPointError(levGraphSmooth->GetN()-1, 0, 0, dyl, dyh);
+        //some old stuff
+        
+       /* int upper = 0, lower = 0;
+        double dyl=0,dyh=0;
+        for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
+            //if ( levGraphAll->GetY()[j] > y) {
                 dyh += TMath::Power(levGraphAll->GetY()[j]
                                 +levGraphAll->GetEY()[j]
                                 -y, 2);
                 upper++;
-            }
-            else {
+            //}
+            //else {
                 dyl += TMath::Power(levGraphAll->GetY()[j]
                                 -levGraphAll->GetEY()[j]
                                 -y, 2);
                 lower++;
-            }
+            //}
             
         }
         
-        dyl = TMath::Sqrt(dyl) /lower;
+        dyl = TMath::Sqrt(dyl /lower );
         
         if (dyh == 0) {
             dyh = dyl;
         }
         else {
-            dyh = TMath::Sqrt(dyh) / upper;
+            dyh = TMath::Sqrt(dyh / upper );
         }
-
+         
         levGraphSmooth->SetPointError(levGraphSmooth->GetN()-1,
-                                      0, 0, dyl, dyh);
+                                      0, 0, dyl, dyh);*/
     }
         
     levGraphSmooth->SetMarkerStyle(22);
