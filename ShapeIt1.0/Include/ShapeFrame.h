@@ -108,6 +108,7 @@ private:
     TRootEmbeddedCanvas *fEcanvas;
     TGNumberEntry       *energy[4]; //energies of the two discrete states; lower and upper limit
     TGNumberEntry       *exi[3];//excitation energies; lower and upper limit and interpolation energy
+    TGNumberEntry       *gamma[2];//range of gamma energies used for gSF
     TGNumberEntry       *bin[2];//size of integration bin; lower and upper limit
     TGNumberEntry       *nOfBins[2];//number of integration bins
     TGNumberEntry       *minContent; //mininmum number of counts an integration bin must have to be considered in the analysis
@@ -134,7 +135,7 @@ private:
     TGComboBox *fInterCombo;
     
     TGGroupFrame* fG[6];
-    TGCompositeFrame* fEnergy[8];
+    TGCompositeFrame* fEnergy[9];
     TH1F *displayHisto;                      //points to the 1d histogram on display in the main canvas
     TH2 *inMatrix;							//the input matrix
     TFile* dataFile;							//the root file containing the input matrix

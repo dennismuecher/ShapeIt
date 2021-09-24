@@ -53,6 +53,7 @@ public:
 	double bgEne[2][4];                      //background regions for level 1 and level 2
     double bgWidth = 100;                   //width of each background window
     double exiEne[2] = {0, 0};						//lower and upper excitation energy considered
+    double gammaEne[2] = {0, 0};                        //lower and upper gamma energy considered
     double exi_size[2] = {0, 0};					//bin size for shape method
     double widthCal[2][2];                  //parameters for width calibration
     int nOfBins = 1;

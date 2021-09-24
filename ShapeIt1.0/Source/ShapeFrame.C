@@ -90,6 +90,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     
     for (int i = 0; i < 3; i++)
         fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
+     fEnergy[8] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
     for (int i = 3; i < 8; i++)
         fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
     
@@ -106,7 +107,8 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fMatrix->Select(1);
     fMatrix->SetEnabled(false);
     fG[4]->AddFrame(fMatrix, fL2);
-    //Energy Settings
+    
+    //Level Energy Settings
     energy[0] = new TGNumberEntry(fEnergy[0], 410, 9,1, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     fEnergy[0]->AddFrame(energy[0], fL2);
     energy[0]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
@@ -134,6 +136,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     sett->setBgEne1(bg1);
     sett->setBgEne2(bg2);
     
+    //excitation energy selection
     exi[0] = new TGNumberEntry(fEnergy[2], 2500, 9,5, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
     exi[0]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[2]->AddFrame(exi[0], fL2);
@@ -144,6 +147,18 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     fEnergy[2]->AddFrame(exi[1], fL2);
     fG[1]->AddFrame(fEnergy[2], fL2);
 
+    //gamma energy selection
+       gamma[0] = new TGNumberEntry(fEnergy[8], 2500, 9,5, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+       gamma[0]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
+       fEnergy[8]->AddFrame(gamma[0], fL2);
+       TGLabel *l11 = new TGLabel(fEnergy[8], "< E(gamma) <");
+       fEnergy[8]->AddFrame(l11, fL2);
+       gamma[1] = new TGNumberEntry(fEnergy[8], 7000, 9,6, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
+       gamma[1]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
+       fEnergy[8]->AddFrame(gamma[1], fL2);
+       fG[1]->AddFrame(fEnergy[8], fL2);
+    
+    //intgeration bin settings
     TGLabel *l4 = new TGLabel(fEnergy[3], "Bin size [keV]");
     fEnergy[3]->AddFrame(l4, fR2);
     bin[0] = new TGNumberEntry(fEnergy[3], 400, 9,7, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,1, 99999);
@@ -208,9 +223,9 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     OB[4] = new TGCheckButton(fG[2], new TGHotString("Background subtraction"), 23);
     OB[5] = new TGCheckButton(fG[2], new TGHotString("Use Width Calibration"), 24);
     OB[5]->SetEnabled(false);
-    OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
-    OB[6]->SetEnabled(false);
-    for (int i = 0 ; i < 7; i++) {
+    //OB[6] = new TGCheckButton(fG[2], new TGHotString("Use Efficiency Calibration from File"), 25);
+    //OB[6]->SetEnabled(false);
+    for (int i = 0 ; i < 6; i++) {
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
     }
@@ -281,6 +296,9 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         energy[i]->SetNumber(sett_t->levEne[i]);
     for (int i = 0; i < 2; i++)
          exi[i]->SetNumber(sett_t->exiEne[i]);
+    for (int i = 0; i < 2; i++)
+         gamma[i]->SetNumber(sett_t->gammaEne[i]);
+    
     bin[0]->SetNumber(sett_t->exi_size[0]);
     //acivate bin size variation TGNumberEntries
     if (sett->doBinVariation) {
@@ -333,7 +351,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         autoScale->SetState(kButtonUp);
         scaling->SetState(true);
     }
-    
+    /*
     if ( sett_t->effiFileName.empty()  )
         OB[6]->SetEnabled(false);
     else
@@ -341,7 +359,7 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     if (sett_t->doEffi)
         OB[6]->SetState(kButtonDown);
     else
-        OB[6]->SetState(kButtonUp);
+        OB[6]->SetState(kButtonUp);*/
     
     
     
@@ -356,6 +374,8 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
         sett_t->levEne[i] = energy[i]->GetNumber();
     for (int i = 0; i < 2; i++)
         sett_t->exiEne[i] = exi[i]->GetNumber();
+    for (int i = 0; i < 2; i++)
+          sett_t->gammaEne[i] = gamma[i]->GetNumber();
     
     sett_t->exi_size[0] = bin[0]->GetNumber();
     sett_t->exi_size[1] = bin[1]->GetNumber();
@@ -971,7 +991,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //convert to filename, only (for the display)
                 mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
                 OB[5]->SetEnabled(false);
-                OB[6]->SetEnabled(false);
+                //OB[6]->SetEnabled(false);
                 UpdateSetting(sett);
 
                 //create Matrix object
@@ -1020,7 +1040,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 OB[5]->SetEnabled(false);
-                OB[6]->SetEnabled(false);
+                //OB[6]->SetEnabled(false);
                 sett->ReadSettings();
                 UpdateGuiSetting(sett);
                 HandleVerboseMenu(sett->verbose);

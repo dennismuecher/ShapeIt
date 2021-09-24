@@ -96,10 +96,7 @@ double ShapeGSF::getChi2(int n){
         double dyl = levGraphSmooth->GetErrorYlow(i);
         double dy = (dyh + dyl)/2;
         double y_oslo = litGraph->Eval(x);
-   
-        if (x < m_sett->exiEne[0]-m_sett->levEne[0])
-            continue;
-
+        
         if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
             continue;
@@ -154,6 +151,11 @@ void ShapeGSF::FillgSF() {
         egamma1 = m_matrix->integral1Square[i] / m_matrix->integral1Cube[i];
         egamma2 = m_matrix->integral2Square[i] / m_matrix->integral2Cube[i];
 
+        if (egamma1 < m_sett->gammaEne[0] || egamma2 < m_sett->gammaEne[0] )
+            continue;
+        if (egamma1 > m_sett->gammaEne[1] || egamma2 > m_sett->gammaEne[1] )
+            continue;
+        
         //calculate gamma ray strength
         gSF1 = getBgRatio(i, 1) * m_matrix->integral1Cube[i] * m_sett->getEffCor(egamma1, 1);
         dgSF1 = TMath::Power(1./m_matrix->integral1[i], 0.5) * gSF1;
@@ -258,7 +260,7 @@ void ShapeGSF::Smooth(int res) {
         if (nOfP ==0) continue;
         x = x / nOfP;
         y = y / nOfP;
-        levGraphSmooth->AddPoint(x,y);
+        levGraphSmooth->SetPoint(i,x,y);
         
         //calculate errors with respect to average y
         
