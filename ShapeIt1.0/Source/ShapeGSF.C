@@ -256,8 +256,6 @@ void ShapeGSF::FillgSF() {
         
         //in case of MC mode, shuffle gSF according to the gauss distribution
         if (m_sett->doMC) {
-            dgSF1 = 0;
-            dgSF2 = 0;
             gSF1 = r.Gaus(gSF1,dgSF1);
             gSF2 = r.Gaus(gSF2,dgSF2);
         }
@@ -421,19 +419,19 @@ TMultiGraph* ShapeGSF::getMultGraph() {
     multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     
     //add literature values to graph; also applies transformation
-    if (m_sett->doOslo && !m_sett->doMC) {
+    //if (m_sett->doOslo && !m_sett->doMC) {
         Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(litGraph,"3A");
-    }
-    else if (m_sett->doOslo && m_sett->doMC) {
+   // }
+   /* else if (m_sett->doOslo && m_sett->doMC) {
         Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(mc_litGraph);
-    }
+    }*/
     //merge gSF data into levGraph
     Merge();
     
     //apply autoscale, if requested
-    s
+    
     if (m_sett->doAutoScale) {
         m_sett->gSF_norm *= Norm(levGraph[0], litGraph );
     }

@@ -258,8 +258,10 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     //show ShapeIt Button
     TGPictureButton *fPicture = new TGPictureButton(f1,
                                                     gClient->GetPicture("logo2.jpg"), 20);
-    //fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
-    fPicture->Connect("Clicked()", "ShapeFrame", this, "MonteCarlo()");
+    if (sett->doMC)
+        fPicture->Connect("Clicked()", "ShapeFrame", this, "MonteCarlo()");
+    else
+        fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
     f1->AddFrame(fPicture,new TGLayoutHints(kLHintsLeft,
                                             1, 1, 1, 1));
     
@@ -799,8 +801,8 @@ void ShapeFrame::MonteCarlo() {
     //status update: will have values for gSF
     status = 2;
     TRandom3 r;
-    TH1* h1 = new TH1F("slope", "best-fit slopes", 100, -1, 1);
-    for (int i = 0; i < 100; i++) {
+    TH1* h1 = new TH1F("slope", "best-fit slopes", 200, -0.2, 0.2);
+    for (int i = 0; i < 500; i++) {
         
         //bin size
         matrix->SetESize( r.Uniform(sett->exi_size[0], sett->exi_size[1]) );
@@ -814,6 +816,8 @@ void ShapeFrame::MonteCarlo() {
         ShowGraph();
         //std::cout << AlphaChi2() <<std::endl;
         h1->Fill(AlphaChi2());
+        if (i%10 ==0)
+            std::cout <<"MC simulation: " <<i <<std::endl;
     }
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
@@ -1464,8 +1468,8 @@ double ShapeFrame::AlphaChi2()
     //some hard-coded stuff here....needs to be fixed
     double alpha_bak = sett->lit_alpha;
     double exi_bak = sett->exiEne[0];
-    double const alphaRange = 1; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
-    int const nOfPoints = 100; //number of steps in the chi2 evaluation
+    double const alphaRange = 0.25; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
+    int const nOfPoints = 200; //number of steps in the chi2 evaluation
     int const nOfExi = 2; //number of excitation energies
     double const exiStep = 1; //step size (in keV) by which the excitation energy is lowered in each iteration
     double alphaX[nOfPoints*nOfExi];
