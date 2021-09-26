@@ -16,7 +16,11 @@
 ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
 {
     litGraph = new TGraphErrors();
+    mc_litGraph = new TGraph();
     levGraphAll = new TGraphErrors();
+    mc_levGraphAll = new TGraph();
+   
+
     levGraphSmooth = new TGraphAsymmErrors();
     if (m_sett->doOslo) {
         ReadLit();
@@ -49,6 +53,7 @@ void ShapeGSF::ReadLit()
             litGraph->SetPointError(litGraph->GetN() - 1, 0,
                                     ( oslo_gSF_high - oslo_gSF_low ) / 2 );
         }
+        
         litGraph->SetFillColor(4);
         litGraph->SetFillStyle(3010);
         if (m_sett->verbose)
@@ -56,6 +61,22 @@ void ShapeGSF::ReadLit()
     }
 }
 
+// filles mc_litGraph with new values from litGraph using MC smearing
+void ShapeGSF::doMCGraph()
+{
+    TRandom3 s;
+    mc_litGraph->Set(0);
+    for (int i = 0; i < litGraph->GetN(); i++)
+    {
+        mc_litGraph->SetPoint(i, litGraph->GetX()[i], s.Gaus(litGraph->GetY()[i], litGraph->GetEY()[i] ) );
+        //mc_litGraph->SetPoint(i, litGraph->GetX()[i], litGraph->GetY()[i] );
+    }
+    //litGraph->Print();
+    //mc_litGraph->Print();
+}
+
+
+//calcualtions a normalization factor to match T1 and T2
 double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
     double c1 = 0, c2 = 0;
     std::vector<double> a;
@@ -67,7 +88,12 @@ double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
         b.push_back( T2->Eval( T1->GetX()[i] ) );
     }
     for (int i = 0; i < T1->GetN(); i++) {
-        if ( da[i] !=0 ) {
+        //in case of MC mode, there are no error bars
+        if (m_sett->doMC) {
+            c1 += ( a[i] * b[i] );
+            c2 += ( a[i] * a[i] );
+        }
+        else if ( da[i] !=0 ) {
           c1 += ( a[i] * b[i] / da[i] );
           c2 += ( a[i] * a[i] / da[i] );
         }
@@ -95,9 +121,23 @@ double ShapeGSF::getChi2(int n){
         double dyh = levGraphSmooth->GetErrorYhigh(i);
         double dyl = levGraphSmooth->GetErrorYlow(i);
         double dy = (dyh + dyl)/2;
-        double y_oslo = litGraph->Eval(x);
+        double y_oslo;
         
-        if (dy == 0) {
+        if (!m_sett->doMC)
+            y_oslo = litGraph->Eval(x);
+        else {
+            doMCGraph();
+            y_oslo = mc_litGraph->Eval(x);
+        }
+        if (m_sett->doMC) {
+            if (y_oslo > 0)
+                chi2 += TMath::Power( (y_oslo - y) / y_oslo, 2);
+            else {
+                std::cout <<"Error in getChi2: zero or negative value for y_oslo error for point " <<i<<" ! Skipping this data point" <<std::endl;
+                continue;
+            }
+        }
+        else if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
             continue;
         }
@@ -113,7 +153,24 @@ double ShapeGSF::getChi2(int n){
     //std::cout <<"chi2 in getChi2: " <<chi2<<std::endl;    
     return (chi2);
 }
+ 
+//takes the actual (last) data from levGraph_1 and levGraph_2 and creates a combined graph selecting the gSF values via MC, i.e. no erro bars are assigned
+/*void mc_Graph() {
+    
+    auto n = levGraph_1.size();
+    mc_levGraph.push_back(new TGraph());
+    auto m = mc_levGrap.size();
+    for (auto i = 0; i < n; i++) {
         
+        double x_1 = levGraph_1[n-1]->GetX()[i];
+        double y_1 = levGraph_1[n-1]->GetY()[i];
+        double x_2 = levGraph_2[n-1]->GetX()[i];
+        double y_2 = levGraph_2[n-1]->GetY()[i];
+        mc_levGraph[m-1]->SetPoint(mc_levGraph[m-1]->GetN(), x_1, y_1);
+        mc_levGraph[m-1]->SetPoint(mc_levGraph[m-1]->GetN(), x_2, y_2);
+    }
+}*/
+
 //fills the actual vector of levGraph_1 and levGraph_2 with values; also fills levGraph
 void ShapeGSF::FillgSF() {
    
@@ -133,11 +190,22 @@ void ShapeGSF::FillgSF() {
     
     //create new vector element; j is the the index of the first empty container, i.e. "Update" will fill a new vector container
     
+    if (m_sett->doMC) {
+        levGraph.clear();
+        levGraph_1.clear();
+        levGraph_2.clear();
+        levGraphAll->Set(0);
+        levGraphSmooth->Set(0);
+    }
+    
     levGraph.push_back(new TGraphErrors());
     levGraph_1.push_back(new TGraphErrors());
     levGraph_2.push_back(new TGraphErrors());
+    
+    
+    
     int j = levGraph_1.size() - 1;
-        
+    
     for (int i = 0; i < m_matrix->integral1Cube.size(); i++ ) {
 
         //if any of the two peak areas is below minCounts, skip this entire gSF pair
@@ -186,6 +254,15 @@ void ShapeGSF::FillgSF() {
             }
         }
         
+        //in case of MC mode, shuffle gSF according to the gauss distribution
+        if (m_sett->doMC) {
+            dgSF1 = 0;
+            dgSF2 = 0;
+            gSF1 = r.Gaus(gSF1,dgSF1);
+            gSF2 = r.Gaus(gSF2,dgSF2);
+        }
+
+        
         //filling results into levGraph vector;
         levGraph_1[j]->SetPoint(levGraph_1[j]->GetN(), egamma1, gSF1);
         levGraph_1[j]->SetPointError(levGraph_1[j]->GetN()-1, 0, dgSF1);
@@ -221,6 +298,7 @@ void ShapeGSF::Merge() {
     }
 }
 
+
 //merge all lelvGraphs into single graph "levGraphAll"
 void ShapeGSF::MergeAll() {
     TObjArray *mArray = new TObjArray();
@@ -230,13 +308,21 @@ void ShapeGSF::MergeAll() {
     levGraphAll->Sort();
 }
 
+/*
+//merge all mc_lelvGraphs into single graph "mc_levGraphAll"
+void ShapeGSF::mc_MergeAll() {
+    TObjArray *mArray = new TObjArray();
+    for (int i = 0; i < mc_levGraph.size(); i++) mArray->Add(mc_levGraph[i]);
+    mc_levGraphAll->Set(0);
+    mc_levGraphAll->Merge(mArray);
+    mc_levGraphAll->Sort();
+}*/
 
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
 void ShapeGSF::Smooth(int res) {
     levGraphSmooth->Set(0);
     MergeAll();
     auto nPoints = levGraphAll->GetN();
-    
     double m_e = levGraphAll->GetX()[0] + res;
     std::vector <int> i_bin;          //the point number limits of levGraphAll belonging to the bins with size res
     i_bin.push_back(0);             //first bin always starts at zero
@@ -257,6 +343,7 @@ void ShapeGSF::Smooth(int res) {
             x += levGraphAll->GetX()[j];
             y += levGraphAll->GetY()[j];
             dy += TMath::Power(levGraphAll->GetEY()[j] , 2);
+            
         }
         int nOfP = i_bin[i+1] - i_bin[i];     //number of points in this bin
         if (nOfP ==0) continue;
@@ -264,15 +351,15 @@ void ShapeGSF::Smooth(int res) {
         y = y / nOfP;
         //this error is the error of the mean value, based on the propagation of the indiviual errors, only; this does not take into account the fluctuations in the data points (i.e. the standard deviation)
         dy = TMath::Sqrt(dy) / nOfP;
-        levGraphSmooth->SetPoint(i,x,y);
+        levGraphSmooth->SetPoint(levGraphSmooth->GetN(),x,y);
         
-        
+       /*
         double st_dev = 0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
             st_dev += TMath::Power(levGraphAll->GetY()[j] - y, 2);
         }
         st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
-        
+        */
         //calculate max errors including errors of individual data points
 
         double dyl=0,dyh=0;
@@ -323,10 +410,6 @@ void ShapeGSF::Smooth(int res) {
     levGraphSmooth->SetMarkerStyle(22);
     levGraphSmooth->SetMarkerSize(2);
     levGraphSmooth->SetMarkerColor(1);
-    for (int j = 0; j < levGraphSmooth->GetN(); j++) {
-        double dy = ( levGraphSmooth->GetEYhigh()[j] + levGraphSmooth->GetEYlow()[j] ) / 2;
-        //std::cout <<levGraphSmooth->GetX()[j]<< " " <<levGraphSmooth->GetY()[j] << " " << dy <<std::endl;
-    }
 }
 
 
@@ -338,15 +421,19 @@ TMultiGraph* ShapeGSF::getMultGraph() {
     multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     
     //add literature values to graph; also applies transformation
-    if (m_sett->doOslo) {
+    if (m_sett->doOslo && !m_sett->doMC) {
         Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(litGraph,"3A");
     }
-    
+    else if (m_sett->doOslo && m_sett->doMC) {
+        Transform(m_sett->lit_norm, m_sett->lit_alpha);
+        multGraph->Add(mc_litGraph);
+    }
     //merge gSF data into levGraph
     Merge();
     
     //apply autoscale, if requested
+    s
     if (m_sett->doAutoScale) {
         m_sett->gSF_norm *= Norm(levGraph[0], litGraph );
     }

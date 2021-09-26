@@ -36,10 +36,13 @@ private:
    
 public:
 
-    TGraphErrors* litGraph;
+    TGraphErrors* litGraph;                 //stores the literature 'Oslo' results for gSF
+    TGraph* mc_litGraph;                    //the MC version of the Oslo results
     ShapeGSF(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
     
     void ReadLit();
+    void doMCGraph();
+
     void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix
     TMultiGraph* getMultGraph();                        //returns the multGrap
     TGraphAsymmErrors* getSmoothGraph()     {return (levGraphSmooth);}            
@@ -57,11 +60,16 @@ public:
     void Smooth(int res);
     void MergeAll();
     double getChi2(int n);
-
+    void mc_Graph();                                    //stores Monte Carlo version of gSF data in mc_levGraph
+    TRandom3 r;
     std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
     std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2
     std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for both levels
+    std::vector<TGraph*> mc_levGraph;            //TGraphs to contain the gSF data for both levels with Monte Carlo instead of error bars
+    
+    
     TGraphErrors *levGraphAll;                      //contains all gSF data points from all iterations
+    TGraph* mc_levGraphAll;                    //merge of all mc_levGraph objects
     TGraphAsymmErrors* levGraphSmooth;          //contains all smoothed gSF data points from all iterations
     
 };

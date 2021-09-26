@@ -258,7 +258,8 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     //show ShapeIt Button
     TGPictureButton *fPicture = new TGPictureButton(f1,
                                                     gClient->GetPicture("logo2.jpg"), 20);
-    fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
+    //fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
+    fPicture->Connect("Clicked()", "ShapeFrame", this, "MonteCarlo()");
     f1->AddFrame(fPicture,new TGLayoutHints(kLHintsLeft,
                                             1, 1, 1, 1));
     
@@ -778,6 +779,49 @@ void ShapeFrame::DoNumberEntry() {
     }
 }
 
+//runs a Monte Carlo simulation of the data analysis
+void ShapeFrame::MonteCarlo() {
+    
+    //check if matrix is loaded
+    if (status == 0)
+        return;
+   
+    //clean up matrix
+    matrix->Reset();
+   
+    //set current values of excitation energies for matrix
+    matrix->SetEne0( sett->exiEne[0] );
+    matrix->SetEne1( sett->exiEne[1] );
+    
+    //create gamma ray strength function object
+    gSF = new ShapeGSF(sett, matrix);
+    UpdateDisplay(6);   //is this good for anything?
+    //status update: will have values for gSF
+    status = 2;
+    TRandom3 r;
+    TH1* h1 = new TH1F("slope", "best-fit slopes", 100, -1, 1);
+    for (int i = 0; i < 100; i++) {
+        
+        //bin size
+        matrix->SetESize( r.Uniform(sett->exi_size[0], sett->exi_size[1]) );
+        //sliding window
+        matrix->SetEne0( sett->exiEne[0] - r.Uniform(0, 1) * matrix->GetESize() );
+
+        //update matrix and gSF values
+        matrix->Diag();
+        gSF->FillgSF();
+        //display results for this iteration; this is a temporary hack  because ShowGraph calcualtes the smoothed version of gSF which is needed for the chi2 procedure; this needs a fix in the ShapeGSF class
+        ShowGraph();
+        //std::cout << AlphaChi2() <<std::endl;
+        h1->Fill(AlphaChi2());
+    }
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    fCanvas->Clear();
+    h1->Draw();
+    fCanvas->Modified();
+    fCanvas->Update();
+}
+
 void ShapeFrame::ShapeItBaby() {
     
     //check if matrix is loaded
@@ -884,8 +928,16 @@ void ShapeFrame::ShowGraph()
     }*/
     
     //plot the multigraph
-    gSF->getMultGraph()->Draw("A*");
-    //gSF->getMultGraph();
+    if (!sett->doMC) {
+        gSF->getMultGraph()->Draw("A*");
+        return;
+    }
+    else {
+        gSF->getMultGraph()->Draw("A*");
+        fCanvas->Modified(); fCanvas->Update(); // make sure it is (re)drawn
+        gSystem->ProcessEvents(); gSystem->ProcessEvents();
+        gSystem->Sleep(10);
+    }
     //gSF->Smooth(50)->Draw("P,same");
     fCanvas->Modified();
     fCanvas->Update();
@@ -1407,13 +1459,13 @@ void ShapeFrame::UpdateDisplay(int display) {
     fCanvas->Update();
 }
 
-void ShapeFrame::AlphaChi2()
+double ShapeFrame::AlphaChi2()
 {
     //some hard-coded stuff here....needs to be fixed
     double alpha_bak = sett->lit_alpha;
     double exi_bak = sett->exiEne[0];
-    double const alphaRange = 0.3; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
-    int const nOfPoints = 40; //number of steps in the chi2 evaluation
+    double const alphaRange = 1; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
+    int const nOfPoints = 100; //number of steps in the chi2 evaluation
     int const nOfExi = 2; //number of excitation energies
     double const exiStep = 1; //step size (in keV) by which the excitation energy is lowered in each iteration
     double alphaX[nOfPoints*nOfExi];
@@ -1422,42 +1474,41 @@ void ShapeFrame::AlphaChi2()
     int pointC = 0;
     
     for (int j = 0; j < nOfExi; j++) {
-
-    for (int i  = 0; i < nOfPoints; i++) {
-
-        alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
-        //update alpha in settings file
-        sett->lit_alpha = alphaX[pointC];
-
-        //apply transformation
-        ShowGraph();
-        chi2Y[pointC] = gSF->getChi2(0);
-        enes[pointC] = sett->exiEne[0];
-
-        pointC++;
-       //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
-    }
-   
-    sett->exiEne[0] = sett->exiEne[0] - exiStep;
-    UpdateGuiSetting(sett);
-    ShapeItBaby();
+        
+        for (int i  = 0; i < nOfPoints; i++) {
+            
+            alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
+            //update alpha in settings file
+            sett->lit_alpha = alphaX[pointC];
+            
+            //apply transformation
+            //ShowGraph();
+            gSF->Transform(sett->lit_norm, sett->lit_alpha);
+            chi2Y[pointC] = gSF->getChi2(0);
+            enes[pointC] = sett->exiEne[0];
+            
+            pointC++;
+            //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
+        }
+        if (!sett->doMC) {
+            sett->exiEne[0] = sett->exiEne[0] - exiStep;
+            UpdateGuiSetting(sett);
+            ShapeItBaby();
+        }
     }
     TGraph* alphaPlot = new TGraph(nOfPoints, alphaX, chi2Y);
     alphaPlot->SetMarkerStyle(4);
     alphaPlot->SetMarkerColor(kRed);
-    alphaPlot->Draw("APC*");
+    if (!sett->doMC)
+        alphaPlot->Draw("APC*");
     
     //the number of data points in the smoothed graph
     int n_smooth = gSF->levGraphSmooth->GetN();
-    std::cout <<"Number of data points in smooth graph: "<<n_smooth <<std::endl;
-
     //the number of data points in all graphs before smoothing
     int n_all = gSF->levGraphAll->GetN();
-    std::cout <<"Number of data points in merged graph: "<<n_all <<std::endl;
 
     //the number of data points in the first gSF graph
     int n_single = gSF->levGraph_1[0]->GetN();
-    std::cout <<"Number of data points in first gSF graph: "<<n_single <<std::endl;
 
     //find minimum chi2 value
     double x_min = 0, y_min = 0, i_min = 0;
@@ -1470,16 +1521,20 @@ void ShapeFrame::AlphaChi2()
             i_min = i;
         }
     }
-    std::cout <<"Mininmum chi2 value: "<<y_min << " at slope: " <<x_min<<std::endl;
-    
-    //find slopes for chi2+1 values
-    double x_l = x_min, x_r = x_min;
-    while (alphaPlot->Eval(x_r) < y_min + 1)
-        x_r +=1E-2;
-    while (alphaPlot->Eval(x_l) < y_min + 1)
-        x_l -=1E-2;
-    std::cout <<"chi2 value +1 for raw chi2 found at: "<<x_l << " and " <<x_r<<std::endl;
+    //alphaPlot->Print();
 
+    //std::cout <<"Mininmum chi2 value: "<<y_min << " at slope: " <<x_min<<std::endl;
+    if (!sett->doMC) {
+        //find slopes for chi2+1 values
+        double x_l = x_min, x_r = x_min;
+        //this can end up in an infinite loop, needs a fix!
+        
+        while (alphaPlot->Eval(x_r) < y_min + 1)
+            x_r +=1E-2;
+        while (alphaPlot->Eval(x_l) < y_min + 1)
+            x_l -=1E-2;
+        //std::cout <<"chi2 value +1 for raw chi2 found at: "<<x_l << " and " <<x_r<<std::endl;
+    }
     //TGraph2D *dt = new TGraph2D(nOfPoints*nOfExi, alphaX, enes, chi2Y);
     //dt->Draw("colz");
     
@@ -1487,6 +1542,7 @@ void ShapeFrame::AlphaChi2()
     sett->exiEne[0] = exi_bak;
     sett->lit_alpha = alpha_bak;
     UpdateGuiSetting(sett);
+    return (x_min);
 }
 
 

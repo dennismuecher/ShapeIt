@@ -41,6 +41,9 @@
 #include <TKey.h>
 #include <TClass.h>
 #include <algorithm>
+#include <TRandom.h>
+#include <TRandom2.h>
+#include <TRandom3.h>
 
 #include "../Include/ShapeSetting.h"
 #include "../Include/ShapeMatrix.h"
@@ -172,13 +175,14 @@ public:
     void MatrixSelect(Int_t mnr);
     void BinSelect(Int_t sbin);
 	void HandleVerboseMenu(int vLevel);							//takes care about the verbose level menu
-    void AlphaChi2();                                           //chi2 fit of slope alpha to literature data
+    double AlphaChi2();                                           //chi2 fit of slope alpha to literature data
     void fBinComboDraw(TGComboBox *combo);
     void UpdateDisplay();
     void UpdateDisplay(int display);
     void DrawMarker();
     void HandleMyCanvas(Int_t a,Int_t b,Int_t c,TObject* obj);
     void ShapeItBaby();
+    void MonteCarlo();
     void PrintMessage();
 	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
     void ShowGraph(double norm, double slope);   //applies literature value transformation and updates gSF graph
