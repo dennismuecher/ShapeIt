@@ -41,7 +41,7 @@ public:
     bool doWidthCal = false;                 //if true, use results from width calibrations
     bool colour = true;						//if true, plot gSF points in two different colours for peak1 and peak2
 	bool doGRF = false;                      //if true, display fit of gSF via giant resonance formula from RAINIER
-    bool doMC = true;                       //if true, run the MC version of gSF evaluation
+    bool doMC = false;                       //if true, run the MC version of gSF evaluation
     bool displayAvg = false;                    //sets if average gSF is displayed
     bool displaySingle = true;                    //sets if single (both) gSF data is displayed
 	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail

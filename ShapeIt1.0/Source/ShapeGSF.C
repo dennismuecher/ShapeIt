@@ -17,6 +17,7 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), 
 {
     litGraph = new TGraphErrors();
     mc_litGraph = new TGraph();
+    mc_litGraphAll = new TMultiGraph();
     levGraphAll = new TGraphErrors();
     mc_levGraphAll = new TGraph();
    
@@ -68,11 +69,15 @@ void ShapeGSF::doMCGraph()
     mc_litGraph->Set(0);
     for (int i = 0; i < litGraph->GetN(); i++)
     {
+        //important: reset transformation as mc_litGraph is regenerated using litGraph, which has not been transformed
+        m_B = 1;
+        m_alpha = 0;
         mc_litGraph->SetPoint(i, litGraph->GetX()[i], s.Gaus(litGraph->GetY()[i], litGraph->GetEY()[i] ) );
         //mc_litGraph->SetPoint(i, litGraph->GetX()[i], litGraph->GetY()[i] );
     }
     //litGraph->Print();
     //mc_litGraph->Print();
+    mc_litGraphAll->Add(mc_litGraph);
 }
 
 
@@ -110,66 +115,91 @@ double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
     }
 }
 
-//returns the chi2, comparing the smooth gSF to the Oslo literature data; n is the number of degrees of freedom
+//returns the chi2 for the MC mode, comparing the smooth gSF to the Oslo literature data
 
-double ShapeGSF::getChi2(int n){
+double ShapeGSF::mc_getChi2(){
+    
     double chi2 = 0;
-    for (int i = 0; i < levGraphSmooth->GetN(); i++) {
-        //get interpolated value for Oslo data at actual energy
-        double x = levGraphSmooth->GetX()[i];
-        double y = levGraphSmooth->GetY()[i];
-        double dyh = levGraphSmooth->GetErrorYhigh(i);
-        double dyl = levGraphSmooth->GetErrorYlow(i);
-        double dy = (dyh + dyl)/2;
-        double y_oslo;
-        
-        if (!m_sett->doMC)
-            y_oslo = litGraph->Eval(x);
+    for (int i = 0; i < levGraphAll->GetN(); i++) {
+        double x = levGraphAll->GetX()[i];
+        double y = levGraphAll->GetY()[i];
+        double y_oslo = mc_litGraph->Eval(x);
+        if (y > 0) {
+            chi2 += TMath::Power( (y_oslo - y) /y, 2);
+        }
         else {
-            doMCGraph();
-            y_oslo = mc_litGraph->Eval(x);
+            std::cout <<"Error in getChi2: zero or negative value for y_oslo error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
         }
-        if (m_sett->doMC) {
-            if (y_oslo > 0)
-                chi2 += TMath::Power( (y_oslo - y) / y_oslo, 2);
-            else {
-                std::cout <<"Error in getChi2: zero or negative value for y_oslo error for point " <<i<<" ! Skipping this data point" <<std::endl;
-                continue;
-            }
-        }
-        else if (dy == 0) {
+    }
+    return (chi2);
+}
+
+
+//returns the chi2 for the levGraphAll graph, comparing the smooth gSF to the Oslo literature data
+
+double ShapeGSF::getChi2All(){
+    
+    double chi2 = 0;
+    for (int i = 0; i < levGraphAll->GetN(); i++) {
+        double x = levGraphAll->GetX()[i];
+        double y = levGraphAll->GetY()[i];
+        double dyh = levGraphAll->GetErrorYhigh(i);
+        double dyl = levGraphAll->GetErrorYlow(i);
+        double dy = (dyh + dyl)/2;
+        double y_oslo = litGraph->Eval(x);
+        
+        if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
             continue;
         }
         else
             chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
     }
-    //the number of data points in the smooth graph
-    if (n == 0)
-        n = levGraphSmooth->GetN();
-    
-    
-
-    //std::cout <<"chi2 in getChi2: " <<chi2<<std::endl;    
     return (chi2);
 }
- 
-//takes the actual (last) data from levGraph_1 and levGraph_2 and creates a combined graph selecting the gSF values via MC, i.e. no erro bars are assigned
-/*void mc_Graph() {
+
+//returns the chi2 for the levGraphSmooth graph, comparing the smooth gSF to the Oslo literature data
+
+double ShapeGSF::getChi2Smooth(){
     
-    auto n = levGraph_1.size();
-    mc_levGraph.push_back(new TGraph());
-    auto m = mc_levGrap.size();
-    for (auto i = 0; i < n; i++) {
+    double chi2 = 0;
+    int n = levGraphSmooth->GetN();
+    for (int i = 0; i < n; i++) {
+        double x = levGraphSmooth->GetX()[i];
+        double y = levGraphSmooth->GetY()[i];
+        double dyh = levGraphSmooth->GetErrorYhigh(i);
+        double dyl = levGraphSmooth->GetErrorYlow(i);
+        double dy = (dyh + dyl)/2;
+        double y_oslo = litGraph->Eval(x);
         
-        double x_1 = levGraph_1[n-1]->GetX()[i];
-        double y_1 = levGraph_1[n-1]->GetY()[i];
-        double x_2 = levGraph_2[n-1]->GetX()[i];
-        double y_2 = levGraph_2[n-1]->GetY()[i];
-        mc_levGraph[m-1]->SetPoint(mc_levGraph[m-1]->GetN(), x_1, y_1);
-        mc_levGraph[m-1]->SetPoint(mc_levGraph[m-1]->GetN(), x_2, y_2);
+        if (dy == 0) {
+            std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
+        }
+        else
+            chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
     }
-}*/
+    //calculating the normal-distributed chi2 value, following this website:
+    //https://www.phys.hawaii.edu/~varner/PHYS305-Spr12/DataFitting.html
+    n = n-1; //number of degrees of freedom; assumes that levGraphSmooth points are statistically independent
+    double chi2_distr = TMath::Sqrt(2*chi2) - TMath::Sqrt(2*n -1);
+    std::cout <<"Normal distributed chi2 value: " <<chi2_distr<< " for chi2 " <<chi2 <<" for alpha: "<< m_sett->lit_alpha <<std::endl;
+    // probability that an observed Chi-squared exceeds the value chi2 by chance, even for a correct model
+    double chi2_prob = TMath::Prob(chi2,n);
+    std::cout <<"chi2 probability: " <<chi2_prob << std::endl;
+    return (chi2);
+}
+
+double ShapeGSF::getChi2(){
+    if (m_sett->doMC)
+        return mc_getChi2();
+    else if (m_sett->displayAvg)
+        return getChi2Smooth();
+    else
+        return getChi2All();
+}
+ 
 
 //fills the actual vector of levGraph_1 and levGraph_2 with values; also fills levGraph
 void ShapeGSF::FillgSF() {
@@ -178,11 +208,11 @@ void ShapeGSF::FillgSF() {
     m_matrix->IntegrateBg();
     m_matrix->IntegrateSquare();
     m_matrix->IntegrateCube();
-    
+   
     //if autofit or background subtraction is set, perform autofit using Gauss
     if (m_sett->mode == 2 || m_sett->doBackground)
         m_matrix->FitIntegral();
-    
+
     double elevel1 = ( m_sett->levEne[0] + m_sett->levEne[1] ) / 2;
     double elevel2 = ( m_sett->levEne[2] + m_sett->levEne[3] ) / 2;
     double egamma1, egamma2;
@@ -196,13 +226,13 @@ void ShapeGSF::FillgSF() {
         levGraph_2.clear();
         levGraphAll->Set(0);
         levGraphSmooth->Set(0);
+        //get a new Monte Carlo version of the literature values
+        doMCGraph();
     }
     
     levGraph.push_back(new TGraphErrors());
     levGraph_1.push_back(new TGraphErrors());
     levGraph_2.push_back(new TGraphErrors());
-    
-    
     
     int j = levGraph_1.size() - 1;
     
@@ -232,6 +262,7 @@ void ShapeGSF::FillgSF() {
         dgSF2 = TMath::Power(1./m_matrix->integral2[i], 0.5) * gSF2;
 
         //recalculate gSF in case autofit is activated
+        
         if (m_sett->mode == 2 && m_sett->doBackground) {
             gSF1 = m_sett->getEffCor(egamma1, 1) * m_matrix->fit_integral1Net[i] * m_matrix->integral1Cube[i]  / m_matrix->integral1[i];
             
@@ -256,8 +287,12 @@ void ShapeGSF::FillgSF() {
         
         //in case of MC mode, shuffle gSF according to the gauss distribution
         if (m_sett->doMC) {
+            //gaus smear according to fit eerror bars
             gSF1 = r.Gaus(gSF1,dgSF1);
             gSF2 = r.Gaus(gSF2,dgSF2);
+            //now set error bars to zero, they are not used for anything anymore
+            dgSF1 = 0;
+            dgSF2 = 0;
         }
 
         
@@ -317,9 +352,12 @@ void ShapeGSF::mc_MergeAll() {
 }*/
 
 //returns a graph of gSF based on levGraphAll, but with averaged gSF values according to the bin size res
+
 void ShapeGSF::Smooth(int res) {
     levGraphSmooth->Set(0);
-    MergeAll();
+    // if res == 0 use exi_size[0] (user input) for the bin size
+    if (res ==0)
+        res = m_sett->exi_size[0];
     auto nPoints = levGraphAll->GetN();
     double m_e = levGraphAll->GetX()[0] + res;
     std::vector <int> i_bin;          //the point number limits of levGraphAll belonging to the bins with size res
@@ -465,13 +503,12 @@ TMultiGraph* ShapeGSF::getMultGraph() {
         }
     }
     Merge();
-    
+    MergeAll();
     //add smoothed graph, if requested
     if (m_sett->displayAvg) {
-        Smooth(50);
+        Smooth(0);
         multGraph->Add(getSmoothGraph(),"P");
     }
-    
     return ( multGraph );
 }
 
@@ -547,9 +584,16 @@ void ShapeGSF::Print() {
 void ShapeGSF::Transform(double B_t, double alpha_t) {
     
     //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
-   for (int i = 0; i < litGraph->GetN() ; i++ ) {
-        litGraph->GetY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
-       litGraph->GetEY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
+    if (m_sett->doMC) {
+        for (int i = 0; i < mc_litGraph->GetN() ; i++ ) {
+            mc_litGraph->GetY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * mc_litGraph->GetX()[i] / 1000.);
+        }
+    }
+    else {
+        for (int i = 0; i < litGraph->GetN() ; i++ ) {
+            litGraph->GetY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
+            litGraph->GetEY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * litGraph->GetX()[i] / 1000.);
+        }
     }
     m_B = B_t;
     m_alpha = alpha_t;

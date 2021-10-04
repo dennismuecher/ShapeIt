@@ -802,7 +802,7 @@ void ShapeFrame::MonteCarlo() {
     status = 2;
     TRandom3 r;
     TH1* h1 = new TH1F("slope", "best-fit slopes", 200, -0.2, 0.2);
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 400; i++) {
         
         //bin size
         matrix->SetESize( r.Uniform(sett->exi_size[0], sett->exi_size[1]) );
@@ -934,7 +934,6 @@ void ShapeFrame::ShowGraph()
     //plot the multigraph
     if (!sett->doMC) {
         gSF->getMultGraph()->Draw("A*");
-        return;
     }
     else {
         gSF->getMultGraph()->Draw("A*");
@@ -995,7 +994,7 @@ int ShapeFrame::MatrixSelector()
     
 }
 
-//takes care about setting the verbose level and displaying the verbose cascade menu correctly
+//takes care of setting the verbose level and displaying the verbose cascade menu correctly
 void ShapeFrame::HandleVerboseMenu(int vLevel) {
     
     switch (vLevel) {
@@ -1470,7 +1469,7 @@ double ShapeFrame::AlphaChi2()
     double exi_bak = sett->exiEne[0];
     double const alphaRange = 0.25; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
     int const nOfPoints = 200; //number of steps in the chi2 evaluation
-    int const nOfExi = 2; //number of excitation energies
+    int const nOfExi = 1; //number of excitation energies
     double const exiStep = 1; //step size (in keV) by which the excitation energy is lowered in each iteration
     double alphaX[nOfPoints*nOfExi];
     double chi2Y[nOfPoints*nOfExi];
@@ -1488,9 +1487,8 @@ double ShapeFrame::AlphaChi2()
             //apply transformation
             //ShowGraph();
             gSF->Transform(sett->lit_norm, sett->lit_alpha);
-            chi2Y[pointC] = gSF->getChi2(0);
+            chi2Y[pointC] = gSF->getChi2();
             enes[pointC] = sett->exiEne[0];
-            
             pointC++;
             //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
         }
@@ -1525,7 +1523,7 @@ double ShapeFrame::AlphaChi2()
             i_min = i;
         }
     }
-    //alphaPlot->Print();
+   // alphaPlot->Print();
 
     //std::cout <<"Mininmum chi2 value: "<<y_min << " at slope: " <<x_min<<std::endl;
     if (!sett->doMC) {
@@ -1537,7 +1535,7 @@ double ShapeFrame::AlphaChi2()
             x_r +=1E-2;
         while (alphaPlot->Eval(x_l) < y_min + 1)
             x_l -=1E-2;
-        //std::cout <<"chi2 value +1 for raw chi2 found at: "<<x_l << " and " <<x_r<<std::endl;
+        std::cout <<"chi2 value +1 for raw chi2 found at: "<<x_l << " and " <<x_r<<std::endl;
     }
     //TGraph2D *dt = new TGraph2D(nOfPoints*nOfExi, alphaX, enes, chi2Y);
     //dt->Draw("colz");

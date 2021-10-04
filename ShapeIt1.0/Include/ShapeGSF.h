@@ -55,11 +55,15 @@ public:
 
     void Print();
     void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
+    
     void Scale(int j, double factor);
     void ScaleAll(double factor);
     void Smooth(int res);
     void MergeAll();
-    double getChi2(int n);
+    double getChi2();
+    double getChi2All();
+    double getChi2Smooth();
+    double mc_getChi2();
     void mc_Graph();                                    //stores Monte Carlo version of gSF data in mc_levGraph
     TRandom3 r;
     std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
@@ -70,6 +74,8 @@ public:
     
     TGraphErrors *levGraphAll;                      //contains all gSF data points from all iterations
     TGraph* mc_levGraphAll;                    //merge of all mc_levGraph objects
+    TMultiGraph* mc_litGraphAll;                    //merge of all mc_litGraph objects
+
     TGraphAsymmErrors* levGraphSmooth;          //contains all smoothed gSF data points from all iterations
     
 };
