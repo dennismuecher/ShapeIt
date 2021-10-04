@@ -45,7 +45,7 @@ public:
 
     void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix
     TMultiGraph* getMultGraph();                        //returns the multGrap
-    TGraphAsymmErrors* getSmoothGraph()     {return (levGraphSmooth);}
+    TGraphAsymmErrors* getSmoothGraph()     {return (levGraphSmooth);}            
     double Slope(int i);
     void Merge();
     double Norm(TGraphErrors* T1, TGraphErrors* T2 );
@@ -80,4 +80,3 @@ public:
     
 };
 #endif
-
