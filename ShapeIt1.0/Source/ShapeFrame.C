@@ -476,7 +476,6 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Plot Efficiency Data from File", M_DISPLAY_EFFI);
     fDisplayFile->AddEntry("&Show Peak Width", M_DISPLAY_FITWIDTH);
-    fDisplayFile->AddEntry("Show Peak &Ratios", M_DISPLAY_RATIO);
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("Show gSF &average", M_DISPLAY_AVG);
     fDisplayFile->AddEntry("Show gSF single data", M_DISPLAY_SINGLE);
@@ -495,7 +494,6 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->AddEntry("&Draw level density", M_DISPLAY_RHO);
     
     fDisplayFile->DisableEntry(M_DISPLAY_FITWIDTH);
-    fDisplayFile->DisableEntry(M_DISPLAY_RATIO);
     
     //cascade Menu for verbose level
     fDisplayFile->AddPopup("&Verbose Level", fVerboseMenu);
@@ -796,7 +794,7 @@ void ShapeFrame::MonteCarlo() {
     matrix->SetEne1( sett->exiEne[1] );
     
     //create gamma ray strength function object
-    gSF = new ShapeGSF(sett, matrix);
+    //gSF = new ShapeGSF(sett, matrix);
     UpdateDisplay(6);   //is this good for anything?
     //status update: will have values for gSF
     status = 2;
@@ -811,7 +809,7 @@ void ShapeFrame::MonteCarlo() {
 
         //update matrix and gSF values
         matrix->Diag();
-        gSF->FillgSF();
+        //gSF->FillgSF();
         //display results for this iteration; this is a temporary hack  because ShowGraph calcualtes the smoothed version of gSF which is needed for the chi2 procedure; this needs a fix in the ShapeGSF class
         ShowGraph();
         //std::cout << AlphaChi2() <<std::endl;
@@ -826,7 +824,7 @@ void ShapeFrame::MonteCarlo() {
     fCanvas->Update();
 }
 
-void ShapeFrame::ShapeItBaby() {
+/*void ShapeFrame::ShapeItBaby() {
     
     //check if matrix is loaded
     if (status == 0)
@@ -897,6 +895,32 @@ void ShapeFrame::ShapeItBaby() {
     
     //display results
     ShowGraph();
+}*/
+
+void ShapeFrame::ShapeItBaby() {
+    
+    //check if matrix is loaded
+    if (status == 0)
+        return;
+    
+    //update settings accordings to the GUI settings
+    UpdateSetting(sett);
+    
+    sett->nOfBins = sett->SizeToBin();
+    
+    //this call triggers the calculation of gSF values according to the actual settings stored int he settings file
+    gSFColl = new ShapeCollector(sett, matrix);
+    gSFColl->Collect();
+    
+    //status update: will have values for gSF
+    status = 2;
+    
+    //enable Menu entry showing fit results for peak width and peak ratios
+    if (sett->mode == 2)
+        fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
+        
+    //display results
+    ShowGraph();
 }
 
 void ShapeFrame::TransGraph()
@@ -918,30 +942,10 @@ void ShapeFrame::ShowGraph()
         
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
+    //draw the gSF collector object
+    gSFColl->Draw();
     
-    //fit giant resonance formula if requested
-    
-    /*if (sett->doGRF) {
-        TF1 *fitGDR = new TF1("fitGDR",glo,3000,6000,3);
-        fitGDR->SetParameter(0,300);
-        fitGDR->SetParameter(1,5);
-        fitGDR->SetParameter(2,15);
-        //fitGDR->SetParameter(3,0.5);
-        fitGDR->SetLineColor(1);
-        g->Fit(fitGDR," "," ",3000,6000);
-    }*/
-    
-    //plot the multigraph
-    if (!sett->doMC) {
-        gSF->getMultGraph()->Draw("A*");
-    }
-    else {
-        gSF->getMultGraph()->Draw("A*");
-        fCanvas->Modified(); fCanvas->Update(); // make sure it is (re)drawn
-        gSystem->ProcessEvents(); gSystem->ProcessEvents();
-        gSystem->Sleep(10);
-    }
-    //gSF->Smooth(50)->Draw("P,same");
+    //update canvas
     fCanvas->Modified();
     fCanvas->Update();
 }
@@ -1258,9 +1262,6 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_DISPLAY_FITWIDTH:
             UpdateDisplay(7);
             break;
-        case M_DISPLAY_RATIO:
-            UpdateDisplay(8);
-            break;
         case M_DISPLAY_VERBOSE0:
             HandleVerboseMenu(0);
             break;
@@ -1320,7 +1321,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_DISPLAY_PRINT:
             if (status > 1)
-                gSF->Print();
+                gSFColl->Print();
             else
                 std::cout <<"ShapeIt, first! No values to show" <<std::endl;
             break;
@@ -1486,8 +1487,8 @@ double ShapeFrame::AlphaChi2()
             
             //apply transformation
             //ShowGraph();
-            gSF->Transform(sett->lit_norm, sett->lit_alpha);
-            chi2Y[pointC] = gSF->getChi2();
+            //gSF->Transform(sett->lit_norm, sett->lit_alpha);
+            //chi2Y[pointC] = gSF->getChi2();
             enes[pointC] = sett->exiEne[0];
             pointC++;
             //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
@@ -1505,12 +1506,12 @@ double ShapeFrame::AlphaChi2()
         alphaPlot->Draw("APC*");
     
     //the number of data points in the smoothed graph
-    int n_smooth = gSF->levGraphSmooth->GetN();
+    //int n_smooth = gSF->levGraphSmooth->GetN();
     //the number of data points in all graphs before smoothing
-    int n_all = gSF->levGraphAll->GetN();
+    //int n_all = gSF->levGraphAll->GetN();
 
     //the number of data points in the first gSF graph
-    int n_single = gSF->levGraph_1[0]->GetN();
+    //int n_single = gSF->levGraph_1[0]->GetN();
 
     //find minimum chi2 value
     double x_min = 0, y_min = 0, i_min = 0;

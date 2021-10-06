@@ -49,6 +49,8 @@
 #include "../Include/ShapeMatrix.h"
 #include "../Include/ShapeGSF.h"
 #include "../Include/ShapeRho.h"
+#include "../Include/ShapeCollector.h"
+
 //#include "../Include/ShapeDialogAlpha.h"
 
 class TGWindow;
@@ -83,7 +85,6 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_PRINT,
     M_DISPLAY_AVG,
     M_DISPLAY_SINGLE,
-    M_DISPLAY_RATIO,
     M_DISPLAY_GRF,
 	M_DISPLAY_COLOUR,
 	M_DISPLAY_VERBOSE0,
@@ -118,6 +119,7 @@ private:
     TGNumberEntry       *scaling;           //scaling factor for gSF
     TGNumberEntry       *effCorr;              //efficiency factor for level 2
    
+    ShapeCollector      *gSFColl;
     
     TGCompositeFrame *fBin;
     TGCompositeFrame *f1;

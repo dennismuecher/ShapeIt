@@ -15,6 +15,8 @@
 #include "ShapeMatrix.C"
 #include "ShapeGSF.C"
 #include "ShapeRho.C"
+#include "ShapeCollector.C"
+
 
 void ShapeIt() {
     static const string path = gSystem->pwd();

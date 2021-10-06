@@ -19,7 +19,7 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), 
     levGraph_1 = new TGraphErrors();
     levGraph_2 = new TGraphErrors();
     levGraph   = new TGraphErrors();
-
+    
     levGraph_1->SetMarkerStyle(22);
     levGraph_1->SetMarkerSize(2);
     levGraph_1->SetMarkerColor(6);
@@ -32,23 +32,98 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), 
         levGraph_2->SetMarkerColor(6);
     
     FillgSF();
-    if (m_sett->DoInterpol)
+    if (m_sett->doInterpol)
         Sewing();
+}
+
+//constructor using the literature values for gSF
+ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
+{
+    
+    levGraph_1 = new TGraphErrors();
+    levGraph_2 = new TGraphErrors();
+    levGraph   = new TGraphErrors();
+    
+    //read file data into gSF
+    if (m_sett->osloFileName == "") {
+        std::cout << "No Literature File loaded!"<<std::endl;
+        return NULL;
+    }
+    
+    if (m_sett->verbose)
+        std::cout <<"\nReading OSLO DATA... " <<endl;
+    ifstream inp;
+    inp.open(m_sett->osloFileName.c_str());
+    if (inp.is_open() ) {
+        
+        double e_gamma;
+        double oslo_gSF_high, oslo_gSF_low;
+        
+        while ( !inp.eof() ) {
+            inp >> e_gamma >> oslo_gSF_high >>oslo_gSF_low;
+            levGraph->SetPoint(levGraph->GetN(), e_gamma,
+                                    ( oslo_gSF_high + oslo_gSF_low ) / 2 );
+            
+            levGraph->SetPointError(levGraph->GetN() - 1, 0,
+                                    ( oslo_gSF_high - oslo_gSF_low ) / 2 );
+        }
+        
+        levGraph->SetFillColor(4);
+        levGraph->SetFillStyle(3010);
+        if (m_sett->verbose)
+            levGraph->Print();
+    }
+}
+
+TGraphErrors* ShapeGSF::GetLevGraph() {
+    
+    //merge all data in levGraph_1 and levGraph_2 into levGraph
+    Merge();
+    return levGraph;
+}
+
+TGraphErrors* ShapeGSF::GetLevGraph_1() {
+    
+    return levGraph_1;
+}
+
+TGraphErrors* ShapeGSF::GetLevGraph_2() {
+    
+    return levGraph_2;
+}
+
+//resets all stored gSF data
+void ShapeGSF::Reset() {
+    levGraph->Set(0);
+    levGraph_1->Set(0);
+    levGraph_2->Set(0);
 }
 
 //merges levGraph1 and levGraph2 into one graph and sorts by energy
 void ShapeGSF::Merge() {
     
+    // in case of literature data, don't do anything here
+    if (levGraph_1->GetN() == 0)
+        return;
+    
+    levGraph->Set(0);
+    
+    //merge
     TObjArray *mArray = new TObjArray();
     mArray->Add(levGraph_1);
     mArray->Add(levGraph_2);
     levGraph->Merge(mArray);
+    //sort
     levGraph->Sort();
 }
 
 //fills of levGraph_1 and levGraph_2 with values
 void ShapeGSF::FillgSF() {
    
+    //clean up matrix
+    m_matrix->Reset();
+    
+    m_matrix->Diag();
     m_matrix->Integrate();
     m_matrix->IntegrateBg();
     m_matrix->IntegrateSquare();
@@ -110,6 +185,16 @@ void ShapeGSF::FillgSF() {
             }
         }
         
+        //in case of MC mode, shuffle gSF according to the gauss distribution
+        if (m_sett->doMC) {
+            //gaus smear according to fit eerror bars
+            gSF1 = r.Gaus(gSF1,dgSF1);
+            gSF2 = r.Gaus(gSF2,dgSF2);
+            //now set error bars to zero, they are not used for anything anymore
+            dgSF1 = 0;
+            dgSF2 = 0;
+        }
+        
         //filling results into levGraph vector;
         levGraph_1->SetPoint(levGraph_1->GetN(), egamma1, gSF1);
         levGraph_1->SetPointError(levGraph_1->GetN()-1, 0, dgSF1);
@@ -125,18 +210,17 @@ void ShapeGSF::FillgSF() {
     }
 }
 
-//what exactly does this do?
 double ShapeGSF::Slope(int i) {
     return ( levGraph_1->GetPointY(i) - levGraph_2->GetPointY(i) ) /
     ( levGraph_1->GetPointX(i) - levGraph_2->GetPointX(i) );
 }
 
-//this is doing the sewing of gSF data
+//sewing of gSF data using the "average" interpolation approach
 void ShapeGSF::Sewing() {
     if (m_sett->verbose)
         std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
     
-    int k = levGraph_1[j]->GetN();
+    int k = levGraph_1->GetN();
     //if there is only one pair of non-zero gSF values, don't do anything
     if (k < 2) {
         std::cout <<"Nothing to interpolate in this iteration!" <<std::endl;
@@ -187,12 +271,12 @@ double ShapeGSF::getBgRatio(int bin, int level) {
 //prints the gSF values, sorted for egamma
 void ShapeGSF::Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
-    levGraph_1->Print();
-    levGraph_2->Print();
+    Merge();
+    levGraph->Print();
 }
 
 void ShapeGSF::Scale(double factor){
-
+    Merge();
     for (int i = 0; i < levGraph_1->GetN(); i++) {
         levGraph_1->GetY()[i] *= factor;
         levGraph_2->GetY()[i] *= factor;

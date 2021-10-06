@@ -103,14 +103,14 @@ double ShapeGSF::Norm(TGraphErrors* T1, TGraphErrors* T2 ) {
           c2 += ( a[i] * a[i] / da[i] );
         }
         else {
-            std::cout <<"Error is Norm(): zero error value detected" <<std::endl;
+            std::cout <<"Error in Norm(): zero error value detected" <<std::endl;
             return (0);
         }
     }
     if (c2 !=0)
         return (c1 / c2);
     else {
-        std::cout <<"Error is Norm(): zero c2 value detected" <<std::endl;
+        std::cout <<"Error in Norm(): zero c2 value detected" <<std::endl;
         return (0);
     }
 }

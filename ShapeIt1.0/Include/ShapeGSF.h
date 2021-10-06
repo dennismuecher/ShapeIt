@@ -21,63 +21,47 @@
 #include <TObjArray.h>
 #include <TH1.h>
 
-
-//#include <TContainer.h>
-
+/* **************************************************************************
+*  class ShapeGSF                                                           *
+*  base class to store gamma ray strength data for level 1 and level 2;     *
+*        also offers the "sewing" of the gSF data                           *
+*                                                                           *
+*                                                                           *
+*************************************************************************/
 
 class ShapeGSF {
     
 private:
-    ShapeSetting *m_sett;
-    ShapeMatrix *m_matrix;
-    double scale_bak;                           //stores the scaling value applied to gSF
-    double m_B = 1;                           //transfomration gSF scaling
-    double m_alpha = 0;                       //trnasformation gSF exponential slope
-   
+    
+    ShapeSetting*       m_sett;
+    ShapeMatrix*        m_matrix;
+    
+    TGraphErrors*       levGraph_1;                      //TGraph containing the gSF data for level1
+    TGraphErrors*       levGraph_2;                      //TGraph containing the gSF data for level2
+    TGraphErrors*       levGraph;                        //TGraph to contain the gSF data for both levels
+    
+    TRandom3            r;
+
+    void                FillgSF();
+    void                Merge();
+    void                Sewing();
+    
+    double              getBgRatio(int bin, int level);
+    double              Slope(int i);
+    
 public:
-
-    TGraphErrors* litGraph;                 //stores the literature 'Oslo' results for gSF
-    TGraph* mc_litGraph;                    //the MC version of the Oslo results
-    ShapeGSF(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
     
-    void ReadLit();
-    void doMCGraph();
+    ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix);
+    ShapeGSF(ShapeSetting* t_sett);
 
-    void FillgSF();                                 //calculates the gSF values from the m_gSF_matrix
-    TMultiGraph* getMultGraph();                        //returns the multGrap
-    TGraphAsymmErrors* getSmoothGraph()     {return (levGraphSmooth);}
-    double Slope(int i);
-    void Merge();
-    double Norm(TGraphErrors* T1, TGraphErrors* T2 );
+    
+    void                Print();
+    void                Reset();
+    void                Scale(double factor);
 
-    void DoInterpol();
-    double getBgRatio(int bin, int level);
-
-    void Print();
-    void Transform(double t_B, double t_alpha);          //change trnasformation parameters and transform gSF via B*exp(alpha E_gamma)
-    
-    void Scale(int j, double factor);
-    void ScaleAll(double factor);
-    void Smooth(int res);
-    void MergeAll();
-    double getChi2();
-    double getChi2All();
-    double getChi2Smooth();
-    double mc_getChi2();
-    void mc_Graph();                                    //stores Monte Carlo version of gSF data in mc_levGraph
-    TRandom3 r;
-    std::vector<TGraphErrors*> levGraph_1;            //TGraphs to contain the gSF data for level1
-    std::vector<TGraphErrors*> levGraph_2;            //TGraphs to contain the gSF data for level2
-    std::vector<TGraphErrors*> levGraph;            //TGraphs to contain the gSF data for both levels
-    std::vector<TGraph*> mc_levGraph;            //TGraphs to contain the gSF data for both levels with Monte Carlo instead of error bars
-    
-    
-    TGraphErrors *levGraphAll;                      //contains all gSF data points from all iterations
-    TGraph* mc_levGraphAll;                    //merge of all mc_levGraph objects
-    TMultiGraph* mc_litGraphAll;                    //merge of all mc_litGraph objects
-
-    TGraphAsymmErrors* levGraphSmooth;          //contains all smoothed gSF data points from all iterations
-    
+    TGraphErrors*       GetLevGraph();
+    TGraphErrors*       GetLevGraph_1();
+    TGraphErrors*       GetLevGraph_2();
 };
 #endif
 
