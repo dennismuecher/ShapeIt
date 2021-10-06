@@ -35,17 +35,16 @@ private:
     
     ShapeSetting*       m_sett;
     ShapeMatrix*        m_matrix;
-    
-    TGraphErrors*       levGraph_1;                      //TGraph containing the gSF data for level1
-    TGraphErrors*       levGraph_2;                      //TGraph containing the gSF data for level2
-    TGraphErrors*       levGraph;                        //TGraph to contain the gSF data for both levels
-    
+    TGraphErrors*       levGraph_1;          //TGraph containing the gSF data for level1
+    TGraphErrors*       levGraph_2;          //TGraph containing the gSF data for level2
+    TGraphErrors*       levGraph;            //TGraph to contain the gSF data for both levels
     TRandom3            r;
-
+    double              m_B = 1;             //transfomration gSF scaling
+    double              m_alpha = 0;         //trnasformation gSF exponential slope
+    
     void                FillgSF();
     void                Merge();
     void                Sewing();
-    
     double              getBgRatio(int bin, int level);
     double              Slope(int i);
     
@@ -54,10 +53,10 @@ public:
     ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix);
     ShapeGSF(ShapeSetting* t_sett);
 
-    
     void                Print();
     void                Reset();
     void                Scale(double factor);
+    void                Transform(double B_t, double alpha_t);
 
     TGraphErrors*       GetLevGraph();
     TGraphErrors*       GetLevGraph_1();

@@ -39,6 +39,8 @@ private:
     void                            Merge();
     void                            Smooth(int res);
     void                            NormCollect();
+    double                          getChi2Smooth();
+    double                          getChi2All();
 
 
 public:
@@ -47,6 +49,8 @@ public:
     void                            Draw();
     void                            Print();
     void                            Collect();
+    void                            Transform(double B_t, double alpha_t);   //transforms the literature gSF data using B_t and alpha_t
+    double                          getChi2();
 };
 #endif
 

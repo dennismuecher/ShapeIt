@@ -930,6 +930,8 @@ void ShapeFrame::TransGraph()
     sett->lit_alpha = AlphaDialog->GetAlphaTransform();
     sett->lit_norm =  AlphaDialog->GetBTransform();
     
+    //transform literature gSF values in gSF collector object
+    gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
     ShowGraph();
 }
 
@@ -1487,8 +1489,8 @@ double ShapeFrame::AlphaChi2()
             
             //apply transformation
             //ShowGraph();
-            //gSF->Transform(sett->lit_norm, sett->lit_alpha);
-            //chi2Y[pointC] = gSF->getChi2();
+            gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
+            chi2Y[pointC] = gSFColl->getChi2();
             enes[pointC] = sett->exiEne[0];
             pointC++;
             //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;

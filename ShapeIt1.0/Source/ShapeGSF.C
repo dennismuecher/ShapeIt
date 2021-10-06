@@ -117,6 +117,20 @@ void ShapeGSF::Merge() {
     levGraph->Sort();
 }
 
+//transforms literature gSF values via B*exp(alpha E_gamma)
+void ShapeGSF::Transform(double B_t, double alpha_t) {
+    
+    //gSF was previously transformed via B and Alpha, so only transform according to the change in B_t and Alpha_t
+    
+    for (int i = 0; i < levGraph->GetN() ; i++ ) {
+        levGraph->GetY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * levGraph->GetX()[i] / 1000.);
+        levGraph->GetEY()[i] *=  B_t / m_B * TMath::Exp(( alpha_t - m_alpha) * levGraph->GetX()[i] / 1000.);
+    }
+    
+    m_B = B_t;
+    m_alpha = alpha_t;
+}
+
 //fills of levGraph_1 and levGraph_2 with values
 void ShapeGSF::FillgSF() {
    
@@ -208,6 +222,8 @@ void ShapeGSF::FillgSF() {
             std::cout <<"gSF2: " <<gSF2 << "+- " << dgSF2 <<std::endl;
         }
     }
+    //update levGraph
+    Merge();
 }
 
 double ShapeGSF::Slope(int i) {
@@ -237,6 +253,8 @@ void ShapeGSF::Sewing() {
         levGraph_2->GetY()[i] *= scale_avg;
         levGraph_2->GetEY()[i] *= scale_avg;
     }
+    //update levGraph
+    Merge();
 }
 
 //calculates the ratio of Peak to background for bin i
@@ -271,17 +289,17 @@ double ShapeGSF::getBgRatio(int bin, int level) {
 //prints the gSF values, sorted for egamma
 void ShapeGSF::Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
-    Merge();
     levGraph->Print();
 }
 
 void ShapeGSF::Scale(double factor){
-    Merge();
     for (int i = 0; i < levGraph_1->GetN(); i++) {
         levGraph_1->GetY()[i] *= factor;
         levGraph_2->GetY()[i] *= factor;
         levGraph_1->GetEY()[i] *= factor;
         levGraph_2->GetEY()[i] *= factor;
     }
+    //update levGraph
+    Merge();
 }
 

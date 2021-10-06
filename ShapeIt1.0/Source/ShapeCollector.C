@@ -71,6 +71,12 @@ void ShapeCollector::Print() {
         litCollector->Print();
 }
 
+void ShapeCollector::Transform(double B_t, double alpha_t) {
+    if (litCollector->GetLevGraph()->GetN() > 0) {
+        litCollector->Transform(B_t, alpha_t);
+    }
+}
+
 //normalizes all gSF iterations to each other
 void ShapeCollector::NormCollect() {
     
@@ -117,7 +123,8 @@ void ShapeCollector::Merge() {
     TObjArray *mArray = new TObjArray();
     gSFGraph->Set(0);
     
-    for (int i = 0; i < gSFCollector.size(); i++)             mArray->Add(gSFCollector[i]->GetLevGraph());
+    for (int i = 0; i < gSFCollector.size(); i++)
+        mArray->Add(gSFCollector[i]->GetLevGraph());
     
     gSFGraph->Merge(mArray);
     gSFGraph->Sort();
@@ -159,6 +166,73 @@ double ShapeCollector::Norm(ShapeGSF* T1, ShapeGSF* T2 ) {
         return (0);
     }
 }
+
+//returns the chi2 for the levGraphAll graph, comparing the gSF to the Oslo literature data
+
+double ShapeCollector::getChi2All(){
+    
+    double chi2 = 0;
+    for (int i = 0; i < gSFGraph->GetN(); i++) {
+        double x = gSFGraph->GetX()[i];
+        double y = gSFGraph->GetY()[i];
+        double dyh = gSFGraph->GetErrorYhigh(i);
+        double dyl = gSFGraph->GetErrorYlow(i);
+        double dy = (dyh + dyl)/2;
+        double y_oslo = litCollector->GetLevGraph()->Eval(x);
+        
+        if (dy == 0) {
+            std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
+        }
+        else
+            chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
+    }
+    return (chi2);
+}
+
+//returns the chi2 for the levGraphSmooth graph, comparing the smooth gSF to the Oslo literature data
+
+double ShapeCollector::getChi2Smooth(){
+    
+    double chi2 = 0;
+    int n = gSFGraphSmooth->GetN();
+    for (int i = 0; i < n; i++) {
+        double x = gSFGraphSmooth->GetX()[i];
+        double y = gSFGraphSmooth->GetY()[i];
+        double dyh = gSFGraphSmooth->GetErrorYhigh(i);
+        double dyl = gSFGraphSmooth->GetErrorYlow(i);
+        double dy = (dyh + dyl)/2;
+        double y_oslo = litCollector->GetLevGraph()->Eval(x);
+        
+        if (dy == 0) {
+            std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
+        }
+        else
+            chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
+    }
+    //calculating the normal-distributed chi2 value, following this website:
+    //https://www.phys.hawaii.edu/~varner/PHYS305-Spr12/DataFitting.html
+    n = n-1; //number of degrees of freedom; assumes that levGraphSmooth points are statistically independent
+    double chi2_distr = TMath::Sqrt(2*chi2) - TMath::Sqrt(2*n -1);
+    std::cout <<"Normal distributed chi2 value: " <<chi2_distr<< " for chi2 " <<chi2 <<" for alpha: "<< m_sett->lit_alpha <<std::endl;
+    // probability that an observed Chi-squared exceeds the value chi2 by chance, even for a correct model
+    double chi2_prob = TMath::Prob(chi2,n);
+    std::cout <<"chi2 probability: " <<chi2_prob << std::endl;
+    return (chi2);
+}
+
+double ShapeCollector::getChi2(){
+    //if (m_sett->doMC)
+        //return mc_getChi2();
+    //else
+    if (m_sett->displayAvg)
+        return getChi2Smooth();
+    else
+        return getChi2All();
+}
+ 
+
 
 void ShapeCollector::Smooth(int res) {
     

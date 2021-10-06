@@ -136,7 +136,7 @@ double ShapeGSF::mc_getChi2(){
 }
 
 
-//returns the chi2 for the levGraphAll graph, comparing the smooth gSF to the Oslo literature data
+//returns the chi2 for the levGraphAll graph, comparing the gSF to the Oslo literature data
 
 double ShapeGSF::getChi2All(){
     
