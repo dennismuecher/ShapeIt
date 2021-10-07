@@ -1339,6 +1339,7 @@ void ShapeFrame::UpdateDisplay(int display) {
         return;
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
+    fCanvas->Clear();
     displayMode = display;
     if (display !=3) {
         fR[2]->SetState(kButtonUp);
@@ -1425,39 +1426,8 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 11: {
             ShapeRho *rho = new ShapeRho(sett, matrix);
-            //rho->Draw();
-            //litGSF->Rho();
-            //fitGSF->Rho();
-            //double rho_scale = rho->Eval(2) / litGSF->GetRhoDiagram()->Eval(2000);
-            //std::cout <<"Scale: " <<rho_scale <<std::endl;
-            
-            //TGraphErrors* scaleGraph = new TGraphErrors;
-            //for (int i=0;i<fitGSF->GetRhoDiagram()->GetN();i++) {
-              //  double X =fitGSF->GetRhoDiagram()->GetX()[i]/1000;
-                //double Y =fitGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
-                //if (X < 3.5) {
-                  //  X =litGSF->GetRhoDiagram()->GetX()[i]/1000;
-                    //Y =litGSF->GetRhoDiagram()->GetY()[i]*rho_scale;
-                //}
-                //scaleGraph->SetPoint(i,X,Y);
-                //litGSF->GetRhoDiagram()->GetY()[i] *= rho_scale;
-            //}
-            //scaleGraph->SetMarkerStyle(4);
-            //scaleGraph->SetMarkerColor(kBlue);
-            
-            //88Kr
-            //rho->Draw(0.03,-0.045,0.10);
-            
-            //76Ge
-            //rho->Draw(0.045,-0.01,0.10);
-            
-            //88Kr unfolding in y
-            rho->Draw(0.4,0.3,0.5);
-            
+            rho->Draw(-0.285,-0.285, -0.285);
             rho->Draw();
-            //scaleGraph->Draw("C*");
-            
-            break;
         }
     }
     DrawMarker();
@@ -1470,7 +1440,7 @@ double ShapeFrame::AlphaChi2()
     //some hard-coded stuff here....needs to be fixed
     double alpha_bak = sett->lit_alpha;
     double exi_bak = sett->exiEne[0];
-    double const alphaRange = 0.25; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
+    double const alphaRange = 0.5; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
     int const nOfPoints = 200; //number of steps in the chi2 evaluation
     int const nOfExi = 1; //number of excitation energies
     double const exiStep = 1; //step size (in keV) by which the excitation energy is lowered in each iteration

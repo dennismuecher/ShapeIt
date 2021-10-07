@@ -32,7 +32,7 @@ private:
     ShapeGSF                        *litCollector;       //gSF data from literature
     TGraphErrors                    *gSFGraph;            //contains all gSF data
     TGraphAsymmErrors               *gSFGraphSmooth;       //contains all gSF data, smoothed 
-    int                             kmax = 10;            //maximum number of steps in sliding window variation
+    int                             kmax = 5;            //maximum number of steps in sliding window variation
     
     TMultiGraph*                    getMultGraph();
     double                          Norm(ShapeGSF* T1, ShapeGSF* T2);

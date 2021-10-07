@@ -75,6 +75,8 @@ void ShapeCollector::Transform(double B_t, double alpha_t) {
     if (litCollector->GetLevGraph()->GetN() > 0) {
         litCollector->Transform(B_t, alpha_t);
     }
+    //re-scale gSF data to new literature data
+    NormCollect();
 }
 
 //normalizes all gSF iterations to each other
@@ -128,6 +130,8 @@ void ShapeCollector::Merge() {
     
     gSFGraph->Merge(mArray);
     gSFGraph->Sort();
+    if (m_sett->displayAvg)
+        Smooth(0);
 }
 
 //calcualtion of a normalization factor to match T1 to T2
@@ -270,7 +274,7 @@ void ShapeCollector::Smooth(int res) {
         //this error is the error of the mean value, based on the propagation of the indiviual errors, only; this does not take into account the fluctuations in the data points (i.e. the standard deviation)
         dy = TMath::Sqrt(dy) / nOfP;
         gSFGraphSmooth->SetPoint(gSFGraphSmooth->GetN(),x,y);
-        
+        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dy, dy);
        /*
         double st_dev = 0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
@@ -291,7 +295,7 @@ void ShapeCollector::Smooth(int res) {
                 if (m_dyl > dyl)
                 dyl = m_dyl;
         }
-        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dyl, dyh);
+        //gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dyl, dyh);
         //some old stuff
         
        /* int upper = 0, lower = 0;

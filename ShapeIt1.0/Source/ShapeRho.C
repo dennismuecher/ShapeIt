@@ -35,13 +35,15 @@ void ShapeRho::Read() {
 void ShapeRho::Draw() {
     if (!rhoGraph)
         return;
+    std::cout <<"rho graphs contains: " <<rhoGraph->GetN()<<std::endl;
     rhoGraph->SetMarkerStyle(4);
-    rhoGraph->SetMarkerColor(kRed);
+    rhoGraph->SetMarkerColor(kBlue);
     rhoGraph->SetTitle("level density; energy (MeV); level density (1/MeV)");
     rhoGraph->SetFillColorAlpha(4,0.5);
     rhoGraph->SetFillStyle(3010);
-    if (rhoGraph)
-        rhoGraph->Draw("P3*");
+
+    //rhoGraph->Draw("AP3*");
+    rhoGraph->Draw("same");
 }
 
 void ShapeRho::Draw(double alpha, double alpha_l, double alpha_h) {

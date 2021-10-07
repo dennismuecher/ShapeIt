@@ -209,6 +209,12 @@ void ShapeGSF::FillgSF() {
             dgSF2 = 0;
         }
         
+        //add a constant fractional error do dgSF as otherwise points with high statistics dominate all fitting results for the slope; in a way, this tries to account for hte fluctuations in the shape method
+        
+        if (dgSF1 < 0.2 * gSF1) dgSF1 = 0.2 * gSF1;
+        if (dgSF2 < 0.2 * gSF2) dgSF2 = 0.2 * gSF2;
+
+        
         //filling results into levGraph vector;
         levGraph_1->SetPoint(levGraph_1->GetN(), egamma1, gSF1);
         levGraph_1->SetPointError(levGraph_1->GetN()-1, 0, dgSF1);

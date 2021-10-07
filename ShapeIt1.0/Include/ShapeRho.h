@@ -28,9 +28,14 @@ private:
     //double drho_snail = 1.18E4;          // error level denisty at e_snail (1/NeV)
     
     //88Kr
-    double e_snail = 7.05;             //neutron separation energy (MeV)
-    double rho_snail = 3000;           // level density at e_snail (1/MeV)
-    double drho_snail = 300;          // error level denisty at e_snail (1/NeV)
+    //double e_snail = 7.05;             //neutron separation energy (MeV)
+    //double rho_snail = 3000;           // level density at e_snail (1/MeV)
+    //double drho_snail = 300;          // error level denisty at e_snail (1/NeV)
+    
+    //140Ba
+    double e_snail = 6.40;             //normalizationenergy (MeV)
+    double rho_snail = 20000;           // level density at e_snail (1/MeV)
+    double drho_snail = 2000;          // error level denisty at e_snail (1/NeV)
    
 public:
     
