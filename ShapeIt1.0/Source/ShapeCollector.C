@@ -207,7 +207,6 @@ double ShapeCollector::getChi2Smooth(){
         double dyl = gSFGraphSmooth->GetErrorYlow(i);
         double dy = (dyh + dyl)/2;
         double y_oslo = litCollector->GetLevGraph()->Eval(x);
-        
         if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
             continue;
@@ -215,14 +214,6 @@ double ShapeCollector::getChi2Smooth(){
         else
             chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
     }
-    //calculating the normal-distributed chi2 value, following this website:
-    //https://www.phys.hawaii.edu/~varner/PHYS305-Spr12/DataFitting.html
-    n = n-1; //number of degrees of freedom; assumes that levGraphSmooth points are statistically independent
-    double chi2_distr = TMath::Sqrt(2*chi2) - TMath::Sqrt(2*n -1);
-    std::cout <<"Normal distributed chi2 value: " <<chi2_distr<< " for chi2 " <<chi2 <<" for alpha: "<< m_sett->lit_alpha <<std::endl;
-    // probability that an observed Chi-squared exceeds the value chi2 by chance, even for a correct model
-    double chi2_prob = TMath::Prob(chi2,n);
-    std::cout <<"chi2 probability: " <<chi2_prob << std::endl;
     return (chi2);
 }
 

@@ -37,17 +37,24 @@ private:
     ShapeSetting*       m_sett;
     ShapeMatrix*        m_matrix;
     ShapeCollector*     m_collector;
-    TGraph*             chi2Graph;      //1-d graph of chi2 values for various alpha values
+    TGraph*             chi2Graph;               //1-d graph of chi2 values for various alpha values
     
-    double const        alphaRange = 0.5;   //alpha will be varied in Chi2Loop() according to this
-    int const           nOfPoints = 200;    //number of steps in the chi2 evaluation
-    int const           nOfExi = 1;         //number of excitation energies;  not impl.
-    double const        exiStep = 1;        //exi step size (in keV) in Chi2Loop(); not impl.
-    double              minChi2 = 0;        //minimum chi2 value
-    double              minAlpha = 1;       //alpha value for which chi2 is at minimum
+    double const        alphaRange = 0.5;        //alpha will be varied in Chi2Loop() according to this
+    int const           nOfPoints = 200;         //number of steps in the chi2 evaluation
+    int const           nOfExi = 1;              //number of excitation energies;  not impl.
+    double const        exiStep = 1;             //exi step size (in keV) in Chi2Loop(); not impl.
+    double              minChi2 = 1;             //minimum chi2 value
+    double              minAlpha = 1;             //alpha value for which chi2 is at minimum
+    double              minAlpha_low;             //lower bound for alpha within chi2 confidence level
+    double              minAlpha_high;            //higher bound for alpha within chi2 confidence level
+    
+    int                 minAlphaPoint = 0;       //index in chi2Graph with minimum chi2 value
+    double              conf_level = 0.1;         //confidence level for alpha range; a confidence level of 0.1 means that the chance that a given chi2 value is larger than the given value is 0.1 = 10%
+    
     
     void                Chi2Loop();
     void                FindMinimum();      //finds minChi2 and minAlpha
+    void                AlphaRange();       //finds lower and upper bound for alpha following chi2 criterium
     
 public:
     
@@ -58,7 +65,7 @@ public:
     double              getMinChi2()   {return minChi2;}
     double              getMinAlpha()   {return minAlpha;}
 
-    
+
 };
 #endif
 

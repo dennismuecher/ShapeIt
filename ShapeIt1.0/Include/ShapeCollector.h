@@ -51,6 +51,8 @@ public:
     void                            Collect();
     void                            Transform(double B_t, double alpha_t);   //transforms the literature gSF data using B_t and alpha_t
     double                          getChi2();
+    int                             GetN() {return gSFGraph->GetN();}
+    int                             GetNSmooth() {return gSFGraphSmooth->GetN();}
 };
 #endif
 

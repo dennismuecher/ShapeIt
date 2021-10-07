@@ -15,6 +15,7 @@
 #include "../Source/ShapeInfo.C"
 #include "ShapeDialogAlpha.C"
 
+//this function is used to fit the gSF results; currently not implemented
 double glo(double *x, double *par){
   //par[0]: sigma
   //par[1]: width
@@ -1227,8 +1228,6 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
         
-        
-            
         case M_SETTING_WIDTHRESET: {
             sett->doWidthCal = 0;
             sett->ResetWidth();
@@ -1446,92 +1445,6 @@ double ShapeFrame::AlphaChi2() {
         
     return 1;
 }
-
-/*double ShapeFrame::AlphaChi2()
-{
-    //some hard-coded stuff here....needs to be fixed
-    double alpha_bak = sett->lit_alpha;
-    double exi_bak = sett->exiEne[0];
-    double const alphaRange = 0.5; //will calcualte chi2 values of lit values and ShapeIt results for alpha values between - allphaRange and +alphaRange
-    int const nOfPoints = 200; //number of steps in the chi2 evaluation
-    int const nOfExi = 1; //number of excitation energies
-    double const exiStep = 1; //step size (in keV) by which the excitation energy is lowered in each iteration
-    double alphaX[nOfPoints*nOfExi];
-    double chi2Y[nOfPoints*nOfExi];
-    double enes[nOfPoints*nOfExi];
-    int pointC = 0;
-    
-    for (int j = 0; j < nOfExi; j++) {
-        
-        for (int i  = 0; i < nOfPoints; i++) {
-            
-            alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
-            //update alpha in settings file
-            sett->lit_alpha = alphaX[pointC];
-            
-            //apply transformation
-            //ShowGraph();
-            gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
-            chi2Y[pointC] = gSFColl->getChi2();
-            enes[pointC] = sett->exiEne[0];
-            pointC++;
-            //std::cout <<" i = " << i << " j = " << j << "pointC = " <<pointC <<"alphaX[i]" << alphaX[pointC] << "exi[0] " << sett->exiEne[0] << "lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
-        }
-        if (!sett->doMC) {
-            sett->exiEne[0] = sett->exiEne[0] - exiStep;
-            UpdateGuiSetting(sett);
-            ShapeItBaby();
-        }
-    }
-    TGraph* alphaPlot = new TGraph(nOfPoints, alphaX, chi2Y);
-    alphaPlot->SetMarkerStyle(4);
-    alphaPlot->SetMarkerColor(kRed);
-    if (!sett->doMC)
-        alphaPlot->Draw("APC*");
-    
-    //the number of data points in the smoothed graph
-    //int n_smooth = gSF->levGraphSmooth->GetN();
-    //the number of data points in all graphs before smoothing
-    //int n_all = gSF->levGraphAll->GetN();
-
-    //the number of data points in the first gSF graph
-    //int n_single = gSF->levGraph_1[0]->GetN();
-
-    //find minimum chi2 value
-    double x_min = 0, y_min = 0, i_min = 0;
-    for (int i = 0; i < alphaPlot->GetN(); i++) {
-        double x = alphaPlot->GetX()[i];
-        double y = alphaPlot->GetY()[i];
-        if ( (y < y_min) || (y_min ==0) ) {
-            y_min = y;
-            x_min = x;
-            i_min = i;
-        }
-    }
-   // alphaPlot->Print();
-
-    //std::cout <<"Mininmum chi2 value: "<<y_min << " at slope: " <<x_min<<std::endl;
-    if (!sett->doMC) {
-        //find slopes for chi2+1 values
-        double x_l = x_min, x_r = x_min;
-        //this can end up in an infinite loop, needs a fix!
-        
-        while (alphaPlot->Eval(x_r) < y_min + 1)
-            x_r +=1E-2;
-        while (alphaPlot->Eval(x_l) < y_min + 1)
-            x_l -=1E-2;
-        std::cout <<"chi2 value +1 for raw chi2 found at: "<<x_l << " and " <<x_r<<std::endl;
-    }
-    //TGraph2D *dt = new TGraph2D(nOfPoints*nOfExi, alphaX, enes, chi2Y);
-    //dt->Draw("colz");
-    
-    //reset values to before
-    sett->exiEne[0] = exi_bak;
-    sett->lit_alpha = alpha_bak;
-    UpdateGuiSetting(sett);
-    return (x_min);
-}*/
-
 
 void ShapeFrame::CloseWindow()
 {
