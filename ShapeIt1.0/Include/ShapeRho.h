@@ -34,8 +34,8 @@ private:
     
     //140Ba
     double e_snail = 6.40;             //normalizationenergy (MeV)
-    double rho_snail = 20000;           // level density at e_snail (1/MeV)
-    double drho_snail = 2000;          // error level denisty at e_snail (1/NeV)
+    double rho_snail = 4000;           // level density at e_snail (1/MeV)
+    double drho_snail = 400;          // error level denisty at e_snail (1/NeV)
    
 public:
     

@@ -50,6 +50,7 @@
 #include "../Include/ShapeGSF.h"
 #include "../Include/ShapeRho.h"
 #include "../Include/ShapeCollector.h"
+#include "../Include/ShapeAlpha.h"
 
 //#include "../Include/ShapeDialogAlpha.h"
 

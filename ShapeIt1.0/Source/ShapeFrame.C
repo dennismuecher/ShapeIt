@@ -909,6 +909,7 @@ void ShapeFrame::ShapeItBaby() {
     sett->nOfBins = sett->SizeToBin();
     
     //this call triggers the calculation of gSF values according to the actual settings stored int he settings file
+    //delete gSFColl;
     gSFColl = new ShapeCollector(sett, matrix);
     gSFColl->Collect();
     
@@ -962,7 +963,6 @@ void ShapeFrame::MatrixSelect(Int_t mnr)
     fCanvas->cd();
     fCanvas->Modified();
     fCanvas->Update();
-    std::cout <<"selected(int)!"<<std::endl;
 }
 
 int ShapeFrame::MatrixSelector()
@@ -1426,7 +1426,7 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 11: {
             ShapeRho *rho = new ShapeRho(sett, matrix);
-            rho->Draw(-0.285,-0.285, -0.285);
+            rho->Draw(0.09,-0.08, 0.26);
             rho->Draw();
         }
     }
@@ -1435,7 +1435,19 @@ void ShapeFrame::UpdateDisplay(int display) {
     fCanvas->Update();
 }
 
-double ShapeFrame::AlphaChi2()
+double ShapeFrame::AlphaChi2() {
+    ShapeAlpha* frameAlpha = new ShapeAlpha(sett,gSFColl);
+    if (!sett->doMC)
+        frameAlpha->getChi2Graph()->Draw("APC*");
+    
+    if (sett->verbose) {
+        std::cout <<"Minimum chi2 value of "<< frameAlpha->getMinChi2() << " found for alpha = " << frameAlpha->getMinAlpha() <<std::endl;
+    }
+        
+    return 1;
+}
+
+/*double ShapeFrame::AlphaChi2()
 {
     //some hard-coded stuff here....needs to be fixed
     double alpha_bak = sett->lit_alpha;
@@ -1518,7 +1530,7 @@ double ShapeFrame::AlphaChi2()
     sett->lit_alpha = alpha_bak;
     UpdateGuiSetting(sett);
     return (x_min);
-}
+}*/
 
 
 void ShapeFrame::CloseWindow()
