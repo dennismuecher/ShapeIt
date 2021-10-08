@@ -192,7 +192,8 @@ void ShapeMatrix::FitIntegral(){
     
     //level 1
     for (int i = 0; i < ybins; i++) {
-        if (integral1[i] == 0) {
+        //if (integral1[i] == 0) {
+        if (integral1[i] < sett->minCounts) {
             fit_integral1.push_back(0);
             fit_integral1Bg.push_back(0);
             fit_integral1Net.push_back(0);
@@ -225,7 +226,9 @@ void ShapeMatrix::FitIntegral(){
     }
     //level 2
     for (int i = 0; i < ybins; i++) {
-        if (integral2[i] == 0) {
+        //if (integral2[i] == 0) {
+        if (integral2[i] < sett->minCounts) {
+
             fit_integral2.push_back(0);
             fit_integral2Bg.push_back(0);
             fit_integral2Net.push_back(0);

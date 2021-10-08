@@ -31,7 +31,8 @@ private:
     std::vector<ShapeGSF*>          gSFCollector;       //gSF data from the experimental matrix
     ShapeGSF                        *litCollector;       //gSF data from literature
     TGraphErrors                    *gSFGraph;            //contains all gSF data
-    TGraphAsymmErrors               *gSFGraphSmooth;       //contains all gSF data, smoothed 
+    TGraphAsymmErrors               *gSFGraphSmooth;       //contains all gSF data, smoothed
+   
     int                             kmax = 5;            //maximum number of steps in sliding window variation
     int                             mc_run = 10;            //number of runs in Monte Carlo (MC) mode
     
@@ -43,6 +44,8 @@ private:
     void                            mc_Collect();
     double                          getChi2Smooth();
     double                          getChi2All();
+    double                          mc_getChi2();
+
 
 
 public:

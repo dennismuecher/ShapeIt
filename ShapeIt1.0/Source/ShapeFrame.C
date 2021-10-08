@@ -798,24 +798,31 @@ void ShapeFrame::MonteCarlo() {
     //status update: will have values for gSF
     status = 2;
     
-    TH1* h1 = new TH1F("slope", "best-fit slopes", 200, -0.2, 0.2);
-    for (int i = 0; i < 10; i++) {
+    TH1* h1 = new TH1F("slope", "best-fit slopes", 400, -1, 1);
+    for (int i = 0; i < 200; i++) {
         
         gSFColl = new ShapeCollector(sett, matrix);
         gSFColl->Collect();
         
         //display results
-        ShowGraph();
-        //gSystem->Sleep (500);
-        //h1->Fill(AlphaChi2());
+        if (i%10 ==0)
+            ShowGraph();
+        
+        //calcualte chi2 value
+        h1->Fill(AlphaChi2());
+
+        // make sure to update display
+        gSystem->ProcessEvents(); gSystem->ProcessEvents();
+        gSystem->Sleep(10);
+        
         if (i%10 ==0)
             std::cout <<"MC simulation: " <<i <<std::endl;
     }
-    //TCanvas *fCanvas = fEcanvas->GetCanvas();
-    //fCanvas->Clear();
-    //h1->Draw();
-    //fCanvas->Modified();
-    //fCanvas->Update();
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    fCanvas->Clear();
+    h1->Draw();
+    fCanvas->Modified();
+    fCanvas->Update();
 }
 
 
@@ -1352,7 +1359,7 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 11: {
             ShapeRho *rho = new ShapeRho(sett, matrix);
-            rho->Draw(0.09,-0.08, 0.26);
+            rho->Draw(-0.45,-0.52, -0.38);
             rho->Draw();
         }
     }
@@ -1366,11 +1373,11 @@ double ShapeFrame::AlphaChi2() {
     if (!sett->doMC)
         frameAlpha->getChi2Graph()->Draw("APC*");
     
-    if (sett->verbose) {
+    //if (sett->verbose)
         std::cout <<"Minimum chi2 value of "<< frameAlpha->getMinChi2() << " found for alpha = " << frameAlpha->getMinAlpha() <<std::endl;
-    }
+    
         
-    return 1;
+    return (frameAlpha->getMinAlpha()) ;
 }
 
 void ShapeFrame::CloseWindow()

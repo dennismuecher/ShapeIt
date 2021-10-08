@@ -55,11 +55,12 @@ void ShapeAlpha::AlphaRange() {
     else
         nOfDegFreedom = m_collector->GetN() -1;
 
-    std::cout <<" minChi2 = " << minChi2 <<std::endl;
-    std::cout <<" minAlpha = " << minAlpha <<std::endl;
-    
-    std::cout <<" nOfDegFreedom = " << nOfDegFreedom <<std::endl;
-    std::cout <<"minAlphaPoint = " << minAlphaPoint <<std::endl;
+    if (m_sett->verbose) {
+        std::cout <<" minChi2 = " << minChi2 <<std::endl;
+        std::cout <<" minAlpha = " << minAlpha <<std::endl;
+        std::cout <<" nOfDegFreedom = " << nOfDegFreedom <<std::endl;
+        std::cout <<"minAlphaPoint = " << minAlphaPoint <<std::endl;
+    }
 
     double chi2_prob = TMath::Prob(minChi2,nOfDegFreedom);
     
@@ -83,12 +84,9 @@ void ShapeAlpha::AlphaRange() {
     for ( int i = minAlphaPoint; i < n; i++) {
         alpha  = chi2Graph->GetX()[i];
         chi2 = chi2Graph->GetY()[i];
-        //std::cout <<"minAlpha_high = " << minAlpha_high <<std::endl;
-        //std::cout <<"chi2 = " << chi2 <<std::endl;
-
+         
         // probability that an observed Chi-squared exceeds the value chi2 by chance, even for a correct model
         chi2_prob = TMath::Prob(chi2,nOfDegFreedom);
-        //std::cout <<"chi2 prob = " << chi2_prob <<std::endl;
         if ( chi2_prob > conf_level)
             minAlpha_high = alpha;
     }
@@ -97,17 +95,14 @@ void ShapeAlpha::AlphaRange() {
     for ( int i = minAlphaPoint; i > 0; i--) {
         alpha  = chi2Graph->GetX()[i];
         chi2 = chi2Graph->GetY()[i];
-        //std::cout <<"minAlpha_high = " << minAlpha_high <<std::endl;
-        //std::cout <<"chi2 = " << chi2 <<std::endl;
-
+      
         // probability that an observed Chi-squared exceeds the value chi2 by chance, even for a correct model
         chi2_prob = TMath::Prob(chi2,nOfDegFreedom);
-        //std::cout <<"chi2 prob = " << chi2_prob <<std::endl;
         if ( chi2_prob > conf_level)
             minAlpha_low = alpha;
     }
     
-    //if (m_sett->verbose)
+    if (m_sett->verbose)
         std::cout <<"Confidence level for alpha = " << minAlpha_low <<" to "<<minAlpha_high <<std::endl;
 }
 
@@ -134,8 +129,9 @@ void ShapeAlpha::Chi2Loop() {
         m_collector->Transform(m_sett->lit_norm, m_sett->lit_alpha);
         chi2Y[pointC] = m_collector->getChi2();
         enes[pointC] = m_sett->exiEne[0];
+        
+        //std::cout <<" i = " << i << "pointC = " <<pointC <<" alphaX[i] " << alphaX[pointC] << " exi[0] " << m_sett->exiEne[0] << " lit_chi2 " << chi2Y[pointC]<<  std::endl;
         pointC++;
-        //std::cout <<" i = " << i << "pointC = " <<pointC <<" alphaX[i] " << alphaX[pointC] << " exi[0] " << m_sett->exiEne[0] << " lit_chi2 " << chi2Y[pointC-1]<<  std::endl;
     }
     
     //store values in chi2Graph
@@ -151,6 +147,7 @@ void ShapeAlpha::Chi2Loop() {
     FindMinimum();
 
     //find lower and upper bounds for alpha
-    AlphaRange();
+    if (!m_sett->doMC)
+        AlphaRange();
 }
 

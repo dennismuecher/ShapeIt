@@ -44,6 +44,8 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
     levGraph_2 = new TGraphErrors();
     levGraph   = new TGraphErrors();
     
+    TRandom3 *r = new TRandom3(0);
+
     //read file data into gSF
     if (m_sett->osloFileName == "") {
         std::cout << "No Literature File loaded!"<<std::endl;
@@ -57,15 +59,22 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
     if (inp.is_open() ) {
         
         double e_gamma;
-        double oslo_gSF_high, oslo_gSF_low;
+        double oslo_gSF_high, oslo_gSF_low, oslo_gSF, oslo_dgSF;
         
         while ( !inp.eof() ) {
             inp >> e_gamma >> oslo_gSF_high >>oslo_gSF_low;
-            levGraph->SetPoint(levGraph->GetN(), e_gamma,
-                                    ( oslo_gSF_high + oslo_gSF_low ) / 2 );
             
-            levGraph->SetPointError(levGraph->GetN() - 1, 0,
-                                    ( oslo_gSF_high - oslo_gSF_low ) / 2 );
+            oslo_gSF = ( oslo_gSF_high + oslo_gSF_low ) / 2;
+            oslo_dgSF =( oslo_gSF_high - oslo_gSF_low ) / 2;
+            
+            if (m_sett->doMC) {
+                 levGraph->SetPoint(levGraph->GetN(), e_gamma,r->Gaus(oslo_gSF,oslo_dgSF));
+                 levGraph->SetPointError(levGraph->GetN() - 1, 0, 0);
+            }
+            else {
+                levGraph->SetPoint(levGraph->GetN(), e_gamma, oslo_gSF);
+                levGraph->SetPointError(levGraph->GetN() - 1, 0, oslo_dgSF);
+            }
         }
         
         levGraph->SetFillColor(4);

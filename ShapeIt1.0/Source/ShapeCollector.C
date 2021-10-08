@@ -24,18 +24,22 @@ ShapeCollector::ShapeCollector(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_se
 // runs all different iterations in Monte Carlo mode of gSF following the user input stored in the settings file m_sett
 void ShapeCollector::mc_Collect() {
     
-    TRandom3 r;
+    TRandom3 *r = new TRandom3(0);
     
     //reset gSF collector vector
     gSFCollector.clear();
     
     //bin size
-    m_matrix->SetESize( r.Uniform(m_sett->exi_size[0], m_sett->exi_size[1]) );
+    m_matrix->SetESize( r->Uniform(m_sett->exi_size[0], m_sett->exi_size[1]) );
     //sliding window
-    m_matrix->SetEne0( m_sett->exiEne[0] - r.Uniform(0, 1) * m_matrix->GetESize() );
+    m_matrix->SetEne0( m_sett->exiEne[0] - r->Uniform(0, 1) * m_matrix->GetESize() );
     
     //get gSF data
     gSFCollector.push_back( new ShapeGSF(m_sett, m_matrix));
+    std::cout <<"ESize in mc_Collect: " << m_matrix->GetESize() <<std::endl;
+    std::cout <<"Ene0 in mc_Collect: " << m_matrix->GetEne0() <<std::endl;
+    
+    //normalize gSF results to literature data
     NormCollect();
     
 }
@@ -43,8 +47,10 @@ void ShapeCollector::mc_Collect() {
 // runs all different iterations of gSF following the user input stored in the settings file m_sett
 void ShapeCollector::Collect() {
     
-    if (m_sett->doMC)
+    if (m_sett->doMC) {
         mc_Collect();
+        return;
+    }
     
     m_matrix->SetEne0( m_sett->exiEne[0] );
     m_matrix->SetEne1( m_sett->exiEne[1] );
@@ -108,6 +114,8 @@ void ShapeCollector::NormCollect() {
     double norm_fac = 1;
     
     for (int i = 0; i < gSFCollector.size(); i++) {
+        
+        
         if (m_sett->doOslo && m_sett->doAutoScale)
             norm_fac = Norm(gSFCollector[i], litCollector);
         else
@@ -125,6 +133,9 @@ TMultiGraph* ShapeCollector::getMultGraph() {
     multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     
     //add literature values
+    
+    if (m_sett->doMC)
+        multGraph->Add(litCollector->GetLevGraph(),"AL");
     if (m_sett->doOslo)
         multGraph->Add(litCollector->GetLevGraph(),"3");
     
@@ -196,6 +207,26 @@ double ShapeCollector::Norm(ShapeGSF* T1, ShapeGSF* T2 ) {
     }
 }
 
+
+//returns the chi2 for the MC mode, comparing the smooth gSF to the Oslo literature data
+double ShapeCollector::mc_getChi2(){
+    
+    double chi2 = 0;
+    for (int i = 0; i < gSFGraph->GetN(); i++) {
+        double x = gSFGraph->GetX()[i];
+        double y = gSFGraph->GetY()[i];
+        double y_oslo = litCollector->GetLevGraph()->Eval(x);
+        if (y > 0) {
+            chi2 += TMath::Power( (y_oslo - y) /y, 2);
+        }
+        else {
+            std::cout <<"Error in getChi2: zero or negative value for y_oslo error for point " <<i<<" ! Skipping this data point" <<std::endl;
+            continue;
+        }
+    }
+    return (chi2);
+}
+
 //returns the chi2 for the levGraphAll graph, comparing the gSF to the Oslo literature data
 
 double ShapeCollector::getChi2All(){
@@ -243,10 +274,9 @@ double ShapeCollector::getChi2Smooth(){
 }
 
 double ShapeCollector::getChi2(){
-    //if (m_sett->doMC)
-        //return mc_getChi2();
-    //else
-    if (m_sett->displayAvg)
+    if (m_sett->doMC)
+        return mc_getChi2();
+    else if (m_sett->displayAvg)
         return getChi2Smooth();
     else
         return getChi2All();
