@@ -201,7 +201,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
     
     TGLabel *l7 = new TGLabel(fEnergy[6], "   gSF scaling");
     fEnergy[6]->AddFrame(l7, fR2);
-    scaling = new TGNumberEntry(fEnergy[6], 0.012, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEAPositive,TGNumberFormat::kNELLimitMinMax,0, 9999999);
+    scaling = new TGNumberEntry(fEnergy[6], 1.0, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEAPositive,TGNumberFormat::kNELLimitMinMax,0, 9999999);
     scaling->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[6]->AddFrame(scaling, fR2);
     fG[3]->AddFrame(fEnergy[6], fL2);
@@ -794,35 +794,39 @@ void ShapeFrame::MonteCarlo() {
     matrix->SetEne0( sett->exiEne[0] );
     matrix->SetEne1( sett->exiEne[1] );
     
-    UpdateDisplay(6);   //is this good for anything?
+    //set the display mode
+    UpdateDisplay(6);
+    
     //status update: will have values for gSF
     status = 2;
     
     TH1* h1 = new TH1F("slope", "best-fit slopes", 400, -1, 1);
-    for (int i = 0; i < 200; i++) {
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    int mc_loop = 500;
+    for (int i = 0; i < mc_loop; i++) {
         
         gSFColl = new ShapeCollector(sett, matrix);
         gSFColl->Collect();
         
-        //display results
-        if (i%10 ==0)
-            ShowGraph();
-        
+        fCanvas->Clear();
+        //draw the gSF collector object
+        if (i%10 ==0) {
+            gSFColl->Draw();
+            //update canvas
+            fCanvas->Modified();
+            fCanvas->Update();
+            // make sure to update display
+            gSystem->ProcessEvents(); gSystem->ProcessEvents();
+            gSystem->Sleep(10);
+            std::cout <<"MC simulation: " <<i << "/" <<mc_loop<<std::endl;
+
+        }
         //calcualte chi2 value
         h1->Fill(AlphaChi2());
-
-        // make sure to update display
-        gSystem->ProcessEvents(); gSystem->ProcessEvents();
-        gSystem->Sleep(10);
-        
-        if (i%10 ==0)
-            std::cout <<"MC simulation: " <<i <<std::endl;
     }
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
-    fCanvas->Clear();
-    h1->Draw();
-    fCanvas->Modified();
-    fCanvas->Update();
+   h1->Draw();
+   // fCanvas->Modified();
+    //fCanvas->Update();
 }
 
 
@@ -1359,8 +1363,15 @@ void ShapeFrame::UpdateDisplay(int display) {
         }
         case 11: {
             ShapeRho *rho = new ShapeRho(sett, matrix);
-            rho->Draw(-0.45,-0.52, -0.38);
+            rho->Read("../OsloFiles/Ba140_100k_nld.txt");
             rho->Draw();
+            rho->Draw(-1.0,-1.1, -0.90,1);
+            
+            rho->Read("../OsloFiles/Ba140_20k_nld.txt");
+            rho->Draw(-0.46,-0.56, -0.36,2);
+            
+            rho->Read("../OsloFiles/Ba140_4k_nld.txt");
+            rho->Draw(0.06,-0.03, 0.15,3 );
         }
     }
     DrawMarker();
@@ -1373,7 +1384,7 @@ double ShapeFrame::AlphaChi2() {
     if (!sett->doMC)
         frameAlpha->getChi2Graph()->Draw("APC*");
     
-    //if (sett->verbose)
+    if (sett->verbose)
         std::cout <<"Minimum chi2 value of "<< frameAlpha->getMinChi2() << " found for alpha = " << frameAlpha->getMinAlpha() <<std::endl;
     
         

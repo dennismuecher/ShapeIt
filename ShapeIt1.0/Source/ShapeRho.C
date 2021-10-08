@@ -21,9 +21,11 @@ ShapeRho::ShapeRho(ShapeSetting* t_setting, ShapeMatrix* t_matrix) {
 void ShapeRho::Read() {
     if (m_sett->rhoFileName !="") {
         rhoGraph = new TGraphErrors(m_sett->rhoFileName.c_str(),"%lg %lg %lg");
-        rhoGraph->SetPoint(rhoGraph->GetN(), e_snail, rho_snail);
-        rhoGraph->SetPointError(rhoGraph->GetN()-1, 0, drho_snail);
-        //if (sett->verbose)
+        if (m_sett->addSnail) {
+            rhoGraph->SetPoint(rhoGraph->GetN(), e_snail, rho_snail);
+            rhoGraph->SetPointError(rhoGraph->GetN()-1, 0, drho_snail);
+        }
+        if (m_sett->verbose)
             std::cout <<"Read " << rhoGraph->GetN() <<" data points from level density file " <<m_sett->rhoFileName.c_str() <<std::endl;
     }
     else {
@@ -32,21 +34,33 @@ void ShapeRho::Read() {
     }
 }
 
+void ShapeRho::Read(const char* filename) {
+    
+    rhoGraph = new TGraphErrors(filename,"%lg %lg %lg");
+    if (m_sett->addSnail) {
+        rhoGraph->SetPoint(rhoGraph->GetN(), e_snail, rho_snail);
+        rhoGraph->SetPointError(rhoGraph->GetN()-1, 0, drho_snail);
+        
+        if (m_sett->verbose)
+            std::cout <<"Read " << rhoGraph->GetN() <<" data points from level density file " <<m_sett->rhoFileName.c_str() <<std::endl;
+    }
+}
+
+
 void ShapeRho::Draw() {
     if (!rhoGraph)
         return;
-    std::cout <<"rho graphs contains: " <<rhoGraph->GetN()<<std::endl;
     rhoGraph->SetMarkerStyle(4);
     rhoGraph->SetMarkerColor(kBlue);
     rhoGraph->SetTitle("level density; energy (MeV); level density (1/MeV)");
     rhoGraph->SetFillColorAlpha(4,0.5);
     rhoGraph->SetFillStyle(3010);
 
-    //rhoGraph->Draw("AP3*");
-    rhoGraph->Draw("same");
+    rhoGraph->Draw("AP3*");
+    //rhoGraph->Draw("same");
 }
 
-void ShapeRho::Draw(double alpha, double alpha_l, double alpha_h) {
+void ShapeRho::Draw(double alpha, double alpha_l, double alpha_h, int m_color) {
 
 
     if (!rhoGraph)
@@ -70,11 +84,19 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
         graph_t->SetPointError(graph_t->GetN()-1,0,0,EY_l,EY_h);
     }
     graph_t->SetMarkerStyle(4);
-    graph_t->SetMarkerColor(kBlack);
+    if (m_color == 1)
+        graph_t->SetMarkerColor(kRed);
+    else if (m_color == 2)
+           graph_t->SetMarkerColor(kBlue);
+    else if (m_color == 3)
+        graph_t->SetMarkerColor(kPink);
+    
+    graph_t->SetMarkerColor(m_color);
     graph_t->SetTitle("level density; energy (MeV); level density (1/MeV)");
     graph_t->SetFillColorAlpha(kRed,0.5);
     graph_t->SetFillStyle(3010);
-    graph_t->Draw("aP3*");
+    //graph_t->Draw("aP3*");
+    graph_t->Draw("same");
 
     //printing results to terminal
     std::cout <<"Results for transformed level density: \n" <<std::endl;
@@ -86,8 +108,8 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
 
 TGraphErrors* ShapeRho::Transform(double A, double alpha) {
     TGraphErrors* graph_t = new TGraphErrors();
-    //normalize at 2MeV
-    double scale = 1 / TMath::Exp(alpha * 2);
+    //normalize at 0.5MeV
+    double scale = 1 / TMath::Exp(alpha * 0.5);
     for (int i=0; i < rhoGraph->GetN(); i++) {
         double Y = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetY()[i];
         double EY = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetEY()[i];

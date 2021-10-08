@@ -39,8 +39,8 @@ private:
     ShapeCollector*     m_collector;
     TGraph*             chi2Graph;               //1-d graph of chi2 values for various alpha values
     
-    double const        alphaRange = 1.;        //alpha will be varied in Chi2Loop() according to this
-    int const           nOfPoints = 100;         //number of steps in the chi2 evaluation
+    double const        alphaRange = 2.;        //alpha will be varied in Chi2Loop() according to this
+    int const           nOfPoints = 200;         //number of steps in the chi2 evaluation
     int const           nOfExi = 1;              //number of excitation energies;  not impl.
     double const        exiStep = 1;             //exi step size (in keV) in Chi2Loop(); not impl.
     double              minChi2 = 1;             //minimum chi2 value

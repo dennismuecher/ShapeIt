@@ -34,16 +34,17 @@ private:
     
     //140Ba
     double e_snail = 6.40;             //normalizationenergy (MeV)
-    double rho_snail = 20000;           // level density at e_snail (1/MeV)
-    double drho_snail = 2000;          // error level denisty at e_snail (1/NeV)
+    double rho_snail = 100000;           // level density at e_snail (1/MeV)
+    double drho_snail = 10000;          // error level denisty at e_snail (1/NeV)
    
 public:
     
     ShapeRho(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
     TGraphErrors *rhoGraph;
     void Read();
+    void Read(const char* filename);
     void Draw();
-    void Draw(double alpha, double alpha_l, double alpha_h);
+    void Draw(double alpha, double alpha_l, double alpha_h, int m_color);
     TGraphErrors* Transform(double A, double alpha);
     double Eval(double ene);
 };

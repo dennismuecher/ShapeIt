@@ -44,6 +44,7 @@ public:
     bool doMC = true;                       //if true, run the MC version of gSF evaluation
     bool displayAvg = false;                    //sets if average gSF is displayed
     bool displaySingle = true;                    //sets if single (both) gSF data is displayed
+    bool addSnail = false;                      //if true, add level density at neutron separation energy to rho graph
 	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
 	double gSF_norm = 1 ;				//normalization factor for gSF
     double lit_norm = 1 ;                //normalization factor for Oslo literature value
