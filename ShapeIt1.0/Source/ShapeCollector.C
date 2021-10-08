@@ -20,8 +20,31 @@ ShapeCollector::ShapeCollector(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_se
 
 }
 
-// runs all different iterations of gSF following the user inout stored in the settings file m_sett
+
+// runs all different iterations in Monte Carlo mode of gSF following the user input stored in the settings file m_sett
+void ShapeCollector::mc_Collect() {
+    
+    TRandom3 r;
+    
+    //reset gSF collector vector
+    gSFCollector.clear();
+    
+    //bin size
+    m_matrix->SetESize( r.Uniform(m_sett->exi_size[0], m_sett->exi_size[1]) );
+    //sliding window
+    m_matrix->SetEne0( m_sett->exiEne[0] - r.Uniform(0, 1) * m_matrix->GetESize() );
+    
+    //get gSF data
+    gSFCollector.push_back( new ShapeGSF(m_sett, m_matrix));
+    NormCollect();
+    
+}
+
+// runs all different iterations of gSF following the user input stored in the settings file m_sett
 void ShapeCollector::Collect() {
+    
+    if (m_sett->doMC)
+        mc_Collect();
     
     m_matrix->SetEne0( m_sett->exiEne[0] );
     m_matrix->SetEne1( m_sett->exiEne[1] );
@@ -105,10 +128,12 @@ TMultiGraph* ShapeCollector::getMultGraph() {
     if (m_sett->doOslo)
         multGraph->Add(litCollector->GetLevGraph(),"3");
     
-    //add all the gSF data stored in the collector to the MultiGraph
-    for (int i = 0; i < gSFCollector.size(); i++) {
-        multGraph->Add(gSFCollector[i]->GetLevGraph_1());
-        multGraph->Add(gSFCollector[i]->GetLevGraph_2());
+    if (m_sett->displaySingle) {
+        //add all the gSF data stored in the collector to the MultiGraph
+        for (int i = 0; i < gSFCollector.size(); i++) {
+            multGraph->Add(gSFCollector[i]->GetLevGraph_1());
+            multGraph->Add(gSFCollector[i]->GetLevGraph_2());
+        }
     }
     
     //add smoothed graph, if requested
@@ -244,8 +269,11 @@ void ShapeCollector::Smooth(int res) {
             i_bin.push_back(i);
             m_e += res;
             i--;
+            
         }
     }
+    
+    i_bin.push_back(nPoints);
     
     //now calculate the average gSF values for each bin
     
@@ -265,14 +293,19 @@ void ShapeCollector::Smooth(int res) {
         //this error is the error of the mean value, based on the propagation of the indiviual errors, only; this does not take into account the fluctuations in the data points (i.e. the standard deviation)
         dy = TMath::Sqrt(dy) / nOfP;
         gSFGraphSmooth->SetPoint(gSFGraphSmooth->GetN(),x,y);
-        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dy, dy);
-       /*
+        //gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dy, dy);
+       
         double st_dev = 0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
-            st_dev += TMath::Power(levGraphAll->GetY()[j] - y, 2);
+            st_dev += TMath::Power(gSFGraph->GetY()[j] - y, 2);
         }
         st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
-        */
+        //double st_dev_mean = st_dev / nOfP;     //this is the standard deviation of the mean
+        //take care about points with small errors; those impact the chi2 fitting in a very biased way because they don't refelct the statistical fluctuations of the Shape Method
+        if (st_dev < 0.1 * y)
+            st_dev = 0.1 * y;
+        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, st_dev, st_dev);
+        
         //calculate max errors including errors of individual data points
 
         double dyl=0,dyh=0;

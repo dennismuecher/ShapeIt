@@ -794,115 +794,39 @@ void ShapeFrame::MonteCarlo() {
     matrix->SetEne0( sett->exiEne[0] );
     matrix->SetEne1( sett->exiEne[1] );
     
-    //create gamma ray strength function object
-    //gSF = new ShapeGSF(sett, matrix);
     UpdateDisplay(6);   //is this good for anything?
     //status update: will have values for gSF
     status = 2;
-    TRandom3 r;
+    
     TH1* h1 = new TH1F("slope", "best-fit slopes", 200, -0.2, 0.2);
-    for (int i = 0; i < 400; i++) {
+    for (int i = 0; i < 10; i++) {
         
-        //bin size
-        matrix->SetESize( r.Uniform(sett->exi_size[0], sett->exi_size[1]) );
-        //sliding window
-        matrix->SetEne0( sett->exiEne[0] - r.Uniform(0, 1) * matrix->GetESize() );
-
-        //update matrix and gSF values
-        matrix->Diag();
-        //gSF->FillgSF();
-        //display results for this iteration; this is a temporary hack  because ShowGraph calcualtes the smoothed version of gSF which is needed for the chi2 procedure; this needs a fix in the ShapeGSF class
+        gSFColl = new ShapeCollector(sett, matrix);
+        gSFColl->Collect();
+        
+        //display results
         ShowGraph();
-        //std::cout << AlphaChi2() <<std::endl;
-        h1->Fill(AlphaChi2());
+        //gSystem->Sleep (500);
+        //h1->Fill(AlphaChi2());
         if (i%10 ==0)
             std::cout <<"MC simulation: " <<i <<std::endl;
     }
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
-    fCanvas->Clear();
-    h1->Draw();
-    fCanvas->Modified();
-    fCanvas->Update();
+    //TCanvas *fCanvas = fEcanvas->GetCanvas();
+    //fCanvas->Clear();
+    //h1->Draw();
+    //fCanvas->Modified();
+    //fCanvas->Update();
 }
 
-/*void ShapeFrame::ShapeItBaby() {
-    
-    //check if matrix is loaded
-    if (status == 0)
-        return;
-   
-    //clean up matrix
-    matrix->Reset();
-    
-    //set current values of excitation energies for matrix
-    matrix->SetEne0( sett->exiEne[0] );
-    matrix->SetEne1( sett->exiEne[1] );
-    matrix->SetESize( sett->exi_size[0] );
-    
-    //update matrix
-    matrix->Diag();
-    
-    int kmax = 20;    //number of steps in sliding window; should not be hard-coded....needs fixing
-    
-    //setting display mode
-    UpdateDisplay(6);   //is this good for anything?
-  
-    //update settings accordings to the GUI settings
-    UpdateSetting(sett);
-   
-    sett->nOfBins = sett->SizeToBin();
-
-    //calculate gamma ray strength function
-    gSF = new ShapeGSF(sett, matrix);
-    gSF->FillgSF();
-
-    //status update: will have values for gSF
-    status = 2;
-    
-    //enable Menu entry showing fit results for peak width and peak ratios
-    if (sett->mode == 2)
-        fDisplayFile->EnableEntry(M_DISPLAY_FITWIDTH);
-    
-    fDisplayFile->EnableEntry(M_DISPLAY_RATIO);
-    
-    //loop over exi_size
-    do {
-        //sliding window
-        for (int i = 2; i < kmax; i++) {
-            if (!sett->doSlidingWindow) break;
-            // the sliding window moves from the inital position in kmax steps to the end position, which is one bin to the "left"
-            // the high energy is kept at the initital value, at all times
-            matrix->SetEne0( sett->exiEne[0] - (double) (i-1) * matrix->GetESize() / (kmax-1));
-              matrix->SetEne1( sett->exiEne[1] );
-            
-            //update matrix
-            matrix->Diag();
-            
-            //recalculate gSF values
-            gSF->FillgSF();
-        }
-        //check if bin size should be varried
-        if (!sett->doBinVariation) break;
-        
-        //change bin size
-        matrix->SetESize( matrix->GetESize() + 50 );
-        //update matrix and recalculate gSF in case doSlidingWindow is not active; otherwise this is done in the sliding window loop
-        if (!sett->doSlidingWindow) {
-            matrix->Diag();
-            gSF->FillgSF();
-        }
-        
-    } while (matrix->GetESize() <= sett->exi_size[1]);
-    
-    //display results
-    ShowGraph();
-}*/
 
 void ShapeFrame::ShapeItBaby() {
     
     //check if matrix is loaded
     if (status == 0)
         return;
+    
+    //setting display mode
+    UpdateDisplay(6);
     
     //update settings accordings to the GUI settings
     UpdateSetting(sett);
@@ -1336,10 +1260,13 @@ void ShapeFrame::HandleMenu(Int_t id)
 void ShapeFrame::UpdateDisplay(int display) {
     if (status == 0)
         return;
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
-    fCanvas->cd();
-    fCanvas->Clear();
+   
     displayMode = display;
+    if (display ==6)
+        return;
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+       fCanvas->cd();
+       fCanvas->Clear();
     if (display !=3) {
         fR[2]->SetState(kButtonUp);
         fBinCombo->SetEnabled(false);

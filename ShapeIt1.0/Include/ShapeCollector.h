@@ -33,12 +33,14 @@ private:
     TGraphErrors                    *gSFGraph;            //contains all gSF data
     TGraphAsymmErrors               *gSFGraphSmooth;       //contains all gSF data, smoothed 
     int                             kmax = 5;            //maximum number of steps in sliding window variation
+    int                             mc_run = 10;            //number of runs in Monte Carlo (MC) mode
     
     TMultiGraph*                    getMultGraph();
     double                          Norm(ShapeGSF* T1, ShapeGSF* T2);
     void                            Merge();
     void                            Smooth(int res);
     void                            NormCollect();
+    void                            mc_Collect();
     double                          getChi2Smooth();
     double                          getChi2All();
 
