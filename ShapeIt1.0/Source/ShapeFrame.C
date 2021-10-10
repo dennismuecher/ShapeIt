@@ -12,7 +12,8 @@
 
 
 #include "../Include/ShapeFrame.h"
-#include "../Include/ShapeDialogAlpha.h"
+#include "ShapeDialogAlpha.C"
+#include "../Source/ShapeInfo.C"
 
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
     
