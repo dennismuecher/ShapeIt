@@ -15,6 +15,14 @@
 #include "../Include/ShapeFrame.h"
 #include <TSystem.h>
 
+#include "ShapeFrame.C"
+#include "ShapeSetting.C"
+#include "ShapeMatrix.C"
+#include "ShapeGSF.C"
+#include "ShapeRho.C"
+#include "ShapeCollector.C"
+#include "ShapeAlpha.C"
+
 void ShapeIt() {
   static const std::string path = gSystem->pwd();
 	ShapeFrame* test = new ShapeFrame(gClient->GetRoot(),700,500, path);
