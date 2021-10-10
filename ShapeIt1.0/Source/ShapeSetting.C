@@ -73,13 +73,13 @@ void ShapeSetting::readEffi()
     //read file data into eGraph
     if (effiFileName == "") {
         std::cout << "No Efficiency File loaded!"<<std::endl;
-        return NULL;
+        return;
     }
     
     if (verbose)
-        std::cout <<"\nReading Efficiency DATA... " <<endl;
+        std::cout <<"\nReading Efficiency DATA... " <<std::endl;
     
-    ifstream inp;
+    std::ifstream inp;
     inp.open(effiFileName.c_str());
     
     if (inp.is_open() ) {
@@ -99,7 +99,7 @@ void ShapeSetting::readEffi()
             eGraph->SetPoint(i,e,eff);
             i++;
             if (verbose)
-                std::cout<< i<< " " << e << " "<< eff <<endl;
+                std::cout<< i<< " " << e << " "<< eff <<std::endl;
         }
         eGraph->SetMarkerStyle(4);
         eGraph->SetMarkerColor(kRed);
@@ -132,7 +132,7 @@ double ShapeSetting::getEffCor(double ene, int level) {
 }
 
 void ShapeSetting::SaveSettings() {
-    ofstream outfile;
+    std::ofstream outfile;
     outfile.open (settFileName.c_str());
     outfile << dataFileName << "\n";
     outfile << osloFileName << "\n";
@@ -179,14 +179,14 @@ void ShapeSetting::SaveSettings() {
 
 void ShapeSetting::ReadSettings() {
     if (verbose)
-        std::cout <<"\nREADING FROM INPUT FILE: " <<endl;
+        std::cout <<"\nREADING FROM INPUT FILE: " <<std::endl;
     
     //clear fileNames; currently for rhoFileName, only, due to backwards compatibility
     rhoFileName.clear();
     
     std::ifstream inp (settFileName.c_str());
     if (inp.is_open()) {
-        string word, line;
+        std::string word, line;
         //get the root matrix filename; this goes extra because of issues wih absolute paths containing white spaces
         getline(inp,line);
         dataFileName = line;
@@ -197,7 +197,7 @@ void ShapeSetting::ReadSettings() {
 		//get the efficiency data filename; due to backwards compatibility, check if this line contains the matrixName information (old file format)
         getline(inp,line);
         word.clear();
-        istringstream isstr(line);
+        std::istringstream isstr(line);
         isstr >> word;
 		if (word == "matrixName" ) {
 			isstr >> matrixName;
@@ -209,7 +209,7 @@ void ShapeSetting::ReadSettings() {
         //now get everything else
         while ( getline(inp,line) ) {
             word.clear();
-            istringstream isstr(line);
+            std::istringstream isstr(line);
             isstr >> word;
             if (word == "matrixName" ) isstr >> matrixName;
             if (word == "MeV:" ) isstr >> MeV;
@@ -245,7 +245,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
             if (word == "rhoFileName" ) {
-                string pName;
+                std::string pName;
                 rhoFileName.clear();
                 while (isstr >>pName)
                     rhoFileName+=" "+pName;

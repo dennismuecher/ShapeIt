@@ -13,6 +13,7 @@
 #include "../Include/ShapeDialogAlpha.h"
 #include "../Include/ShapeFrame.h"
 
+
 ShapeDialogAlpha::ShapeDialogAlpha(const TGWindow *p, const TGWindow *main, ShapeFrame *caller_obj, UInt_t w, UInt_t h, double b_init, double alpha_init, UInt_t options)
 {
     fMainDialog = new TGTransientFrame(p, main, w, h, options);

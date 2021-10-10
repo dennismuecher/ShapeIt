@@ -12,30 +12,13 @@
 
 
 #include "../Include/ShapeFrame.h"
-#include "../Source/ShapeInfo.C"
-#include "ShapeDialogAlpha.C"
+#include "../Include/ShapeDialogAlpha.h"
 
-//this function is used to fit the gSF results; currently not implemented
-double glo(double *x, double *par){
-  //par[0]: sigma
-  //par[1]: width
-  //par[2]: energy
-  double Tf = 0.86; //CT model, T at final states (can be adjusted)
-  //double Tf = par[3];
-  double a = 8.674E-8; //1/3pi^2hbar^2c^2 constant, in MeV^2 mb^-1
-  double b = 39.4784; //4pi^2 constant
-  double gamma = (par[1]*(pow(x[0] /1000.,2)+b*pow(Tf,2)))/pow(par[2],2);
-  double gamma0 = b*pow(Tf,2)*par[1]/pow(par[2],2);
-  double term1 = ((x[0]*gamma / 1000.)/(pow(pow(x[0] / 1000. ,2)-pow(par[2],2),2)+pow(x[0] / 1000.,2)*pow(gamma,2)));
-  double term2 = (0.7*gamma0)/(pow(par[2],3));
-  double f = a*par[0]*par[1]*(term1 + term2);
-  return f;
-}
-
-ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path) {
+ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
+    
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
-  
+
     //take care about closing the window
     
     fMain->Connect("CloseWindow()", "ShapeFrame", this, "CloseWindow()");
@@ -355,18 +338,6 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         autoScale->SetState(kButtonUp);
         scaling->SetState(true);
     }
-    /*
-    if ( sett_t->effiFileName.empty()  )
-        OB[6]->SetEnabled(false);
-    else
-        OB[6]->SetEnabled(true);
-    if (sett_t->doEffi)
-        OB[6]->SetState(kButtonDown);
-    else
-        OB[6]->SetState(kButtonUp);*/
-    
-    
-    
 }
 
 
@@ -450,9 +421,9 @@ void ShapeFrame::SetupMenu() {
     fSettingsFile->AddEntry("S&ave Settings as ...", M_SETTING_SAVEAS);
     fSettingsFile->AddEntry("&Print Settings to terminal", M_SETTING_PRINT);
     fSettingsFile->AddSeparator();
-    fSettingsFile->AddEntry("L&oad Literature Values gSF", M_SETTING_OSLO);
-    fSettingsFile->AddEntry("Load Literature Values &rho", M_SETTING_RHO);
-    fSettingsFile->AddEntry("L&oad Efficiency Calibration", M_SETTING_EFFI);
+    fSettingsFile->AddEntry("L&oad Literature Values gSF ...", M_SETTING_OSLO);
+    fSettingsFile->AddEntry("Load Literature Values &rho ...", M_SETTING_RHO);
+    fSettingsFile->AddEntry("L&oad Efficiency Calibration ...", M_SETTING_EFFI);
     fSettingsFile->AddSeparator();
     fSettingsFile->AddEntry("&Reset peak width calibration", M_SETTING_WIDTHRESET);
     fSettingsFile->AddSeparator();
@@ -485,7 +456,6 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->CheckEntry(M_DISPLAY_COLOUR);
     
     fDisplayFile->AddSeparator();
-    fDisplayFile->AddEntry("&Fit Giant Resoance Formula", M_DISPLAY_GRF);
     fDisplayFile->AddEntry("Plo&t chi2 graph for transformation", M_DISPLAY_TRAFO);
     
     fDisplayFile->AddSeparator();
@@ -539,9 +509,6 @@ void ShapeFrame::BinSelect(Int_t sbin)
     diagHisto->GetXaxis()->SetNdivisions(5,5,0);
     diagHisto->GetYaxis()->SetNdivisions(5,5,0);
     diagHisto->Draw("Y+");
-    
-    //standard display
-    //diagHisto->Draw();
 
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
@@ -604,11 +571,10 @@ void ShapeFrame::DoRadio()
             ShowGraph();
             UpdateGuiSetting(sett);
             break;
-
     }
 }
 
-void ShapeFrame::MessageBox(string title, string message)
+void ShapeFrame::MessageBox(std::string title, std::string message)
 {
     int retval = 0;
     EMsgBoxIcon icontype = kMBIconAsterisk;
@@ -794,7 +760,7 @@ void ShapeFrame::MonteCarlo() {
     matrix->SetEne0( sett->exiEne[0] );
     matrix->SetEne1( sett->exiEne[1] );
     
-    UpdateDisplay(6);   //is this good for anything?
+    UpdateDisplay(6);
     //status update: will have values for gSF
     status = 2;
     
@@ -825,7 +791,6 @@ void ShapeFrame::MonteCarlo() {
     fCanvas->Update();
 }
 
-
 void ShapeFrame::ShapeItBaby() {
     
     //check if matrix is loaded
@@ -841,7 +806,6 @@ void ShapeFrame::ShapeItBaby() {
     sett->nOfBins = sett->SizeToBin();
     
     //this call triggers the calculation of gSF values according to the actual settings stored int he settings file
-    //delete gSFColl;
     gSFColl = new ShapeCollector(sett, matrix);
     gSFColl->Collect();
     
@@ -935,25 +899,23 @@ int ShapeFrame::MatrixSelector()
 //takes care of setting the verbose level and displaying the verbose cascade menu correctly
 void ShapeFrame::HandleVerboseMenu(int vLevel) {
     
+    sett->verbose = vLevel;
+    fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE0);
+    fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE1);
+    fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE2);
+    
     switch (vLevel) {
         case 0: {
             fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE0);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE1);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE2);
-            sett->verbose = 0;
             break;
         }
         case 1: {
             fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE1);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE0);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE2);
             sett->verbose = 1;
             break;
         }
         case 2: {
             fVerboseMenu->CheckEntry(M_DISPLAY_VERBOSE2);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE0);
-            fVerboseMenu->UnCheckEntry(M_DISPLAY_VERBOSE1);
             sett->verbose = 2;
             break;
         }
@@ -1031,7 +993,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                string sname = fi_sett.fFilename;
+                std::string sname = fi_sett.fFilename;
                 //store absolute pathname
                 sett->settFileName = sname;
                 
@@ -1089,7 +1051,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             new TGFileDialog(gClient->GetRoot(), fMain, kFDSave, &fi_sett);
             if (fi_sett.fFilename) {
                 //store absolute pathname
-                string sname = fi_sett.fFilename;
+                std::string sname = fi_sett.fFilename;
                 sett->settFileName = sname;
         
                 //convert to filename, only (for the display)
@@ -1170,8 +1132,6 @@ void ShapeFrame::HandleMenu(Int_t id)
             AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200, sett->lit_norm, sett->lit_alpha);
             break;
         }
-            
-            
         
         case M_DISPLAY_MAT:
             UpdateDisplay(1);
@@ -1229,15 +1189,6 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
         
-        case M_DISPLAY_GRF: {
-            sett->doGRF = !sett->doGRF;
-            if (sett->doGRF)
-                fDisplayFile->CheckEntry(M_DISPLAY_GRF);
-            else
-                fDisplayFile->UnCheckEntry(M_DISPLAY_GRF);
-            ShowGraph();
-            break;
-        }
         case M_DISPLAY_TRAFO: {
             
             UpdateDisplay(9);
@@ -1335,17 +1286,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             leg->Draw();
             break;
         }
-        case 8: {
-            if (status > 1) {
-                /*TGraph* T = fitGSF->getRatioGraph();
-                T->SetMarkerStyle(23);
-                T->SetMarkerSize(2);
-                T->SetMarkerColor(2);
-                T->SetTitle("Peak area 1 / Peak area 2" );
-                T->Draw("AP");*/
-            }
-            break;
-        }
+        
         case 9: {
             AlphaChi2();
             break;

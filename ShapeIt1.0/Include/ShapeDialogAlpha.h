@@ -12,12 +12,20 @@
 
 #ifndef SHAPEDIALOGALPHA_H
 #define SHAPEDIALOGALPHA_H
+
+#include <iostream>
+
 //#include "ShapeFrame.h"
+
+#include <TGFrame.h>
+#include <TGNumberEntry.h>
+#include <TGWindow.h>
+#include <RQ_OBJECT.h>
 
 class ShapeFrame;
 class ShapeDialogAlpha {
     
-    RQ_OBJECT("ShapeDialogAlpha")
+    RQ_OBJECT("ShapeDialogAlpha");
     
 private:
     TGTransientFrame    *fMainDialog;

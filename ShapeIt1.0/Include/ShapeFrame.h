@@ -13,19 +13,30 @@
 #ifndef SHAPEFRAME_H
 #define SHAPEFRAME_H
 
+#include <algorithm>
+#include <string>
+#include <iostream>
+
+#include "ShapeSetting.h"
+#include "ShapeMatrix.h"
+#include "ShapeGSF.h"
+#include "ShapeRho.h"
+#include "ShapeCollector.h"
+#include "ShapeAlpha.h"
+//#include "ShapeDialogAlpha.h"
+#include "ShapeInfo.h"
+
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
 #include <TGraphErrors.h>
 #include <TGClient.h>
 #include <TCanvas.h>
 #include <TF1.h>
-#include <TRandom.h>
+#include <TH2.h>
 #include <TGButton.h>
 #include <TGFrame.h>
 #include <TGComboBox.h>
-
 #include <TRootEmbeddedCanvas.h>
-#include <RQ_OBJECT.h>
 #include <TGNumberEntry.h>
 #include <TString.h>
 #include <TApplication.h>
@@ -33,26 +44,21 @@
 #include <TGWindow.h>
 #include <TGLabel.h>
 #include <TPave.h>
-#include <TH2.h>
 #include <TGFileDialog.h>
 #include <TGDockableFrame.h>
 #include <TGMenu.h>
 #include <TFile.h>
 #include <TKey.h>
 #include <TClass.h>
-#include <algorithm>
-#include <TRandom.h>
-#include <TRandom2.h>
 #include <TRandom3.h>
-
-#include "../Include/ShapeSetting.h"
-#include "../Include/ShapeMatrix.h"
-#include "../Include/ShapeGSF.h"
-#include "../Include/ShapeRho.h"
-#include "../Include/ShapeCollector.h"
-#include "../Include/ShapeAlpha.h"
-
-//#include "../Include/ShapeDialogAlpha.h"
+#include <TLine.h>
+#include <TGIcon.h>
+#include <TSystem.h>
+#include <TVirtualX.h>
+#include <TGMsgBox.h>
+#include <TLegend.h>
+#include <TROOT.h>
+#include <TStyle.h>
 
 class TGWindow;
 class TGMainFrame;
@@ -80,13 +86,12 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_DIAGCUBE,
     M_DISPLAY_PROJTOT,
     M_DISPLAY_PROJBIN,
-    M_DISPLAY_GSF,
     M_DISPLAY_TRAFO,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
     M_DISPLAY_AVG,
     M_DISPLAY_SINGLE,
-    M_DISPLAY_GRF,
+    M_DISPLAY_GSF,
 	M_DISPLAY_COLOUR,
 	M_DISPLAY_VERBOSE0,
 	M_DISPLAY_VERBOSE1,
@@ -96,19 +101,18 @@ enum ETestCommandIdentifiers {
 
 };
 
-const char *filetypes[2] = {"ROOT files", "*.root"};
-const char *filetypes_s[2] = {"dat files", "*.dat"};
-const char *filetypes_t[2] = {"txt files", "*.txt"};
+
 
 class ShapeFrame {
-    RQ_OBJECT("ShapeFrame")
+    RQ_OBJECT("ShapeFrame");
 private:
+    
     TGMainFrame         *fMain;
     TGCanvas            *fCanvasWindow;
     TGCompositeFrame    *fContainer;
     TRootEmbeddedCanvas *fMainCanvas;
     const TGPicture *infoPic;               //the info picture ("File->About")
-    string absPath;
+    std::string absPath;
     ShapeDialogAlpha    *AlphaDialog;       //window to set transformation parameters
     TRootEmbeddedCanvas *fEcanvas;
     TGNumberEntry       *energy[4]; //energies of the two discrete states; lower and upper limit
@@ -153,18 +157,23 @@ private:
     TMultiGraph *mg;                        //the graph showing the gSF plots
     int displayMode = 1;
     TRootEmbeddedCanvas* fEMessage;
-    string mname="";                           //filename of the root file without the pathname
+    std::string mname="";                           //filename of the root file without the pathname
     int status = 0;                             //tracks the status of ShapeIt: 0: no matrix loaded; 1: matrix loaded; 2: gSF data available
-    void MessageBox(string title, string message);              //shows a dialog box with title and message and ok button
+    void MessageBox(std::string title, std::string message);              //shows a dialog box with title and message and ok button
     TH1D* diagHisto;
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *gSF;							//contains the gSF results from the data
     double scale_bak;                           //stores the actual scaling value;
     
+    const char *filetypes[2] = {"ROOT files", "*.root"};
+    const char *filetypes_s[2] = {"dat files", "*.dat"};
+    const char *filetypes_t[2] = {"txt files", "*.txt"};
+    
 public:
-    ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const string path);
+    ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path);
     virtual ~ShapeFrame();
+    ClassDef(ShapeFrame,0);
     int GetBinSelect() {return binSelect;}						//returns binSelect
 	void SetBinSelect(int tBinSelect) {binSelect = tBinSelect;}		//set binSelect
 	void DoDraw();

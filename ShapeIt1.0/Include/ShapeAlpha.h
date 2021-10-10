@@ -12,15 +12,15 @@
 
 #ifndef SHAPEALPHA_H
 #define SHAPEALPHA_H
-#include "../Include/ShapeSetting.h"
-#include "../Include/ShapeCollector.h"
 
-#include <TGraphErrors.h>
-#include <TMultiGraph.h>
-#include <TGraphAsymmErrors.h>
+#include <iostream>
 
-#include <TObjArray.h>
-#include <TH1.h>
+#include "ShapeSetting.h"
+#include "ShapeMatrix.h"
+#include "ShapeCollector.h"
+
+#include <TGraph.h>
+
 
 /* **************************************************************************
 *  class ShapeALPHA                                                         *

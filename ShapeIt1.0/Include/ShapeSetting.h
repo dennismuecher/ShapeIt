@@ -14,12 +14,19 @@
 #ifndef SHAPESETTING_H
 #define SHAPESETTING_H
 
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+#include <TGraph.h>
+#include <TFile.h>
+#include <TMath.h>
+
 class ShapeSetting {
 
 private:
 	
-
-
 public:
 	ShapeSetting();                         //the constructor
     
@@ -62,7 +69,7 @@ public:
     int minCounts = 0;                      //minimum number of counts required in a bin to be considered
 	
 	void SetMeV(bool b) {MeV = (b) ? 1000 : 1;}		//set MeV=1000 in case of b true
-    void SetFileName(string str) {dataFileName = str;}
+    void SetFileName(std::string str) {dataFileName = str;}
     std::string GetFileName() {return dataFileName;}
     void PrintSettings();                       //prints all settings
     int SizeToBin();                        //calculates the nr of integration bins based on the size of each bin

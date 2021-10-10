@@ -12,14 +12,21 @@
 
 #ifndef SHAPEGSF_H
 #define SHAPEGSF_H
-#include "../Include/ShapeSetting.h"
-#include "../Include/ShapeMatrix.h"
+
+#include <iostream>
+
+#include "ShapeSetting.h"
+#include "ShapeMatrix.h"
+
 #include <TGraphErrors.h>
 #include <TMultiGraph.h>
+#include <TRandom3.h>
 #include <TGraphAsymmErrors.h>
 
 #include <TObjArray.h>
 #include <TH1.h>
+#include <TRandom3.h>
+
 
 /* **************************************************************************
 *  class ShapeGSF                                                           *
@@ -38,7 +45,6 @@ private:
     TGraphErrors*       levGraph_1;          //TGraph containing the gSF data for level1
     TGraphErrors*       levGraph_2;          //TGraph containing the gSF data for level2
     TGraphErrors*       levGraph;            //TGraph to contain the gSF data for both levels
-    TRandom3            r;
     double              m_B = 1;             //transfomration gSF scaling
     double              m_alpha = 0;         //trnasformation gSF exponential slope
     

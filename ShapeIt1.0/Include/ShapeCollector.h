@@ -12,16 +12,17 @@
 
 #ifndef SHAPECOLLECTOR_H
 #define SHAPECOLLECTOR_H
-#include "../Include/ShapeSetting.h"
-#include "../Include/ShapeMatrix.h"
-#include "../Include/ShapeGSF.h"
+
+#include <vector>
+#include <iostream>
+
+#include "ShapeSetting.h"
+#include "ShapeMatrix.h"
+#include "ShapeGSF.h"
 
 #include <TGraphErrors.h>
 #include <TMultiGraph.h>
 #include <TGraphAsymmErrors.h>
-
-#include <TObjArray.h>
-#include <TH1.h>
 
 class ShapeCollector {
     
@@ -45,9 +46,7 @@ private:
     double                          getChi2Smooth();
     double                          getChi2All();
     double                          mc_getChi2();
-
-
-
+    
 public:
 
     ShapeCollector(ShapeSetting* t_setting, ShapeMatrix* t_matrix);

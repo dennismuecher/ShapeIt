@@ -13,25 +13,25 @@
 #ifndef SHAPEMATRIX_H
 #define SHAPEMATRIX_H
 
-#include "../Include/ShapeSetting.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <vector>
+
+#include "ShapeSetting.h"
+
 #include <TMath.h>
+#include <TObject.h>
 #include <TFile.h>
 #include <TF1.h>
 #include <TF2.h>
 #include <TH1.h>
 #include <TH2.h>
-#include <TStyle.h>
-#include <TColor.h>
 #include <TGraph.h>
-#include <TGraphErrors.h>
-#include <TMultiGraph.h>
-//#include "../Source/ShapeFitFunction.C"
+#include <TROOT.h>
+#include <TKey.h>
 
-    
 class ShapeMatrix : public TObject {
 	
 private:
@@ -45,7 +45,7 @@ private:
     TH2F* diagExCube;                           //diag matrix with factor E_g^3 for each entry vs excitation energy
     void diagMatrix();	                       //creates the diagonalized matrices
     void openMatrix();                         //opens the matrix defined in settings
-    void openMatrix(string fname);              //open root file with name fname
+    void openMatrix(std::string fname);              //open root file with name fname
     std::vector <std::string> matrixName;    //names of all matrices found in dataFile
    
     int xbins, ybins;							//number of x and y bins for diagonalized matrices 
@@ -56,7 +56,6 @@ private:
     std::vector <double> width2;                //peak width for leve2 1 from all autofits
     std::vector <double> allgamma1;                //corresponding excitation energy for width1 vector
     std::vector <double> allgamma2;                //corresponding excitation energy for width2 vector
-    
     
 public:
 	ShapeMatrix(ShapeSetting* setting);
@@ -78,11 +77,11 @@ public:
     std::vector <std::string> GetMatrixName() {return matrixName;}
     void SetMatrix(int mNr);                  //assigns inputMatrix to mNr matrix found in dataFile
     
-	TH2* GetInputMatrix (string title);
-    TH1F* GetDiag(string title) {diag->SetTitle(title.c_str());  return diag;}
-    TH2F* GetDiagEx(string title) {diagEx->SetTitle(title.c_str()); return diagEx;}
-    TH2F* GetDiagExCube(string title) {diagExCube->SetTitle(title.c_str()); return diagExCube;}
-    TH1D* GetDiagEx(int bbin, string title);                  //returns projection of DiagEx for bin bbin, starting at bin 1
+	TH2* GetInputMatrix (std::string title);
+    TH1F* GetDiag(std::string title) {diag->SetTitle(title.c_str());  return diag;}
+    TH2F* GetDiagEx(std::string title) {diagEx->SetTitle(title.c_str()); return diagEx;}
+    TH2F* GetDiagExCube(std::string title) {diagExCube->SetTitle(title.c_str()); return diagExCube;}
+    TH1D* GetDiagEx(int bbin, std::string title);                  //returns projection of DiagEx for bin bbin, starting at bin 1
 
     int energyToBinX (double e);
     int energyToBinY (double e);

@@ -9,16 +9,13 @@
 * You should have received a copy of the GNU General Public License      *
 * along with this program. If not, see  http://www.gnu.org/licenses/.    *
 *************************************************************************/
+#include <string>
+#include <iostream>
 
-#include "ShapeFrame.C"
-#include "ShapeSetting.C"
-#include "ShapeMatrix.C"
-#include "ShapeGSF.C"
-#include "ShapeRho.C"
-#include "ShapeCollector.C"
-#include "ShapeAlpha.C"
+#include "../Include/ShapeFrame.h"
+#include <TSystem.h>
 
 void ShapeIt() {
-    static const string path = gSystem->pwd();
+  static const std::string path = gSystem->pwd();
 	ShapeFrame* test = new ShapeFrame(gClient->GetRoot(),700,500, path);
 }

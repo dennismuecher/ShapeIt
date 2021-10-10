@@ -49,12 +49,12 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
     //read file data into gSF
     if (m_sett->osloFileName == "") {
         std::cout << "No Literature File loaded!"<<std::endl;
-        return NULL;
+        return;
     }
     
     if (m_sett->verbose)
-        std::cout <<"\nReading OSLO DATA... " <<endl;
-    ifstream inp;
+        std::cout <<"\nReading OSLO DATA... " <<std::endl;
+    std::ifstream inp;
     inp.open(m_sett->osloFileName.c_str());
     if (inp.is_open() ) {
         
@@ -158,7 +158,9 @@ void ShapeGSF::FillgSF() {
 
     double egamma1, egamma2;
     double gSF1, dgSF1, gSF2, dgSF2;
-    
+
+    TRandom3 *r = new TRandom3(0);
+
     for (int i = 0; i < m_matrix->integral1Cube.size(); i++ ) {
 
         //if any of the two peak areas is below minCounts, skip this entire gSF pair
@@ -211,8 +213,8 @@ void ShapeGSF::FillgSF() {
         //in case of MC mode, shuffle gSF according to the gauss distribution
         if (m_sett->doMC) {
             //gaus smear according to fit eerror bars
-            gSF1 = r.Gaus(gSF1,dgSF1);
-            gSF2 = r.Gaus(gSF2,dgSF2);
+            gSF1 = r->Gaus(gSF1,dgSF1);
+            gSF2 = r->Gaus(gSF2,dgSF2);
             //now set error bars to zero, they are not used for anything anymore
             dgSF1 = 0;
             dgSF2 = 0;
@@ -249,7 +251,7 @@ double ShapeGSF::Slope(int i) {
 //sewing of gSF data using the "average" interpolation approach
 void ShapeGSF::Sewing() {
     if (m_sett->verbose)
-        std::cout <<"\nINTERPOLATION OF gSF DATA... " <<endl;
+        std::cout <<"\nINTERPOLATION OF gSF DATA... " <<std::endl;
     
     int k = levGraph_1->GetN();
     //if there is only one pair of non-zero gSF values, don't do anything

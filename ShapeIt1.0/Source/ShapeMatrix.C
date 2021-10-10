@@ -32,7 +32,7 @@ void ShapeMatrix::Reset() {
     allgamma2.clear();
 }
 
-TH2* ShapeMatrix::GetInputMatrix (string title) {
+TH2* ShapeMatrix::GetInputMatrix (std::string title) {
     inputMatrix->SetTitle(title.c_str());
     return inputMatrix;
 }
@@ -65,7 +65,7 @@ int ShapeMatrix::energyToBinX (double e) {
 
 
 //returns the projection of diagonalized matrix for bin bbin
-TH1D* ShapeMatrix::GetDiagEx(int bbin, string title) {
+TH1D* ShapeMatrix::GetDiagEx(int bbin, std::string title) {
     if (bbin <= ybins) {
         char name[50];
         char title[50];
@@ -286,8 +286,8 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     
 	//doublet present
 	else {
-		peakRange[0] = min(sett->levEne[2*level], sett->levEne_2[2*level]);
-		peakRange[1] = max(sett->levEne[2*level+1], sett->levEne_2[2*level+1]);
+		peakRange[0] = fmin(sett->levEne[2*level], sett->levEne_2[2*level]);
+		peakRange[1] = fmax(sett->levEne[2*level+1], sett->levEne_2[2*level+1]);
 	}
 			
     //peak energy
@@ -411,8 +411,8 @@ void ShapeMatrix::Diag(){
     YNum  = inputMatrix->GetNbinsY();
  
     if (sett->verbose) {
-        std::cout <<"\nNumber of x bins in matrix: "<< XNum <<endl;
-        std::cout <<"\nNumber of y bins in matrix: "<< YNum <<endl;
+        std::cout <<"\nNumber of x bins in matrix: "<< XNum <<std::endl;
+        std::cout <<"\nNumber of y bins in matrix: "<< YNum <<std::endl;
     }
 
 	//number of bins used for x-axis (Ex - Eg) in diagonalized matrix; I choose the number of bins equal to the number of bins in the gamma ray axis of the input matrix
@@ -429,10 +429,10 @@ void ShapeMatrix::Diag(){
 	eMin_diag = eMin_diag -100;
     
     if (sett->verbose) {
-        std::cout <<"\nMaximum gamma ray energy detected in input matrix: "<< eMax_x <<endl;
-        std::cout <<"\nMaximum excitation energy detected in input matrix: "<< eMax_y <<endl;
-        std::cout <<"\nMinimum gamma ray energy detected in input matrix: "<< eMin_x <<endl;
-        std::cout <<"\nMinimum excitation energy detected in input matrix: "<< eMin_y <<endl;
+        std::cout <<"\nMaximum gamma ray energy detected in input matrix: "<< eMax_x <<std::endl;
+        std::cout <<"\nMaximum excitation energy detected in input matrix: "<< eMax_y <<std::endl;
+        std::cout <<"\nMinimum gamma ray energy detected in input matrix: "<< eMin_x <<std::endl;
+        std::cout <<"\nMinimum excitation energy detected in input matrix: "<< eMin_y <<std::endl;
     }
    
 	//calculate number of xbins
@@ -446,8 +446,8 @@ void ShapeMatrix::Diag(){
 	ene1 = esize * ybins + ene0; 
 	
     if (sett->verbose) {
-        std::cout <<"\nx binnings for diag matrix:"<< xbins <<" " <<eMin_diag << " " <<eMax_y <<endl;
-        std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1 <<endl;
+        std::cout <<"\nx binnings for diag matrix:"<< xbins <<" " <<eMin_diag << " " <<eMax_y <<std::endl;
+        std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1 <<std::endl;
 	}
 	
     //cleaning up before generating matrices  

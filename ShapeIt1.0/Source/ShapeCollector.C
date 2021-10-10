@@ -9,6 +9,7 @@
 * You should have received a copy of the GNU General Public License      *
 * along with this program. If not, see  http://www.gnu.org/licenses/.    *
 *************************************************************************/
+#include "../Include/ShapeCollector.h"
 
 //constructor using setting file and a matrix
 ShapeCollector::ShapeCollector(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_sett(t_sett), m_matrix(t_matrix)
