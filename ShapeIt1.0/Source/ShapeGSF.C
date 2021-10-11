@@ -77,6 +77,9 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
             }
         }
         
+        //apply transformation according to the settings file
+        //Transform();
+        
         levGraph->SetFillColor(4);
         levGraph->SetFillStyle(3010);
         if (m_sett->verbose)
@@ -124,6 +127,11 @@ void ShapeGSF::Merge() {
     levGraph->Merge(mArray);
     //sort
     levGraph->Sort();
+}
+
+//transforms literature values using setting file
+void ShapeGSF::Transform() {
+
 }
 
 //transforms literature gSF values via B*exp(alpha E_gamma)
@@ -234,8 +242,10 @@ void ShapeGSF::FillgSF() {
             std::cout <<"gSF2: " <<gSF2 << "+- " << dgSF2 <<std::endl;
         }
     }
-    //update levGraph
-    Merge();
+    
+    //Scale data according to settings file; this also updates levGraph
+    
+    Scale(m_sett->gSF_norm);
 }
 
 double ShapeGSF::Slope(int i) {

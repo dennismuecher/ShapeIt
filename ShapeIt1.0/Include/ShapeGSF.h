@@ -63,6 +63,8 @@ public:
     void                Reset();
     void                Scale(double factor);
     void                Transform(double B_t, double alpha_t);
+    void                Transform();
+
     void                SetESize(double ene)    {m_matrix->SetESize(ene);}
     void                SetEne0(double ene)     {m_matrix->SetEne0(ene);}
     void                SetEne1(double ene)     {m_matrix->SetEne1(ene);}
