@@ -48,7 +48,7 @@ public:
     bool doWidthCal = false;                 //if true, use results from width calibrations
     bool colour = true;						//if true, plot gSF points in two different colours for peak1 and peak2
 	bool doGRF = false;                      //if true, display fit of gSF via giant resonance formula from RAINIER
-    bool doMC = true;                       //if true, run the MC version of gSF evaluation
+    bool doMC = false;                       //if true, run the MC version of gSF evaluation
     bool displayAvg = false;                    //sets if average gSF is displayed
     bool displaySingle = true;                    //sets if single (both) gSF data is displayed
 	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
@@ -61,7 +61,6 @@ public:
 	double bgEne[2][4];                      //background regions for level 1 and level 2
     double bgWidth = 100;                   //width of each background window
     double exiEne[2] = {0, 0};						//lower and upper excitation energy considered
-    double gammaEne[2] = {0, 0};                        //lower and upper gamma energy considered
     double exi_size[2] = {0, 0};					//bin size for shape method
     double widthCal[2][2];                  //parameters for width calibration
     int nOfBins = 1;

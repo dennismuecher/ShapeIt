@@ -45,6 +45,7 @@ private:
     double const        exiStep = 1;             //exi step size (in keV) in Chi2Loop(); not impl.
     double              minChi2 = 1;             //minimum chi2 value
     double              minAlpha = 1;             //alpha value for which chi2 is at minimum
+    double              minAlphaProb = 0;         //probability that chi2 is larger than minChi2 by chance
     double              minAlpha_low;             //lower bound for alpha within chi2 confidence level
     double              minAlpha_high;            //higher bound for alpha within chi2 confidence level
     
@@ -64,6 +65,12 @@ public:
     TGraph*             getChi2Graph() {return chi2Graph;}
     double              getMinChi2()   {return minChi2;}
     double              getMinAlpha()   {return minAlpha;}
+    double              getMinAlphaLow()   {return minAlpha_low;}
+    double              getMinAlphaHigh()   {return minAlpha_high;}
+    double              getConfLevel()   {return conf_level;}
+    double              getMinAlphaProb()   {return minAlphaProb;}
+    TPaveText*          getPaveTextChi2();
+
 
 
 };

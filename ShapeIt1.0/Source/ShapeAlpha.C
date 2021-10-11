@@ -24,6 +24,7 @@ void ShapeAlpha::FindMinimum() {
     for (int i = 0; i < chi2Graph->GetN(); i++) {
         double x = chi2Graph->GetX()[i];
         double y = chi2Graph->GetY()[i];
+     
         if ( (y < y_min) || (y_min == 0) ) {
             y_min = y;
             x_min = x;
@@ -33,13 +34,34 @@ void ShapeAlpha::FindMinimum() {
 
     if (i_min ==0)
         std::cout <<"Warning: minimum chi2 value found for first chi2Graph point!" <<std::endl;
-    if (i_min == chi2Graph->GetN()-1)
+    else if (i_min == chi2Graph->GetN()-1)
         std::cout <<"Warning: minimum chi2 value found for last chi2Graph point!" <<std::endl;
     
     minChi2 = y_min;
     minAlpha = x_min;
     minAlphaPoint = i_min;
     
+}
+
+//provides a TPaveText window with infos on the chi2 analysis results
+TPaveText* ShapeAlpha::getPaveTextChi2() {
+    
+    TPaveText *t=new TPaveText(0.45,0.65,0.9,0.9,"brNDC");
+    t->SetTextSize(0.025);
+    t->SetTextAlign(13);
+    t->SetFillColor(10);
+    t->SetTextColor(61);
+    
+    t->AddText(Form("Minimum #chi^{2} value: %4.2f ",minChi2 ));
+    t->AddText(Form("Slope #alpha at minimum: %4.2f ",minAlpha ));
+    t->AddText(Form("Chance for larger #chi^{2}: %4.2f %% ",100*minAlphaProb ));
+    t->AddText(Form("Chance for smaller #chi^{2}: %4.2f %% ",100*(1-minAlphaProb) ));
+    
+    if (minAlpha_low < 1E3 && minAlpha_high < 1E3)
+        t->AddText(Form("%2.0f %% confidence level #alpha: [%4.2f, %4.2f] ",100*(1-conf_level ),minAlpha_low, minAlpha_high ));
+    else
+        t->AddText(Form("%2.0f %% confidence level #alpha: NaN! #chi^{2} too large?" ,100*(1-conf_level )));
+    return t;
 }
 
 //determines the range of alpha values around the minimum which meet the chi2 confidence level conf_level
@@ -49,7 +71,7 @@ void ShapeAlpha::AlphaRange() {
     minAlpha_low = 1E3;
     
     int n = chi2Graph->GetN();
-    int nOfDegFreedom = 1;
+    int nOfDegFreedom;
     if (m_sett->displayAvg)
         nOfDegFreedom = m_collector->GetNSmooth() -1;
     else
@@ -60,12 +82,14 @@ void ShapeAlpha::AlphaRange() {
         std::cout <<" minAlpha = " << minAlpha <<std::endl;
         std::cout <<" nOfDegFreedom = " << nOfDegFreedom <<std::endl;
         std::cout <<"minAlphaPoint = " << minAlphaPoint <<std::endl;
+        std::cout <<"confidence level = " << conf_level <<std::endl;
+
     }
 
-    double chi2_prob = TMath::Prob(minChi2,nOfDegFreedom);
+    minAlphaProb = TMath::Prob(minChi2,nOfDegFreedom);
     
-    if (chi2_prob <= conf_level) {
-        std::cout <<"Cannot determine alpha confidence level: chi2 probability for minimum point is " <<chi2_prob << " compared to the confidence level " << conf_level <<std::endl;
+    if (minAlphaProb <= conf_level) {
+        std::cout <<"Cannot determine alpha confidence level: chi2 probability for minimum point is " <<minAlphaProb << " compared to the confidence level " << conf_level <<std::endl;
         return;
     }
     if (minAlphaPoint == 0) {
@@ -78,7 +102,8 @@ void ShapeAlpha::AlphaRange() {
         return;
     }
    
-    double alpha,chi2;
+    double alpha,chi2,chi2_prob;
+
     
     //find the higher limit of alpha for which the chi2 is within the given confidence level
     for ( int i = minAlphaPoint; i < n; i++) {
@@ -90,6 +115,10 @@ void ShapeAlpha::AlphaRange() {
         if ( chi2_prob > conf_level)
             minAlpha_high = alpha;
     }
+    if (minAlpha_high == minAlpha) {
+        std::cout <<"Cannot determine alpha confidence level: chi2 minimum too close to confidence level!" <<std::endl;
+        minAlpha_high=1E3;
+    }
     
     //find the lower limit of alpha for which the chi2 is within the given confidence level
     for ( int i = minAlphaPoint; i > 0; i--) {
@@ -100,6 +129,10 @@ void ShapeAlpha::AlphaRange() {
         chi2_prob = TMath::Prob(chi2,nOfDegFreedom);
         if ( chi2_prob > conf_level)
             minAlpha_low = alpha;
+    }
+    if (minAlpha_low == minAlpha) {
+        std::cout <<"Cannot determine alpha confidence level: chi2 minimum too close to confidence level!" <<std::endl;
+        minAlpha_low =-1E3;
     }
     
     if (m_sett->verbose)
@@ -130,16 +163,16 @@ void ShapeAlpha::Chi2Loop() {
         chi2Y[pointC] = m_collector->getChi2();
         enes[pointC] = m_sett->exiEne[0];
         
-        //std::cout <<" i = " << i << "pointC = " <<pointC <<" alphaX[i] " << alphaX[pointC] << " exi[0] " << m_sett->exiEne[0] << " lit_chi2 " << chi2Y[pointC]<<  std::endl;
+        //std::cout <<" i = " << i << "pointC = " <<pointC <<" alphaX[i] " << alphaX[pointC] << " exi[0] " << m_sett->exiEne[0] << " chi2: " << chi2Y[pointC]<<  std::endl;
         pointC++;
     }
     
     //store values in chi2Graph
     //delete chi2Graph;
     chi2Graph = new TGraph(nOfPoints, alphaX, chi2Y);
-    chi2Graph->SetMarkerStyle(4);
-    chi2Graph->SetMarkerColor(kRed);
-    
+    chi2Graph->SetMarkerStyle(22);
+    chi2Graph->SetMarkerColor(6);
+    chi2Graph->SetTitle("#chi^{2} fit to literature gSF data; slope #alpha; #chi^{2}" );
     //restore m_sett values
     m_sett->exiEne[0] = exi_bak;
     m_sett->lit_alpha = alpha_bak;

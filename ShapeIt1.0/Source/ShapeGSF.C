@@ -174,12 +174,7 @@ void ShapeGSF::FillgSF() {
         egamma1 = m_matrix->integral1Square[i] / m_matrix->integral1Cube[i];
         egamma2 = m_matrix->integral2Square[i] / m_matrix->integral2Cube[i];
 
-        if (egamma1 < m_sett->gammaEne[0] || egamma2 < m_sett->gammaEne[0] )
-            continue;
-        if (egamma1 > m_sett->gammaEne[1] || egamma2 > m_sett->gammaEne[1] )
-            continue;
-        
-        //calculate gamma ray strength
+       //calculate gamma ray strength
         gSF1 = getBgRatio(i, 1) * m_matrix->integral1Cube[i] * m_sett->getEffCor(egamma1, 1);
         dgSF1 = TMath::Power(1./m_matrix->integral1[i], 0.5) * gSF1;
 

@@ -75,7 +75,6 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     
     for (int i = 0; i < 3; i++)
         fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
-     fEnergy[8] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
     for (int i = 3; i < 8; i++)
         fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
     
@@ -131,17 +130,6 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     exi[1]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[2]->AddFrame(exi[1], fL2);
     fG[1]->AddFrame(fEnergy[2], fL2);
-
-    //gamma energy selection
-       gamma[0] = new TGNumberEntry(fEnergy[8], 2500, 9,5, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
-       gamma[0]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
-       fEnergy[8]->AddFrame(gamma[0], fL2);
-       TGLabel *l11 = new TGLabel(fEnergy[8], "< E(gamma) <");
-       fEnergy[8]->AddFrame(l11, fL2);
-       gamma[1] = new TGNumberEntry(fEnergy[8], 7000, 9,6, TGNumberFormat::kNESInteger,TGNumberFormat::kNEANonNegative,TGNumberFormat::kNELLimitMinMax,0, 99999);
-       gamma[1]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
-       fEnergy[8]->AddFrame(gamma[1], fL2);
-       fG[1]->AddFrame(fEnergy[8], fL2);
     
     //intgeration bin settings
     TGLabel *l4 = new TGLabel(fEnergy[3], "Bin size [keV]");
@@ -284,8 +272,6 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         energy[i]->SetNumber(sett_t->levEne[i]);
     for (int i = 0; i < 2; i++)
          exi[i]->SetNumber(sett_t->exiEne[i]);
-    for (int i = 0; i < 2; i++)
-         gamma[i]->SetNumber(sett_t->gammaEne[i]);
     
     bin[0]->SetNumber(sett_t->exi_size[0]);
     //acivate bin size variation TGNumberEntries
@@ -339,6 +325,16 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
         autoScale->SetState(kButtonUp);
         scaling->SetState(true);
     }
+    
+    if (sett->displayAvg)
+        fDisplayFile->CheckEntry(M_DISPLAY_AVG);
+    else
+        fDisplayFile->UnCheckEntry(M_DISPLAY_AVG);
+    
+    if (sett->displaySingle)
+        fDisplayFile->CheckEntry(M_DISPLAY_SINGLE);
+    else
+        fDisplayFile->UnCheckEntry(M_DISPLAY_SINGLE);
 }
 
 
@@ -350,9 +346,7 @@ void ShapeFrame::UpdateSetting(ShapeSetting *sett_t)
         sett_t->levEne[i] = energy[i]->GetNumber();
     for (int i = 0; i < 2; i++)
         sett_t->exiEne[i] = exi[i]->GetNumber();
-    for (int i = 0; i < 2; i++)
-          sett_t->gammaEne[i] = gamma[i]->GetNumber();
-    
+  
     sett_t->exi_size[0] = bin[0]->GetNumber();
     sett_t->exi_size[1] = bin[1]->GetNumber();
     sett_t->nOfBins = nOfBins[0]->GetNumber();
@@ -931,7 +925,8 @@ void ShapeFrame::HandleMenu(Int_t id)
             
         case M_FILE_ABOUT:
         {
-            new ShapeInfo(gClient->GetRoot(), fMain, 600, 300, absPath);
+            //new ShapeInfo(gClient->GetRoot(), fMain, 600, 300, absPath);
+            MessageBox("Welcome to ShapeIt!","ShapeIt Version 1.1 \n © 2021 Dennis Muecher \n Questions? Comments? dmuecher@uoguelph.ca \n This program is free software: you can redistribute it and/or modify it under the \n terms of the GNU General Public License as published by the Free Software Foundation, \n either version 3 of the License, or (at your option) any later version. \n You should have received a copy of the GNU General Public License \n along with this program. If not, see  http://www.gnu.org/licenses/.");
             break;
         }
         case M_FILE_OPEN:
@@ -991,7 +986,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-            
+
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
                 std::string sname = fi_sett.fFilename;
@@ -1010,10 +1005,10 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //get nme of root file containing matrix
                 mname = sett->dataFileName;
                 mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
-                
+
                 //create Matrix object
                 matrix = new ShapeMatrix(sett);
-                
+
                 //status update
                 status = 1;
            
@@ -1033,7 +1028,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //initialize histogram zoom
                 histX1 = 0;
                 histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
-                
+
                 //create projections
                 matrix->Diag();
 
@@ -1311,14 +1306,23 @@ void ShapeFrame::UpdateDisplay(int display) {
 }
 
 double ShapeFrame::AlphaChi2() {
-    ShapeAlpha* frameAlpha = new ShapeAlpha(sett,gSFColl);
-    if (!sett->doMC)
-        frameAlpha->getChi2Graph()->Draw("APC*");
     
-    //if (sett->verbose)
+    ShapeAlpha* frameAlpha = new ShapeAlpha(sett,gSFColl);
+    
+    TGraph *test = frameAlpha->getChi2Graph();
+    
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    TPaveText* t = frameAlpha->getPaveTextChi2();
+    
+    if (!sett->doMC) {
+        test->Draw("APC*");
+        t->Draw();
+    }
+    
+    if (sett->verbose)
         std::cout <<"Minimum chi2 value of "<< frameAlpha->getMinChi2() << " found for alpha = " << frameAlpha->getMinAlpha() <<std::endl;
     
-        
+    
     return (frameAlpha->getMinAlpha()) ;
 }
 

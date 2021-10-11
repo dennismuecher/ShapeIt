@@ -162,7 +162,6 @@ void ShapeSetting::SaveSettings() {
     outfile << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
     outfile << "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
 	outfile << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
-    outfile << "gamma_limits " << gammaEne[0] <<" "<<gammaEne[1] <<"\n";
     outfile << "excitation_bin_1 " << exi_size[0] <<"\n";
     outfile << "excitation_bin_2 " << exi_size[1] <<"\n";
     outfile << "nOfBins " << nOfBins <<"\n";
@@ -236,7 +235,6 @@ void ShapeSetting::ReadSettings() {
             if (word == "bg_level1" ){ isstr >> bgEne[0][0]; isstr >> bgEne[0][1]; isstr >> bgEne[0][2]; isstr >> bgEne[0][3];}
             if (word == "bg_level2" ){ isstr >> bgEne[1][0]; isstr >> bgEne[1][1]; isstr >> bgEne[1][2]; isstr >> bgEne[1][3];}
             if (word == "excitation" ) { isstr >> exiEne[0]; isstr >>exiEne[1];}
-            if (word == "gamma_limits" ) { isstr >> gammaEne[0]; isstr >>gammaEne[1];}
             if (word == "excitation_bin_1" ) isstr >> exi_size[0] ;
             if (word == "excitation_bin_2" ) isstr >> exi_size[1] ;
             if (word == "nOfBins" ) isstr >> nOfBins ;
@@ -292,7 +290,6 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
 	std::cout  <<  "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
     std::cout  << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
-    std::cout  << "gamma limits " << gammaEne[0] <<" "<<gammaEne[1] <<"\n";
     std::cout  << "excitation_bin_1 " << exi_size[0] <<"\n";
     std::cout  << "excitation_bin_2 " << exi_size[1] <<"\n";
     std::cout  << "nOfBins " << nOfBins <<"\n";

@@ -260,16 +260,20 @@ double ShapeCollector::getChi2Smooth(){
     for (int i = 0; i < n; i++) {
         double x = gSFGraphSmooth->GetX()[i];
         double y = gSFGraphSmooth->GetY()[i];
+
         double dyh = gSFGraphSmooth->GetErrorYhigh(i);
         double dyl = gSFGraphSmooth->GetErrorYlow(i);
+
         double dy = (dyh + dyl)/2;
         double y_oslo = litCollector->GetLevGraph()->Eval(x);
+
         if (dy == 0) {
             std::cout <<"Error in getChi2: zero value for gSF error for point " <<i<<" ! Skipping this data point" <<std::endl;
             continue;
         }
         else
             chi2 += TMath::Power( ( y_oslo - y ) / dy, 2);
+
     }
     return (chi2);
 }
@@ -283,8 +287,6 @@ double ShapeCollector::getChi2(){
         return getChi2All();
 }
  
-
-
 void ShapeCollector::Smooth(int res) {
     
     gSFGraphSmooth->Set(0);
@@ -330,8 +332,9 @@ void ShapeCollector::Smooth(int res) {
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
             st_dev += TMath::Power(gSFGraph->GetY()[j] - y, 2);
         }
-        st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
-        //double st_dev_mean = st_dev / nOfP;     //this is the standard deviation of the mean
+        if (nOfP > 2)
+            st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
+        
         //take care about points with small errors; those impact the chi2 fitting in a very biased way because they don't refelct the statistical fluctuations of the Shape Method
         if (st_dev < 0.1 * y)
             st_dev = 0.1 * y;
