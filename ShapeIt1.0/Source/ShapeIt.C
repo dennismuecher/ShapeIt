@@ -14,6 +14,7 @@
 
 #include <TSystem.h>
 
+#include "ShapeTalys.C"
 #include "ShapeFrame.C"
 #include "ShapeSetting.C"
 #include "ShapeMatrix.C"

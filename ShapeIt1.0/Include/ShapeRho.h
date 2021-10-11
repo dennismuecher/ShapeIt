@@ -33,7 +33,7 @@ public:
     TGraphErrors *rhoGraph;
     void Read();
     void Draw();
-    void Draw(double alpha, double alpha_l, double alpha_h);
+    TGraphAsymmErrors* rhoTrafoGraph(double alpha, double alpha_l, double alpha_h);
     TGraphErrors* Transform(double A, double alpha);
     double Eval(double ene);
 };

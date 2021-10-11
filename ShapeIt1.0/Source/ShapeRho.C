@@ -44,10 +44,10 @@ void ShapeRho::Draw() {
     rhoGraph->Draw("same");
 }
 
-void ShapeRho::Draw(double alpha, double alpha_l, double alpha_h) {
+TGraphAsymmErrors* ShapeRho::rhoTrafoGraph(double alpha, double alpha_l, double alpha_h) {
 
     if (!rhoGraph)
-        return;
+        return NULL;
     
 TGraphErrors* graph_t_mid = Transform(1,alpha);
 TGraphErrors* graph_t_low =Transform(1,alpha_l);
@@ -66,24 +66,25 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
         
         graph_t->SetPointError(graph_t->GetN()-1,0,0,EY_l,EY_h);
     }
-    graph_t->SetMarkerStyle(4);
-    graph_t->SetMarkerColor(kBlack);
+    graph_t->SetMarkerStyle(22);
+    graph_t->SetMarkerColor(kBlue);
     graph_t->SetTitle("level density; energy (MeV); level density (1/MeV)");
-    graph_t->SetFillColorAlpha(kRed,0.5);
+    graph_t->SetFillColorAlpha(kRed,0.2);
     graph_t->SetFillStyle(3010);
-    graph_t->Draw("aP3*");
-
     //printing results to terminal
-    std::cout <<"Results for transformed level density: \n" <<std::endl;
-    for (int i=0; i < graph_t->GetN(); i++) {
-        std::cout << graph_t->GetX()[i] <<" " <<graph_t->GetY()[i] <<" " <<graph_t->GetEYhigh()[i] << " " << graph_t->GetEYlow()[i] <<std::endl;
+    if (m_sett->verbose) {
+        std::cout <<"Results for transformed level density: \n" <<std::endl;
+        for (int i=0; i < graph_t->GetN(); i++) {
+            std::cout << graph_t->GetX()[i] <<" " <<graph_t->GetY()[i] <<" " <<graph_t->GetEYhigh()[i] << " " << graph_t->GetEYlow()[i] <<std::endl;
+        }
     }
+    return graph_t;
 }
 
 TGraphErrors* ShapeRho::Transform(double A, double alpha) {
     TGraphErrors* graph_t = new TGraphErrors();
-    //normalize at 2MeV
-    double scale = 1 / TMath::Exp(alpha * 2);
+    //normalize at 0.5MeV
+    double scale = 1 / TMath::Exp(alpha * 0.5);
     for (int i=0; i < rhoGraph->GetN(); i++) {
         double Y = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetY()[i];
         double EY = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetEY()[i];
