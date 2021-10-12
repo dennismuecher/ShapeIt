@@ -25,7 +25,7 @@ ShapeTalys::ShapeTalys(std::string p_talysOutFile, bool p_parityFlag, bool p_for
 int ShapeTalys::NewReadTree()
 {
     ifstream file(talysOutFile.c_str());
-    
+    //ptable=0;
     if (!file)
     {
         cerr << "cannot read the file"
@@ -67,7 +67,7 @@ int ShapeTalys::NewReadTree()
                 if (j >=spinLow && j <=spinHigh)
                     partial +=densitySpin[j][i];
             }
-            densityPartial.push_back(partial);
+            densityPartial.push_back(partial*0.1);
         }
     }
     else {
@@ -81,7 +81,7 @@ int ShapeTalys::NewReadTree()
                 if (j >=spinLow && j <=spinHigh)
                     partial +=densitySpin[j][i];
             }
-            densityPartial.push_back(partial);
+            densityPartial.push_back(partial*0.1);
         }
     }
     

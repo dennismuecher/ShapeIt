@@ -102,6 +102,9 @@ enum ETestCommandIdentifiers {
 };
 
 
+const char *filetypes[2] = {"ROOT files", "*.root"};
+const char *filetypes_s[2] = {"dat files", "*.dat"};
+const char *filetypes_t[2] = {"txt files", "*.txt"};
 
 class ShapeFrame {
     RQ_OBJECT("ShapeFrame");
@@ -164,10 +167,6 @@ private:
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *gSF;							//contains the gSF results from the data
     double scale_bak;                           //stores the actual scaling value;
-    
-    const char *filetypes[2] = {"ROOT files", "*.root"};
-    const char *filetypes_s[2] = {"dat files", "*.dat"};
-    const char *filetypes_t[2] = {"txt files", "*.txt"};
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path);

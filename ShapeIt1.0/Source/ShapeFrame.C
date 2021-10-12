@@ -1038,23 +1038,36 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         case M_SETTING_SAVEAS:
         {
+            std::cout <<"Alive1"<<std::endl;
             UpdateSetting(sett);
+            std::cout <<"Alive2"<<std::endl;
+
             static TString dir(".");
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-            
+            std::cout <<"Alive3"<<std::endl;
+
             new TGFileDialog(gClient->GetRoot(), fMain, kFDSave, &fi_sett);
+            std::cout <<"Alive3.5"<<std::endl;
+
             if (fi_sett.fFilename) {
                 //store absolute pathname
                 std::string sname = fi_sett.fFilename;
+                std::cout <<"Alive3.6"<<std::endl;
+
                 sett->settFileName = sname;
-        
+                std::cout <<"Alive4"<<std::endl;
+
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 fMain->SetWindowName(sname.c_str());
                 //call save settings
+                std::cout <<"Alive5"<<std::endl;
+
                 sett->SaveSettings();
+                std::cout <<"Alive6"<<std::endl;
+
             }
         }
             break;
@@ -1303,7 +1316,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             m_graph->Add(rhoTrafo,"AP3");
             
-            ShapeTalys* ld1 = new ShapeTalys("../Talys/140Ba/Ba140_ld1.out",false,1,0.0);
+            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/140Ba/Ba140_ld1.out",false,1,0.0);
             TGraph* ld1Graph = ld1->getDenPartialGraph();
             ld1Graph->SetTitle("ld1");
             ld1Graph->SetLineColor(51);
@@ -1338,7 +1351,49 @@ void ShapeFrame::UpdateDisplay(int display) {
             ld5Graph->SetLineWidth(2);
             m_graph->Add(ld5Graph,"L");
             
-           ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,0.4);
+            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,0.4);
+            TGraph* ld6Graph = ld6->getDenPartialGraph();
+            ld6Graph->SetTitle("ld6");
+            ld6Graph->SetLineColor(kRed);
+            ld6Graph->SetLineWidth(2);
+            m_graph->Add(ld6Graph,"L");*/
+            
+            ShapeTalys* ld1 = new ShapeTalys("../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
+            TGraph* ld1Graph = ld1->getDenPartialGraph();
+            ld1Graph->SetTitle("ld1");
+            ld1Graph->SetLineColor(51);
+            ld1Graph->SetLineWidth(2);
+            m_graph->Add(ld1Graph,"L");
+            
+            ShapeTalys* ld2 = new ShapeTalys("../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
+            TGraph* ld2Graph = ld2->getDenPartialGraph();
+            ld2Graph->SetTitle("ld2");
+            ld2Graph->SetLineColor(61);
+            ld2Graph->SetLineWidth(2);
+            m_graph->Add(ld2Graph,"L");
+            
+            ShapeTalys* ld3 = new ShapeTalys("../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
+            TGraph* ld3Graph = ld3->getDenPartialGraph();
+            ld3Graph->SetTitle("ld3");
+            ld3Graph->SetLineColor(71);
+            ld3Graph->SetLineWidth(2);
+            m_graph->Add(ld3Graph,"L");
+            
+            ShapeTalys* ld4 = new ShapeTalys("../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
+            TGraph* ld4Graph = ld4->getDenPartialGraph();
+            ld4Graph->SetTitle("ld4");
+            ld4Graph->SetLineColor(81);
+            ld4Graph->SetLineWidth(2);
+            m_graph->Add(ld4Graph,"L");
+            
+            ShapeTalys* ld5 = new ShapeTalys("../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
+            TGraph* ld5Graph = ld5->getDenPartialGraph();
+            ld5Graph->SetTitle("ld5");
+            ld5Graph->SetLineColor(91);
+            ld5Graph->SetLineWidth(2);
+            m_graph->Add(ld5Graph,"L");
+            
+            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
             TGraph* ld6Graph = ld6->getDenPartialGraph();
             ld6Graph->SetTitle("ld6");
             ld6Graph->SetLineColor(kRed);
