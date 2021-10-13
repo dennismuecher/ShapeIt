@@ -504,7 +504,7 @@ void ShapeFrame::BinSelect(Int_t sbin)
     diagHisto->GetXaxis()->SetNdivisions(5,5,0);
     diagHisto->GetYaxis()->SetNdivisions(5,5,0);
     diagHisto->Draw("Y+");
-
+    displayMode = 5;
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
@@ -579,6 +579,7 @@ void ShapeFrame::MessageBox(std::string title, std::string message)
 
 void ShapeFrame::DrawMarker() {
     
+        std::cout <<"Drawing Marker for DisplayMode " <<displayMode <<std::endl;
         TCanvas *fCanvas = fEcanvas->GetCanvas();
         for (int i = 0; i < 4; i++) {
             fCanvas->GetListOfPrimitives()->Remove(l[i]);
@@ -760,7 +761,7 @@ void ShapeFrame::MonteCarlo() {
     status = 2;
     
     TH1* h1 = new TH1F("slope", "best-fit slopes", 400, -1, 1);
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 100; i++) {
         
         gSFColl = new ShapeCollector(sett, matrix);
         gSFColl->Collect();
@@ -823,7 +824,7 @@ void ShapeFrame::TransGraph()
     sett->lit_norm =  AlphaDialog->GetBTransform();
     
     //transform literature gSF values in gSF collector object
-    gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
+    //gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
     ShowGraph();
 }
 
@@ -1358,42 +1359,42 @@ void ShapeFrame::UpdateDisplay(int display) {
             ld6Graph->SetLineWidth(2);
             m_graph->Add(ld6Graph,"L");*/
             
-            ShapeTalys* ld1 = new ShapeTalys("../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
+            ShapeTalys* ld1 = new ShapeTalys("../../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
             TGraph* ld1Graph = ld1->getDenPartialGraph();
             ld1Graph->SetTitle("ld1");
             ld1Graph->SetLineColor(51);
             ld1Graph->SetLineWidth(2);
             m_graph->Add(ld1Graph,"L");
             
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
+            ShapeTalys* ld2 = new ShapeTalys("../../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
             TGraph* ld2Graph = ld2->getDenPartialGraph();
             ld2Graph->SetTitle("ld2");
             ld2Graph->SetLineColor(61);
             ld2Graph->SetLineWidth(2);
             m_graph->Add(ld2Graph,"L");
             
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
+            ShapeTalys* ld3 = new ShapeTalys("../../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
             TGraph* ld3Graph = ld3->getDenPartialGraph();
             ld3Graph->SetTitle("ld3");
             ld3Graph->SetLineColor(71);
             ld3Graph->SetLineWidth(2);
             m_graph->Add(ld3Graph,"L");
             
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
+            ShapeTalys* ld4 = new ShapeTalys("../../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
             TGraph* ld4Graph = ld4->getDenPartialGraph();
             ld4Graph->SetTitle("ld4");
             ld4Graph->SetLineColor(81);
             ld4Graph->SetLineWidth(2);
             m_graph->Add(ld4Graph,"L");
             
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
+            ShapeTalys* ld5 = new ShapeTalys("../../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
             TGraph* ld5Graph = ld5->getDenPartialGraph();
             ld5Graph->SetTitle("ld5");
             ld5Graph->SetLineColor(91);
             ld5Graph->SetLineWidth(2);
             m_graph->Add(ld5Graph,"L");
             
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
+            ShapeTalys* ld6 = new ShapeTalys("../../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
             TGraph* ld6Graph = ld6->getDenPartialGraph();
             ld6Graph->SetTitle("ld6");
             ld6Graph->SetLineColor(kRed);

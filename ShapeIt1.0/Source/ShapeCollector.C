@@ -135,10 +135,14 @@ TMultiGraph* ShapeCollector::getMultGraph() {
     
     //add literature values
     
-    if (m_sett->doMC)
+    if (m_sett->doMC) {
+        Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(litCollector->GetLevGraph(),"AL");
-    if (m_sett->doOslo)
+    }
+    else if (m_sett->doOslo) {
+        Transform(m_sett->lit_norm, m_sett->lit_alpha);
         multGraph->Add(litCollector->GetLevGraph(),"3");
+    }
     
     if (m_sett->displaySingle) {
         //add all the gSF data stored in the collector to the MultiGraph

@@ -67,7 +67,7 @@ int ShapeTalys::NewReadTree()
                 if (j >=spinLow && j <=spinHigh)
                     partial +=densitySpin[j][i];
             }
-            densityPartial.push_back(partial*0.1);
+            densityPartial.push_back(partial);
         }
     }
     else {
@@ -81,7 +81,7 @@ int ShapeTalys::NewReadTree()
                 if (j >=spinLow && j <=spinHigh)
                     partial +=densitySpin[j][i];
             }
-            densityPartial.push_back(partial*0.1);
+            densityPartial.push_back(partial);
         }
     }
     
