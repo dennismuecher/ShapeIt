@@ -48,11 +48,13 @@ public:
     bool doWidthCal = false;                 //if true, use results from width calibrations
     bool colour = true;						//if true, plot gSF points in two different colours for peak1 and peak2
 	bool doGRF = false;                      //if true, display fit of gSF via giant resonance formula from RAINIER
-    bool doMC = false;                       //if true, run the MC version of gSF evaluation
+    bool doMC = false;                         //if true, MC mode is active; not ethat this variable is not stored in the settings file and is controlled by the ShapeDialogAlpha class
+    double alphaLimit[2] = {-1,1};            //lower and upper limits for alpha chi2 search, as set in the ShapeDialogAlpha class
+    int alphaIter = 100;                        //number of steps in alpha during chi2 search
     bool displayAvg = false;                    //sets if average gSF is displayed
     bool displaySingle = true;                    //sets if single (both) gSF data is displayed
 	int verbose = 0;					//prints extra information if true; verbose =1 is basic information; verbose > 1 gives full detail
-	double gSF_norm = 1 ;				//normalization factor for gSF
+	double gSF_norm = 1 ;				//normalization factor for gSF from ShapeIt analysis
     double lit_norm = 1 ;                //normalization factor for Oslo literature value
     double lit_alpha = 0 ;                //transformation "slope" parameter for literature values
 

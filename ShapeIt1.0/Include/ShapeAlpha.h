@@ -39,8 +39,7 @@ private:
     ShapeCollector*     m_collector;
     TGraph*             chi2Graph;               //1-d graph of chi2 values for various alpha values
     
-    double const        alphaRange = 2.;        //alpha will be varied in Chi2Loop() according to this
-    int const           nOfPoints = 100;         //number of steps in the chi2 evaluation
+    int const           nOfPoints = m_sett->alphaIter;         //number of steps in the chi2 evaluation
     int const           nOfExi = 1;              //number of excitation energies;  not impl.
     double const        exiStep = 1;             //exi step size (in keV) in Chi2Loop(); not impl.
     double              minChi2 = 1;             //minimum chi2 value
@@ -53,7 +52,6 @@ private:
     double              conf_level = 0.1;         //confidence level for alpha range; a confidence level of 0.1 means that the chance that a given chi2 value is larger than the given value is 0.1 = 10%
     
     
-    void                Chi2Loop();
     void                FindMinimum();      //finds minChi2 and minAlpha
     void                AlphaRange();       //finds lower and upper bound for alpha following chi2 criterium
     
@@ -70,6 +68,8 @@ public:
     double              getConfLevel()   {return conf_level;}
     double              getMinAlphaProb()   {return minAlphaProb;}
     TPaveText*          getPaveTextChi2();
+    void                Chi2Loop();
+
 
 
 

@@ -86,7 +86,6 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_DIAGCUBE,
     M_DISPLAY_PROJTOT,
     M_DISPLAY_PROJBIN,
-    M_DISPLAY_TRAFO,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
     M_DISPLAY_AVG,
@@ -126,8 +125,10 @@ private:
     TGNumberEntry       *scaling;           //scaling factor for gSF
     TGNumberEntry       *effCorr;              //efficiency factor for level 2
    
-    ShapeCollector      *gSFColl;
-    
+    ShapeCollector      *gSFColl;           //collection of gSF values for the "normal" mode
+    ShapeCollector      *gSFCollMC;           //collection of gSF values for the "Monte Carlo" mode
+
+    TPaveText           *getPaveTextShape();        //the text info in the ShapeIt gSF graph
     TGCompositeFrame *fBin;
     TGCompositeFrame *f1;
     TGCompositeFrame *f2;
@@ -167,6 +168,8 @@ private:
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *gSF;							//contains the gSF results from the data
     double scale_bak;                           //stores the actual scaling value;
+    void DrawVerticalLine(Double_t x);
+    TH1* mcSlopeGraph = NULL;
     
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path);

@@ -142,6 +142,8 @@ void ShapeSetting::SaveSettings() {
     outfile << "mode " << mode << "\n";
     outfile << "doInterpol " << doInterpol<<"\n";
     outfile << "doOslo " << doOslo<<"\n";
+    outfile << "alphaLimit " << alphaLimit[0]<<" "<<alphaLimit[1] << "\n";
+    outfile << "alphaIter " << alphaIter<<"\n";
     outfile << "doEffi " << doEffi<<"\n";
     outfile << "doAutoScale " << doAutoScale<<"\n";
 	outfile << "colour " << colour<<"\n";
@@ -215,6 +217,8 @@ void ShapeSetting::ReadSettings() {
             if (word == "mode" ) isstr >> mode ;
             if (word == "doInterpol" ) isstr >> doInterpol;
             if (word == "doOslo" ) isstr >> doOslo;
+            if (word == "alphaLimit" ) { isstr >> alphaLimit[0]; isstr >>alphaLimit[1];}
+            if (word == "alphaIter" ) isstr >> alphaIter;
             if (word == "doEffi" ) isstr >> doEffi;
             if (word == "doAutoScale" ) isstr >> doAutoScale;
 			if (word == "colour" ) isstr >> colour;
@@ -268,6 +272,8 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "mode " << mode << "\n";
     std::cout  << "doInterpol " << doInterpol<<"\n";
     std::cout  << "doOslo " << doOslo<<"\n";
+    std::cout  << "alphaLimit " << alphaLimit[0]<<" " <<alphaLimit[1]<<"\n";
+    std::cout  << "alphaIter " << alphaIter<<"\n";
     std::cout  << "doEffi " << doEffi<<"\n";
     std::cout  << "doAutoScale " << doAutoScale<<"\n";
 	std::cout  << "colour " << colour<<"\n";

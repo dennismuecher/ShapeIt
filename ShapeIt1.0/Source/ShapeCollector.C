@@ -37,8 +37,6 @@ void ShapeCollector::mc_Collect() {
     
     //get gSF data
     gSFCollector.push_back( new ShapeGSF(m_sett, m_matrix));
-    std::cout <<"ESize in mc_Collect: " << m_matrix->GetESize() <<std::endl;
-    std::cout <<"Ene0 in mc_Collect: " << m_matrix->GetEne0() <<std::endl;
     
     //normalize gSF results to literature data
     NormCollect();

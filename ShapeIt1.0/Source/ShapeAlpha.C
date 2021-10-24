@@ -15,7 +15,7 @@
 //constructor using setting file and a matrix
 ShapeAlpha::ShapeAlpha(ShapeSetting* t_sett, ShapeCollector* t_collector):m_sett(t_sett), m_collector(t_collector)
 {
-    Chi2Loop();
+
 }
 
 void ShapeAlpha::FindMinimum() {
@@ -88,18 +88,20 @@ void ShapeAlpha::AlphaRange() {
 
     minAlphaProb = TMath::Prob(minChi2,nOfDegFreedom);
     
-    if (minAlphaProb <= conf_level) {
-        std::cout <<"Cannot determine alpha confidence level: chi2 probability for minimum point is " <<minAlphaProb << " compared to the confidence level " << conf_level <<std::endl;
-        return;
-    }
-    if (minAlphaPoint == 0) {
-        std::cout <<"Cannot determine alpha confidence level: chi2 minimum is at first chi2Graph point! " <<std::endl;
-        return;
-    }
-    
-    if (minAlphaPoint == n-1) {
-        std::cout <<"Cannot determine alpha confidence level: chi2 minimum is at last chi2Graph point! " <<std::endl;
-        return;
+    if (m_sett->verbose) {
+        if (minAlphaProb <= conf_level) {
+            std::cout <<"Cannot determine alpha confidence level: chi2 probability for minimum point is " <<minAlphaProb << " compared to the confidence level " << conf_level <<std::endl;
+            return;
+        }
+        if (minAlphaPoint == 0) {
+            std::cout <<"Cannot determine alpha confidence level: chi2 minimum is at first chi2Graph point! " <<std::endl;
+            return;
+        }
+        
+        if (minAlphaPoint == n-1) {
+            std::cout <<"Cannot determine alpha confidence level: chi2 minimum is at last chi2Graph point! " <<std::endl;
+            return;
+        }
     }
    
     double alpha,chi2,chi2_prob;
@@ -153,8 +155,8 @@ void ShapeAlpha::Chi2Loop() {
     
     for (int i = 0; i < nOfPoints; i++) {
         
-        alphaX[pointC] = 2*i*alphaRange / nOfPoints - alphaRange;
-        
+        alphaX[pointC] = i * (m_sett->alphaLimit[1]-m_sett->alphaLimit[0] ) / nOfPoints + m_sett->alphaLimit[0];
+
         //update alpha in settings file
         m_sett->lit_alpha = alphaX[pointC];
         

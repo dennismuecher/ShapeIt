@@ -17,6 +17,7 @@
 
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
     
+   
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
 
@@ -451,9 +452,6 @@ void ShapeFrame::SetupMenu() {
     fDisplayFile->CheckEntry(M_DISPLAY_COLOUR);
     
     fDisplayFile->AddSeparator();
-    fDisplayFile->AddEntry("Plo&t chi2 graph for transformation", M_DISPLAY_TRAFO);
-    
-    fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
     
     fDisplayFile->AddSeparator();
@@ -577,6 +575,17 @@ void ShapeFrame::MessageBox(std::string title, std::string message)
     
 }
 
+void ShapeFrame::DrawVerticalLine(Double_t x)
+{
+   TLine l;
+   Double_t lm = gPad->GetLeftMargin();
+   Double_t rm = 1.-gPad->GetRightMargin();
+   Double_t tm = 1.-gPad->GetTopMargin();
+   Double_t bm = gPad->GetBottomMargin();
+   Double_t xndc = (rm-lm)*((x-gPad->GetUxmin())/(gPad->GetUxmax()-gPad->GetUxmin()))+lm;
+   l.DrawLineNDC(xndc,bm,xndc,tm);
+}
+
 void ShapeFrame::DrawMarker() {
     
         std::cout <<"Drawing Marker for DisplayMode " <<displayMode <<std::endl;
@@ -588,6 +597,7 @@ void ShapeFrame::DrawMarker() {
         fCanvas->Modified();
         fCanvas->Update();
         if (displayMode == 4 || displayMode == 5) {
+            DrawVerticalLine(2.);
         for (int i = 0; i < 4; i++) {
             
             //draw verticl lines; there is a bug when using log-y scale, discussed here:
@@ -746,43 +756,68 @@ void ShapeFrame::DoNumberEntry() {
 void ShapeFrame::MonteCarlo() {
     
     //check if matrix is loaded
-    if (status == 0)
+    if (status == 0) {
+            MessageBox("Error", "No Matrix loaded!");
         return;
-   
-    //clean up matrix
-    matrix->Reset();
-   
-    //set current values of excitation energies for matrix
-    matrix->SetEne0( sett->exiEne[0] );
-    matrix->SetEne1( sett->exiEne[1] );
-    
-    UpdateDisplay(6);
-    //status update: will have values for gSF
-    status = 2;
-    
-    TH1* h1 = new TH1F("slope", "best-fit slopes", 400, -1, 1);
-    for (int i = 0; i < 100; i++) {
-        
-        gSFColl = new ShapeCollector(sett, matrix);
-        gSFColl->Collect();
-        
-        //display results
-        if (i%10 ==0)
-            ShowGraph();
-        
-        //calcualte chi2 value
-        h1->Fill(AlphaChi2());
-
-        // make sure to update display
-        gSystem->ProcessEvents(); gSystem->ProcessEvents();
-        gSystem->Sleep(10);
-        
-        if (i%10 ==0)
-            std::cout <<"MC simulation: " <<i <<std::endl;
     }
+    
+    //set status of button in Transformation Dialog window
+    AlphaDialog->ChangeStartLabel();
+    
+    //if the start button was pressed, run MC simulation
+    if (sett->doMC) {
+        //delete previous graph of alpha values and recreate with up-to-date bounds
+        if (mcSlopeGraph != NULL)
+            mcSlopeGraph->Delete();
+        
+        mcSlopeGraph = new TH1F("MC slope results", "MC slope results", 400, sett->alphaLimit[0], sett->alphaLimit[1] );
+        
+        //clean up matrix
+        matrix->Reset();
+        
+        //set current values of excitation energies for matrix
+        matrix->SetEne0( sett->exiEne[0] );
+        matrix->SetEne1( sett->exiEne[1] );
+        
+        UpdateDisplay(6);
+        //status update: will have values for gSF
+        status = 2;
+        
+        for (int i = 0; i < AlphaDialog->GetNrOfIter(); i++) {
+            
+            //start-stop button pressed in the Transformation Dialog window?
+            if (!AlphaDialog->GetStartStatus())
+               return;
+            gSFCollMC = new ShapeCollector(sett, matrix);
+            gSFCollMC->Collect();
+            
+            //display results
+            if (i%10 ==0)
+                ShowGraph();
+            
+            //calcualte chi2 value
+            mcSlopeGraph->Fill(AlphaChi2());
+            
+            // make sure to update display
+            gSystem->ProcessEvents(); gSystem->ProcessEvents();
+            gSystem->Sleep(10);
+            
+            if (i%10 ==0)
+                std::cout <<"MC simulation: " <<i <<std::endl;
+        }
+    }
+    
+    // at this point the MC simulation is done, so set the MC button, accordingly
+    sett->doMC = false;
+    
+    if (AlphaDialog->GetStartStatus() )
+        AlphaDialog->ChangeStartLabel();
+
+    //draw mcSlopeGraph
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
-    h1->Draw();
+    if (mcSlopeGraph)
+        mcSlopeGraph->Draw();
     fCanvas->Modified();
     fCanvas->Update();
 }
@@ -790,8 +825,10 @@ void ShapeFrame::MonteCarlo() {
 void ShapeFrame::ShapeItBaby() {
     
     //check if matrix is loaded
-    if (status == 0)
+    if (status == 0) {
+            MessageBox("Error", "No Matrix loaded!");
         return;
+    }
     
     //setting display mode
     UpdateDisplay(6);
@@ -816,6 +853,24 @@ void ShapeFrame::ShapeItBaby() {
     ShowGraph();
 }
 
+//provides a TPaveText window with infos on the chi2 minimum for the ShapeIt Display
+TPaveText* ShapeFrame::getPaveTextShape() {
+    
+    //can't calculate chi2 if no literature data aare loaded
+    if (!sett->doOslo)
+        return NULL;
+    
+    TPaveText *t=new TPaveText(0.8,0.85,0.95,0.95,"brNDC");
+    t->SetTextSize(0.025);
+    t->SetTextAlign(13);
+    t->SetFillColor(10);
+    t->SetTextColor(61);
+    t->AddText(Form("slope #alpha: %4.2f ",sett->lit_alpha));
+
+    t->AddText(Form("#chi^{2} value: %4.2f ",gSFColl->getChi2()));
+    return t;
+}
+
 void ShapeFrame::TransGraph()
 {
     //update Literature value transformation settings
@@ -832,13 +887,27 @@ void ShapeFrame::TransGraph()
 void ShapeFrame::ShowGraph()
 {
     //check status
-    if (status < 2)
+    if (status == 0) {
+            MessageBox("Error", "No Matrix loaded!");
         return;
-        
+    }
+    
+    if (status == 1) {
+        MessageBox("Error", "Press ShapeIt button, first! No gamma ray strength values to show");
+        return;
+    }
+
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->Clear();
     //draw the gSF collector object
-    gSFColl->Draw();
+    if (sett->doMC)
+        gSFCollMC->Draw();
+    else {
+        gSFColl->Draw();
+        //display Chi2 minimum, in case literature values are shown
+        if (getPaveTextShape() != NULL)
+            getPaveTextShape()->Draw();
+    }
     
     //update canvas
     fCanvas->Modified();
@@ -1039,35 +1108,27 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         case M_SETTING_SAVEAS:
         {
-            std::cout <<"Alive1"<<std::endl;
             UpdateSetting(sett);
-            std::cout <<"Alive2"<<std::endl;
 
             static TString dir(".");
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-            std::cout <<"Alive3"<<std::endl;
 
             new TGFileDialog(gClient->GetRoot(), fMain, kFDSave, &fi_sett);
-            std::cout <<"Alive3.5"<<std::endl;
 
             if (fi_sett.fFilename) {
                 //store absolute pathname
                 std::string sname = fi_sett.fFilename;
-                std::cout <<"Alive3.6"<<std::endl;
 
                 sett->settFileName = sname;
-                std::cout <<"Alive4"<<std::endl;
 
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 fMain->SetWindowName(sname.c_str());
                 //call save settings
-                std::cout <<"Alive5"<<std::endl;
 
                 sett->SaveSettings();
-                std::cout <<"Alive6"<<std::endl;
 
             }
         }
@@ -1139,7 +1200,7 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         
         case M_SETTING_TRAFO: {
-            AlphaDialog = new ShapeDialogAlpha(gClient->GetRoot(), fMain, this, 400, 200, sett->lit_norm, sett->lit_alpha);
+            AlphaDialog = new ShapeDialogAlpha(sett, gClient->GetRoot(), fMain, this, 400, 200, sett->lit_norm, sett->lit_alpha);
             break;
         }
         
@@ -1199,11 +1260,6 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
         
-        case M_DISPLAY_TRAFO: {
-            
-            UpdateDisplay(9);
-            break;
-        }
         case M_DISPLAY_EFFI: {
             UpdateDisplay(10);
             break;
@@ -1216,7 +1272,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             if (status > 1)
                 gSFColl->Print();
             else
-                std::cout <<"ShapeIt, first! No values to show" <<std::endl;
+                MessageBox("Error", "Press ShapeIt button, first! No gamma ray strength values to show");
             break;
             
     default:
@@ -1297,10 +1353,6 @@ void ShapeFrame::UpdateDisplay(int display) {
             break;
         }
         
-        case 9: {
-            AlphaChi2();
-            break;
-        }
         case 10: {
             sett->eGraph->SetMarkerStyle(4);
             sett->eGraph->SetMarkerColor(kRed);
@@ -1422,7 +1474,21 @@ void ShapeFrame::UpdateDisplay(int display) {
 
 double ShapeFrame::AlphaChi2() {
     
-    ShapeAlpha* frameAlpha = new ShapeAlpha(sett,gSFColl);
+    //check status
+    if (status < 2) {
+        MessageBox("Error", "Press ShapeIt button, first! No gamma ray strength values to show");
+        return 0;
+    }
+        
+    ShapeAlpha* frameAlpha;
+
+    if (sett->doMC)
+        frameAlpha = new ShapeAlpha(sett,gSFCollMC);
+    else
+        frameAlpha = new ShapeAlpha(sett,gSFColl);
+
+    //run search for chi2 minimum
+    frameAlpha->Chi2Loop();
     
     TGraph *test = frameAlpha->getChi2Graph();
     
@@ -1432,6 +1498,8 @@ double ShapeFrame::AlphaChi2() {
     if (!sett->doMC) {
         test->Draw("APC*");
         t->Draw();
+        fCanvas->Modified();
+        fCanvas->Update();
     }
     
     if (sett->verbose)
