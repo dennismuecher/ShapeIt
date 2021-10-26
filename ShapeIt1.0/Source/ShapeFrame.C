@@ -490,7 +490,13 @@ void ShapeFrame::fBinComboDraw(TGComboBox *combo)
 
 void ShapeFrame::BinSelect(Int_t sbin)
 {
-    binSelect = sbin;
+    //new projection selected? reset y range
+    if (binSelect !=sbin) {
+        binSelect = sbin;
+        histY1 = 0;
+        histY2 = 0;
+    }
+    
     diagHisto = matrix->GetDiagEx(sbin, mname);
     
     //when re-drawing, use the same X and Y ranges as before
@@ -666,7 +672,6 @@ void ShapeFrame::HandleMyCanvas(Int_t a,Int_t b,Int_t c,TObject* obj) {
 void ShapeFrame::DoDraw() {
     if (fMatrix->IsEnabled()) {
         matrix->GetInputMatrix(mname)->Draw("colz");
-        DrawMarker();
     }
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
@@ -1024,7 +1029,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 
                 //status update
                 status = 1;
-          
+                displayMode = 1;
                 //update Combo Menu showing the matrices
                 MatrixSelector();
                 
@@ -1067,6 +1072,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 OB[5]->SetEnabled(false);
                 //OB[6]->SetEnabled(false);
+                displayMode = 1;
                 sett->ReadSettings();
                 UpdateGuiSetting(sett);
                 HandleVerboseMenu(sett->verbose);
@@ -1466,7 +1472,6 @@ void ShapeFrame::UpdateDisplay(int display) {
 
         }
     }
-    DrawMarker();
     fCanvas->Modified();
     fCanvas->Update();
 }
