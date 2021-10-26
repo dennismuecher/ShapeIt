@@ -492,7 +492,12 @@ void ShapeFrame::BinSelect(Int_t sbin)
 {
     binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
+    
+    //when re-drawing, use the same X and Y ranges as before
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
+    if (histY1 !=0 && histY2 !=0)
+        diagHisto->GetYaxis()->SetRangeUser(histY1, histY2);
+    
     diagHisto->GetXaxis()->SetNdivisions(5,5,0);
     diagHisto->GetYaxis()->SetNdivisions(5,5,0);
     diagHisto->Draw();
@@ -1031,6 +1036,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //initialize histogram zoom
                 histX1 = 0;
                 histX2 = matrix->GetEne0() + matrix->GetESize();
+                histY1 = 0; histY2 = 0;
                 
                 //create projections
                 UpdateSetting(sett);
@@ -1092,7 +1098,7 @@ void ShapeFrame::HandleMenu(Int_t id)
                 //initialize histogram zoom
                 histX1 = 0;
                 histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
-
+                histY1 = 0; histY2 = 0;
                 //create projections
                 matrix->Diag();
 
