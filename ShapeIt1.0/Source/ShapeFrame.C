@@ -501,9 +501,13 @@ void ShapeFrame::BinSelect(Int_t sbin)
     
     //when re-drawing, use the same X and Y ranges as before
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
-    if (histY1 !=0 && histY2 !=0)
-        diagHisto->GetYaxis()->SetRangeUser(histY1, histY2);
-    
+    if (histY1 !=0 && histY2 !=0) {
+        if (gPad->GetLogy())
+            diagHisto->GetYaxis()->SetRangeUser(TMath::Power(10,histY1), TMath::Power(10,histY2));
+        else
+            diagHisto->GetYaxis()->SetRangeUser(histY1, histY2);
+
+    }
     diagHisto->GetXaxis()->SetNdivisions(5,5,0);
     diagHisto->GetYaxis()->SetNdivisions(5,5,0);
     diagHisto->Draw();
