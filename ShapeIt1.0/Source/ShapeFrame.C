@@ -16,8 +16,8 @@
 #include "ShapeInfo.C"
 
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
-    
-   
+
+
     // Create a main frame
     fMain = new TGMainFrame(p,w,h);
 
@@ -493,15 +493,9 @@ void ShapeFrame::BinSelect(Int_t sbin)
     binSelect = sbin;
     diagHisto = matrix->GetDiagEx(sbin, mname);
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
-    //display options for paper
-    gStyle->SetOptStat(0);
-    diagHisto->GetXaxis()->SetTitle("");
-    diagHisto->GetYaxis()->SetTitle("");
-    //diagHisto->GetXaxis()->SetRangeUser(200,1490);
-    //diagHisto->GetXaxis()->SetLabelSize(2);
     diagHisto->GetXaxis()->SetNdivisions(5,5,0);
     diagHisto->GetYaxis()->SetNdivisions(5,5,0);
-    diagHisto->Draw("Y+");
+    diagHisto->Draw();
     displayMode = 5;
     DrawMarker();
     TCanvas *fCanvas = fEcanvas->GetCanvas();
@@ -575,48 +569,39 @@ void ShapeFrame::MessageBox(std::string title, std::string message)
     
 }
 
-void ShapeFrame::DrawVerticalLine(Double_t x)
-{
-   TLine l;
-   Double_t lm = gPad->GetLeftMargin();
-   Double_t rm = 1.-gPad->GetRightMargin();
-   Double_t tm = 1.-gPad->GetTopMargin();
-   Double_t bm = gPad->GetBottomMargin();
-   Double_t xndc = (rm-lm)*((x-gPad->GetUxmin())/(gPad->GetUxmax()-gPad->GetUxmin()))+lm;
-   l.DrawLineNDC(xndc,bm,xndc,tm);
-}
-
 void ShapeFrame::DrawMarker() {
     
-        std::cout <<"Drawing Marker for DisplayMode " <<displayMode <<std::endl;
-        TCanvas *fCanvas = fEcanvas->GetCanvas();
-        for (int i = 0; i < 4; i++) {
-            fCanvas->GetListOfPrimitives()->Remove(l[i]);
-            fCanvas->GetListOfPrimitives()->Remove(bgBox[i]);
-        }
-        fCanvas->Modified();
-        fCanvas->Update();
-        if (displayMode == 4 || displayMode == 5) {
-            DrawVerticalLine(2.);
-        for (int i = 0; i < 4; i++) {
-            
-            //draw verticl lines; there is a bug when using log-y scale, discussed here:
-            // https://root-forum.cern.ch/t/getuymax-has-problems-with-log-scale/10511/4
-            // but solution not implemented, yet
+    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    for (int i = 0; i < 4; i++) {
+        fCanvas->GetListOfPrimitives()->Remove(l[i]);
+        fCanvas->GetListOfPrimitives()->Remove(bgBox[i]);
+    }
+    fCanvas->Modified();
+    fCanvas->Update();
+    if (displayMode == 4 || displayMode == 5) {
+        //draw verticl lines; there is a bug (feature?) when using log-y scale, discussed here:
+        // https://root-forum.cern.ch/t/getuymax-has-problems-with-log-scale/10511/4
+        //hence the lower and upper y coordinates are calculated differently for lin and log scale
+        double y1 = gPad->GetUymin();
+        double y2 = gPad->GetUymax();
         
-            l[i] = new TLine(sett->levEne[i],fCanvas->GetUymin(),sett->levEne[i],fCanvas->GetUymax());
+        if (gPad->GetLogy() ) {
+            y1 = TMath::Power(10,y1);
+            y2 = TMath::Power(10,y2);
+        }
+        
+        for (int i = 0; i < 4; i++) {
             
+            l[i] = new TLine(sett->levEne[i], y1,sett->levEne[i],y2);
             l[i]->SetLineColor(kRed);
             l[i]->SetLineWidth(2);
-
             l[i]->SetLineColorAlpha(kRed, 0.45);
-            
             l[i]->Draw();
         }
-        bgBox[0] = new TBox(sett->bgEne[0][0],fCanvas->GetUymin(),sett->bgEne[0][1],fCanvas->GetUymax());
-        bgBox[1] = new TBox(sett->bgEne[0][2],fCanvas->GetUymin(),sett->bgEne[0][3],fCanvas->GetUymax());
-        bgBox[2] = new TBox(sett->bgEne[1][0],fCanvas->GetUymin(),sett->bgEne[1][1],fCanvas->GetUymax());
-        bgBox[3] = new TBox(sett->bgEne[1][2],fCanvas->GetUymin(),sett->bgEne[1][3],fCanvas->GetUymax());
+        bgBox[0] = new TBox(sett->bgEne[0][0],y1,sett->bgEne[0][1],y2);
+        bgBox[1] = new TBox(sett->bgEne[0][2],y1,sett->bgEne[0][3],y2);
+        bgBox[2] = new TBox(sett->bgEne[1][0],y1,sett->bgEne[1][1],y2);
+        bgBox[3] = new TBox(sett->bgEne[1][2],y1,sett->bgEne[1][3],y2);
         
         for (int i = 0; i < 4; i++) {
             if (i ==0 || i==1)
@@ -631,16 +616,29 @@ void ShapeFrame::DrawMarker() {
     }
 }
 
+//called whenever the mouse is moved or clicked in the main drawing canvas; used to draw the markers and receive their values
 void ShapeFrame::HandleMyCanvas(Int_t a,Int_t b,Int_t c,TObject* obj) {
-    //catch left or right mouse click...
+    
     if (status == 0 )
+           return;
+       if (!(displayMode == 4 || displayMode == 5))
+           return;
+    
+     TCanvas *fCanvas = fEcanvas->GetCanvas();
+    
+    //if y-axis has changed (unzoom from context menue, for example) re-draw markers
+    if (histY1  != gPad->GetUymin() || histY2  != gPad->GetUymax() ) {
+        histY1 = gPad->GetUymin();
+        histY2 = gPad->GetUymax();
+        DrawMarker();
         return;
-    if (!(displayMode == 4 || displayMode == 5))
-        return;
+    }
+
     if ( (a == kButton1Up || a==kButton2Up || a == kButton3Up )) {
-        
-        for (int i = 0; i < 4; i++)
+        //check if any marker was moved
+        for (int i = 0; i < 4; i++) {
             sett->levEne[i] = l[i]->GetX1();
+        }
         
         sett->bgEne[0][0] = bgBox[0]->GetX1(); sett->bgEne[0][1] = bgBox[0]->GetX2();
         sett->bgEne[0][2] = bgBox[1]->GetX1(); sett->bgEne[0][3] = bgBox[1]->GetX2();
@@ -651,11 +649,7 @@ void ShapeFrame::HandleMyCanvas(Int_t a,Int_t b,Int_t c,TObject* obj) {
         DrawMarker();
 
         //if autofit active and displayed, update fit
-        if (sett->mode == 2 && displayMode == 5) {
-            TCanvas *fCanvas = fEcanvas->GetCanvas();
-            fCanvas->cd();
-            fCanvas->Modified();
-            fCanvas->Update();
+        if (sett->mode == 2) {
             histX1 = gPad->GetUxmin();
             histX2 = gPad->GetUxmax();
             BinSelect(fBinCombo->GetSelected());
@@ -1314,7 +1308,6 @@ void ShapeFrame::UpdateDisplay(int display) {
             fBinCombo->SetEnabled(true);
             fBinComboDraw(fBinCombo);
             BinSelect(binSelect);
-            matrix->GetDiagEx(binSelect, mname)->Draw("hist");
             fBinCombo->Connect("Selected(Int_t)", "ShapeFrame", this, "BinSelect(Int_t)");
             break;
         }

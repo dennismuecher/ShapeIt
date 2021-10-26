@@ -56,6 +56,7 @@ private:
     std::vector <double> width2;                //peak width for leve2 1 from all autofits
     std::vector <double> allgamma1;                //corresponding excitation energy for width1 vector
     std::vector <double> allgamma2;                //corresponding excitation energy for width2 vector
+    TH1D* hist;
     
 public:
 	ShapeMatrix(ShapeSetting* setting);
@@ -115,6 +116,5 @@ public:
     void FitGauss(TH1D *histo, int bin , int level);             //performs a gauss fit for bin and level
     TF1* fit_result[2];                                 //stores the autofit results
     TGraph* getFitWidthGraph(int level);                           //returns a graph containing the width results of the autofit for level 1
-    //TGraph* getFitWidthGraph2;                      //returns a graph containing the width results of the autofit for level 2
 };
 #endif

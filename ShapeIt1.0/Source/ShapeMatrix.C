@@ -63,7 +63,6 @@ int ShapeMatrix::energyToBinX (double e) {
     return ( xaxis->FindBin(e) );
 }
 
-
 //returns the projection of diagonalized matrix for bin bbin
 TH1D* ShapeMatrix::GetDiagEx(int bbin, std::string title) {
     if (bbin <= ybins) {
@@ -76,7 +75,7 @@ TH1D* ShapeMatrix::GetDiagEx(int bbin, std::string title) {
 		delete gROOT->FindObject(name);
         
 		//create projection of diagEx
-        TH1D* hist = new TH1D(name,title,xbins,eMin_diag, eMax_y);
+        hist = new TH1D(name,title,xbins,eMin_diag, eMax_y);
         hist = diagEx->ProjectionX(name,bbin,bbin,"o");
         hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
         hist->GetYaxis()->SetTitle("counts");

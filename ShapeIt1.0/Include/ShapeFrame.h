@@ -165,10 +165,11 @@ private:
     void MessageBox(std::string title, std::string message);              //shows a dialog box with title and message and ok button
     TH1D* diagHisto;
     double histX1, histX2;                      //current selected x1 and x2 coordinates in 1d histograms
+    double histY1 = 0, histY2 = 0;                      //current selected y1 and y2 coordinates in 1d histograms
+    
     void InfoWindow();                          //displays the Info Window from the file menu
     ShapeGSF *gSF;							//contains the gSF results from the data
     double scale_bak;                           //stores the actual scaling value;
-    void DrawVerticalLine(Double_t x);
     TH1* mcSlopeGraph = NULL;
     
 public:
