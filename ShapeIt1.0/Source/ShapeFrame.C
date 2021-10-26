@@ -1483,6 +1483,10 @@ void ShapeFrame::UpdateDisplay(int display) {
 double ShapeFrame::AlphaChi2() {
     
     //check status
+    if (status == 0) {
+            MessageBox("Error", "No Matrix loaded!");
+        return 0;
+    }
     if (status < 2) {
         MessageBox("Error", "Press ShapeIt button, first! No gamma ray strength values to show");
         return 0;
