@@ -1372,8 +1372,7 @@ void ShapeFrame::UpdateDisplay(int display) {
         case 11: {
             
             TMultiGraph* m_graph = new TMultiGraph();
-            ShapeRho *rho = new ShapeRho(sett, matrix);
-           // TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(-0.45,-0.52, -0.38);
+            ShapeRho *rho = new ShapeRho(sett);
             TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,0.9*sett->lit_alpha, 1.1*sett->lit_alpha);
             
             m_graph->Add(rhoTrafo,"AP3");
@@ -1418,7 +1417,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             ld6Graph->SetTitle("ld6");
             ld6Graph->SetLineColor(kRed);
             ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");*/
+            m_graph->Add(ld6Graph,"L");
             
             ShapeTalys* ld1 = new ShapeTalys("../../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
             TGraph* ld1Graph = ld1->getDenPartialGraph();
@@ -1460,7 +1459,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             ld6Graph->SetTitle("ld6");
             ld6Graph->SetLineColor(kRed);
             ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");
+            m_graph->Add(ld6Graph,"L");*/
             
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");

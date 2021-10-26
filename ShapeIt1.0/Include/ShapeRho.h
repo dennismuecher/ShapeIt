@@ -16,7 +16,6 @@
 #include <iostream>
 
 #include "ShapeSetting.h"
-#include "ShapeMatrix.h"
 
 #include <TGraphErrors.h>
 #include <TGraphAsymmErrors.h>
@@ -25,11 +24,10 @@ class ShapeRho {
     
 private:
     ShapeSetting *m_sett;
-    ShapeMatrix *m_matrix;
    
 public:
     
-    ShapeRho(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
+    ShapeRho(ShapeSetting* t_setting);
     TGraphErrors *rhoGraph;
     void Read();
     void Draw();

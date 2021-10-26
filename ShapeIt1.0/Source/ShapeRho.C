@@ -12,9 +12,8 @@
 
 #include "../Include/ShapeRho.h"
 
-ShapeRho::ShapeRho(ShapeSetting* t_setting, ShapeMatrix* t_matrix) {
+ShapeRho::ShapeRho(ShapeSetting* t_setting) {
     m_sett = t_setting;
-    m_matrix = t_matrix;
     Read();
 }
 
