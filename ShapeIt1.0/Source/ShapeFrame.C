@@ -886,8 +886,6 @@ void ShapeFrame::TransGraph()
     sett->lit_alpha = AlphaDialog->GetAlphaTransform();
     sett->lit_norm =  AlphaDialog->GetBTransform();
     
-    //transform literature gSF values in gSF collector object
-    //gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
     ShowGraph();
 }
 
