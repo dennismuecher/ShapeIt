@@ -35,6 +35,16 @@ void ShapeCollector::mc_Collect() {
     //sliding window
     m_matrix->SetEne0( m_sett->exiEne[0] - r->Uniform(0, 1) * m_matrix->GetESize() );
     
+    if (m_sett->verbose) {
+        std::cout <<"MC settings:"<<std::endl;
+        std::cout <<"ESize in settins:"<< m_sett->exi_size[0]  <<" " <<m_sett->exi_size[1] << std::endl;
+        std::cout <<"ExiEne in settins:"<< m_sett->exiEne[0]  <<" " <<m_sett->exiEne[1] << std::endl;
+
+        std::cout <<"ESize in MC:"<< m_matrix->GetESize() << std::endl;
+        std::cout <<"Ene0 in MC:"<< m_matrix->GetEne0() << std::endl;
+
+
+    }
     //get gSF data
     gSFCollector.push_back( new ShapeGSF(m_sett, m_matrix));
     

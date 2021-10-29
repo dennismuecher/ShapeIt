@@ -438,15 +438,23 @@ void ShapeMatrix::Diag(){
 	xbins = (int) (eMax_y - eMin_diag) / inputMatrix->GetXaxis()->GetBinWidth(1);
     //calculate number of ybins
 	ybins = ( ene1 - ene0 ) / esize;
+    std::cout <<"In Diag: " << std::endl;
+
+    std::cout <<"esize: " << esize << std::endl;
+
+    std::cout <<"ene0: " << ene0 << std::endl;
+
+    std::cout <<"ene1: " << ene1 << std::endl;
 	//increase number of ybins by one if we haven't reached the chosen maximum excitation energy, yet
 	if (  (int)(ene1 - ene0) % (int)esize != 0)
 		ybins++;
  	//update highest energy
-	ene1 = esize * ybins + ene0; 
+    //ene1_diag is the value of the highest energy used to create the actual matricies; this value is equal to or larger than sett->ene1 to have a full-sized last bin; the value in sett-> remains at the original though
+	double ene1_diag = esize * ybins + ene0;
 	
     if (sett->verbose) {
         std::cout <<"\nx binnings for diag matrix:"<< xbins <<" " <<eMin_diag << " " <<eMax_y <<std::endl;
-        std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1 <<std::endl;
+        std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1_diag <<std::endl;
 	}
 	
     //cleaning up before generating matrices  
@@ -458,11 +466,11 @@ void ShapeMatrix::Diag(){
     
 	//creating histograms;
     diag  = new TH1F("diag","Diagonal Projection",xbins, eMin_diag, eMax_y);
-    diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
+    diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",xbins,eMin_diag, eMax_y, ybins, ene0, ene1_diag);
     
     
-    diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
-	diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed", xbins,eMin_diag, eMax_y, ybins, ene0, ene1);
+    diagExSquare = new TH2F("diag_ex_square","Diagonal Projection vs excitation energy squared", xbins,eMin_diag, eMax_y, ybins, ene0, ene1_diag);
+	diagExCube = new TH2F("diag_ex_cube","Diagonal Projection vs excitation energy cubed", xbins,eMin_diag, eMax_y, ybins, ene0, ene1_diag);
     
     double X; // corresponds to gamma ray energy
     double Y; // corresponds to excitation energy
