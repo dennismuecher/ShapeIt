@@ -25,7 +25,7 @@ ShapeTalys::ShapeTalys(std::string p_talysOutFile, bool p_parityFlag, bool p_for
 int ShapeTalys::NewReadTree()
 {
     ifstream file(talysOutFile.c_str());
-    //ptable=0;
+    ptable=0;
     if (!file)
     {
         cerr << "cannot read the file"

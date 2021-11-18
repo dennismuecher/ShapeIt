@@ -449,7 +449,7 @@ void ShapeMatrix::Diag(){
 	if (  (int)(ene1 - ene0) % (int)esize != 0)
 		ybins++;
  	//update highest energy
-    //ene1_diag is the value of the highest energy used to create the actual matricies; this value is equal to or larger than sett->ene1 to have a full-sized last bin; the value in sett-> remains at the original though
+    //ene1_diag is the value of the highest energy used to create the actual matricies; this value is equal to or larger than sett->ene1 to have a full-sized last bin; the value in sett->ene1 remains unchanged
 	double ene1_diag = esize * ybins + ene0;
 	
     if (sett->verbose) {

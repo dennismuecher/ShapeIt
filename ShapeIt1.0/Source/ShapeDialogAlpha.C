@@ -98,12 +98,21 @@ ShapeDialogAlpha::ShapeDialogAlpha(ShapeSetting* t_sett, const TGWindow *p, cons
 
     //the horizontal composite frames
     TGCompositeFrame *fMC = new TGCompositeFrame(fGMC, 1, 1, kHorizontalFrame);
-    
+    TGCompositeFrame *fMC2 = new TGCompositeFrame(fGMC, 1, 1, kHorizontalFrame);
+
     //the number of MC interations
     tMC[0] = new TGLabel(fMC, " Number of Monte Carlo iterations");
     fMC->AddFrame(tMC[0], fR);
     transMCIter = new TGNumberEntry(fMC, 100, 9,32, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,1, 999999);
     fMC->AddFrame(transMCIter, fR);
+    
+    //range of excitation energies
+     transMCExLower = new TGNumberEntry(fMC2, m_sett->exiEneMC[0], 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,1, 999999);
+     fMC2->AddFrame(transMCExLower, fR);
+     tMC[4] = new TGLabel(fMC2, "  < lower excitation energy < ");
+     fMC2->AddFrame(tMC[4], fR);
+    transMCExHigher = new TGNumberEntry(fMC2, m_sett->exiEneMC[1], 9,32, TGNumberFormat::kNESReal,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,1, 999999);
+    fMC2->AddFrame(transMCExHigher, fR);
     
     //the start-stop button
     fStart = new TGTextButton(fGMC, "&Run Monte Carlo Simulation!");
@@ -114,6 +123,8 @@ ShapeDialogAlpha::ShapeDialogAlpha(ShapeSetting* t_sett, const TGWindow *p, cons
     fGDialog->AddFrame(fTransform[0], fL);
     fGDialog->AddFrame(fTransform[1], fL);
     fGMC->AddFrame(fMC, fL);
+    fGMC->AddFrame(fMC2, fL);
+    
     fGMC->AddFrame(fStart, new TGLayoutHints(kLHintsTop,
                                                 4, 3, 3, 4));
     fMainDialog->AddFrame(fGDialog, fL);
@@ -125,6 +136,8 @@ ShapeDialogAlpha::ShapeDialogAlpha(ShapeSetting* t_sett, const TGWindow *p, cons
     transAlphaDialog->Connect("ValueSet(Long_t)", "ShapeFrame", caller_obj, "TransGraph()");
     alpha[0]->Connect("ValueSet(Long_t)", "ShapeDialogAlpha", this, "HandleAlpha0()");
     alpha[1]->Connect("ValueSet(Long_t)", "ShapeDialogAlpha", this, "HandleAlpha1()");
+    transMCExLower->Connect("ValueSet(Long_t)", "ShapeDialogAlpha", this, "HandleExLower()");
+    transMCExHigher->Connect("ValueSet(Long_t)", "ShapeDialogAlpha", this, "HandleExHigher()");
     fStart->Connect("Clicked()", "ShapeFrame", caller_obj, "MonteCarlo()");
     Chi2Button->Connect("Clicked()", "ShapeFrame", caller_obj, "AlphaChi2()");
 
@@ -159,6 +172,15 @@ void ShapeDialogAlpha::HandleAlpha1() {
     m_sett->alphaLimit[1] = alpha[1]->GetNumber();
 }
 
+void ShapeDialogAlpha::HandleExLower() {
+
+    m_sett->exiEneMC[0] = GetMCExLower();
+}
+
+void ShapeDialogAlpha::HandleExHigher() {
+
+    m_sett->exiEneMC[1] = GetMCExHigher();
+}
 
 void ShapeDialogAlpha::ChangeStartLabel()
 {

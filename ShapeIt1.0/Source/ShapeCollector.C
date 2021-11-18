@@ -33,7 +33,7 @@ void ShapeCollector::mc_Collect() {
     //bin size
     m_matrix->SetESize( r->Uniform(m_sett->exi_size[0], m_sett->exi_size[1]) );
     //sliding window
-    m_matrix->SetEne0( m_sett->exiEne[0] - r->Uniform(0, 1) * m_matrix->GetESize() );
+    m_matrix->SetEne0(r->Uniform(m_sett->exiEneMC[0], m_sett->exiEneMC[1]) );
     
     if (m_sett->verbose) {
         std::cout <<"MC settings:"<<std::endl;

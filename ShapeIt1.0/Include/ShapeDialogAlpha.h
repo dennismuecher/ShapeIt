@@ -37,7 +37,10 @@ private:
     TGTextButton              *fStart;                     //start button to start MC simulation
     TGTextButton              *Chi2Button;                  //start search for chi2 minimum of actual gSF values
     TGNumberEntry             *transMCIter;                 //the number of MC iterations; default is 100
-    TGLabel                   *tMC[4];                      //all text labels of MC
+    TGNumberEntry             *transMCExLower;                 //lower limit of starting excitation energy
+    TGNumberEntry             *transMCExHigher;                 //higher limit of starting excitation energy
+
+    TGLabel                   *tMC[5];                      //all text labels of MC
     bool                      start;                      //status of the start button
 
 
@@ -52,9 +55,14 @@ public:
     void                 ChangeStartLabel();
     void                 HandleMCButton();
     int                  GetNrOfIter() {return transMCIter->GetNumber();}
+    double                  GetMCExLower() {return transMCExLower->GetNumber();}
+    double                  GetMCExHigher() {return transMCExHigher->GetNumber();}
+
     TGNumberEntry        *alpha[3];                  //alpha[0,1] are the lower/upper bounds for alpha during chi2 minimum search; alpha[2] is the number of steps in the search
     void                      HandleAlpha0();
     void                      HandleAlpha1();
     void                      HandleAlpha2();
+    void                      HandleExLower();
+    void                      HandleExHigher();
 };
 #endif
