@@ -19,10 +19,15 @@ class ShapeTalys {
     
 private:
     static const int            nOfSpins = 9;             //number of spins in talys output file
+    TGraphAsymmErrors*          rhoGraph;                        //pointer to the experimental level densities
     TGraph*                     denTotGraph;                //graph of total lev density
-    TGraph*                     denPartialGraph;            //graph of partial level density using spinLow and spinHigh boundaries
-    TGraph*                     denSpinGraph[nOfSpins];     //graphs of level densities for each spin
+    TGraph*                     denTotGraphTrans;                //graph of total lev density transformed via ptable and ctable
     
+    TGraph*                     denPartialGraph;            //graph of partial level density using spinLow and spinHigh boundaries
+    TGraph*                     denPartialGraphTrans;            //graph of partial level density using spinLow and spinHigh boundaries, transformed via ptable and ctable
+    
+    TGraph*                     denSpinGraph[nOfSpins];     //graphs of level densities for each spin
+    TGraph*                     denSpinGraphTrans[nOfSpins];     //graphs of level densities for each spin transformed via ptable and ctable
     vector<double>              p_energy;                         //vector of energies for each parity
     vector<double>              energy;                         //vector of energies
     vector<double>              p_densityTot;                  //total level density for each parity
@@ -35,15 +40,33 @@ private:
     int                         spinLow = 0;                            //lower spin limit for partial level density
     int                         spinHigh = 3;                           //upper spin limit for partial level density
     std::string                 talysOutFile;                   //talys output file
+    double                      chi2_min = 1E5;                  //minimum chi2 fit result
+    int                         nOfDegFreedom=1;                   //noumber of degrees of freedom for chi2 fit (=#data points -1)
 
+    
 public:
     
-    ShapeTalys(std::string p_talysOutFile, bool p_parityFlag, bool p_format, double p_ptable);
+    ShapeTalys(std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable);
     double                      ptable = 0;
+    double                      ctable = 0;
+    double                      ptablePartial = 0;      //best fit result to partial level density
+    double                      ctablePartial = 0;      //best fit result to partial level density
     int NewReadTree();
     TGraph*                     getDenTotGraph() {return denTotGraph;}
     TGraph*                     getDenPartialGraph() {return denPartialGraph;}
+    TGraph*                     getDenPartialGraphTrans() {return denPartialGraphTrans;}
     TGraph*                     getDenSpinGraph(int spin) {return denSpinGraph[spin];}
+    
+    TH1F*                       discreteHist;                      //graph of discrete levels
+
+    void                        SetPCTable(double m_ptable, double m_ctable);
+    void                        SetPCTable();
+    void                        ReadDiscrete();
+    double                      GetChi2Partial(double lower_ene, double higher_ene);
+    void                        Chi2PartialLoop(double lower_ene, double higher_ene);
+    void                        BestFitPartial();
+
+
 
     
 };

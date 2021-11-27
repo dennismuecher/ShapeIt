@@ -20,6 +20,12 @@ ShapeRho::ShapeRho(ShapeSetting* t_setting) {
 void ShapeRho::Read() {
     if (m_sett->rhoFileName !="") {
         rhoGraph = new TGraphErrors(m_sett->rhoFileName.c_str(),"%lg %lg %lg");
+        
+        //manually multiplying experimental level density!!!!!!!
+      for (int i=0; i < rhoGraph->GetN(); i++) {
+        rhoGraph->SetPoint( i, rhoGraph->GetX()[i], 1.9*rhoGraph->GetY()[i]);
+    }
+            
         if (m_sett->verbose)
             std::cout <<"Read " << rhoGraph->GetN() <<" data points from level density file " <<m_sett->rhoFileName.c_str() <<std::endl;
     }

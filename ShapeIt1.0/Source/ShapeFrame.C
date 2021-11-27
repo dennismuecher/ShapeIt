@@ -14,6 +14,7 @@
 #include "../Include/ShapeFrame.h"
 #include "ShapeDialogAlpha.C"
 #include "ShapeInfo.C"
+#include "ShapeMultiGraph.C"
 
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
 
@@ -1374,188 +1375,278 @@ void ShapeFrame::UpdateDisplay(int display) {
             double alpha_error = 0.05; //THIS SHOULD NOT BE HARD CODED
             TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - alpha_error, sett->lit_alpha + alpha_error );
             
-            m_graph->Add(rhoTrafo,"AP3");
+            ShapeMultiGraph *sMultiGraph = new ShapeMultiGraph();
             
-            ShapeTalys* ld1 = new ShapeTalys("../Talys/140Ba/Ba140_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
+            rhoTrafo->SetMarkerColor(kBlack);
+            rhoTrafo->SetLineColor(kBlack);
             
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/140Ba/Ba140_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
+            m_graph->Add(rhoTrafo,"APE");
             
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/140Ba/Ba140_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
+            //create ShapeTalys object using ld5 model for Kr88 data; this uses the recommended values for ptable and ctable
+            //ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",rhoTrafo,true,0,0.78,0.0);
+            ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",rhoTrafo,false,0,0.139,0.0);
             
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",false,0,0.139);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
+            ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",rhoTrafo,true,0,0.712,0.0);
+            
+            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",rhoTrafo,true,0,0.4,0.0);
+            
+            TGraph* ld4Graph = ld4->getDenPartialGraphTrans();
             ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
+            ld4Graph->SetLineColor(kBlack);
+            ld4Graph->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)ld4Graph->Clone(),"L");
             
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",true,0,0.712);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
+            TGraph* ld5Graph = ld5->getDenPartialGraphTrans();
             ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
+            ld5Graph->SetLineColor(61);
+            ld5Graph->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)ld5Graph->Clone(),"L");
             
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,0.4);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
+            TGraph* ld6Graph = ld6->getDenPartialGraphTrans();
             ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");
+            ld6Graph->SetLineColor(41);
+            ld6Graph->SetFillColor(kRed);
+            ld6Graph->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)ld6Graph->Clone(),"L");
             
-            /*ShapeTalys* ld1 = new ShapeTalys("../../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
+            //create the band of theoretical values
+            sMultiGraph->doFill(1,3);
+            TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+            theoBand->SetFillColor(4);
+            theoBand->SetFillStyle(3010);
+            //add band to the multigraph
+            m_graph->Add(theoBand,"3");
             
-            ShapeTalys* ld2 = new ShapeTalys("../../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
             
-            ShapeTalys* ld3 = new ShapeTalys("../../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
+            //run chi2 minimization to fit experimental partial level density with theoretical model
+            ld4->Chi2PartialLoop(2.0, 10.0);
+            //set ptable and ctable to this minimum
+            ld4->BestFitPartial();
+            //add the best fit to the multigraph
+            TGraph* bestPartialGraph4 = ld4->getDenPartialGraphTrans();
+            bestPartialGraph4->SetTitle("best fit data");
+            bestPartialGraph4->SetLineColor(kRed);
+            bestPartialGraph4->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)bestPartialGraph4->Clone());
             
-            ShapeTalys* ld4 = new ShapeTalys("../../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
+            //run chi2 minimization to fit experimental partial level density with theoretical model
+            ld5->Chi2PartialLoop(2.0, 10.0);
+            //set ptable and ctable to this minimum
+            ld5->BestFitPartial();
+            //add the best fit to the multigraph
+            TGraph* bestPartialGraph = ld5->getDenPartialGraphTrans();
+            bestPartialGraph->SetTitle("best fit data");
+            bestPartialGraph->SetLineColor(51);
+            bestPartialGraph->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)bestPartialGraph->Clone());
             
-            ShapeTalys* ld5 = new ShapeTalys("../../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
             
-            ShapeTalys* ld6 = new ShapeTalys("../../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");*/
+            //run chi2 minimization to fit experimental partial level density with theoretical model
+            ld6->Chi2PartialLoop(2.0, 10.0);
+            //set ptable and ctable to this minimum
+            ld6->BestFitPartial();
+            //add the best fit to the multigraph
+            TGraph* bestPartialGraph6 = ld6->getDenPartialGraphTrans();
+            bestPartialGraph6->SetTitle("best fit data ld6");
+            bestPartialGraph6->SetLineColor(51);
+            bestPartialGraph6->SetLineWidth(3);
+            sMultiGraph->Add((TGraph*)bestPartialGraph6->Clone());
             
-            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/76Ge/Ge76_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
+            //create the band of experimental values
+            sMultiGraph->doFill(4,6);
+            TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+            expBand->SetFillColorAlpha(kRed, 0.8);
+            expBand->SetFillStyle(3010);
             
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/76Ge/Ge76_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
+            //add band to the multigraph
+            m_graph->Add(expBand,"3");
             
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/76Ge/Ge76_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
-            
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/76Ge/Ge76_ld4.out",false,0,0.505);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
-            
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/76Ge/Ge76_ld5.out",true,0,0.889);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
-            
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/76Ge/Ge76_ld6.out",true,0,0.327);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L"); */
-            
-            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/88Kr/Kr88_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
-            
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/88Kr/Kr88_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
-            
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/88Kr/Kr88_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
-            
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/88Kr/Kr88_ld4.out",false,0,0.06);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
-            
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",true,0,0.78);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
-            
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/88Kr/Kr88_ld6.out",true,0,0.68);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");*/
-            
+            m_graph->GetYaxis()->SetRangeUser(0.01,1000);
+            m_graph->Draw("apl");
+            //sMultiGraph->Draw("apl");
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
             m_graph->SetTitle("Level Density Ge#^{76}");
-
-            m_graph->Draw("apl");
+            //m_graph->Draw("apl");
             
-            m_graph->GetYaxis()->SetRangeUser(0.01,1000);
+            //draw discete levels into same canvas
+            ld5->discreteHist->Draw("same hist");
+            
+            
+            /* ShapeTalys* ld1 = new ShapeTalys("../Talys/140Ba/Ba140_ld1.out", rhoTrafo, false, 1, 0.8, 0.4);
+             TGraph* ld1Graph = ld1->getDenPartialGraph();
+             ld1Graph->SetTitle("ld1");
+             ld1Graph->SetLineColor(51);
+             ld1Graph->SetLineWidth(2);
+             ld1->Chi2PartialLoop();
+             m_graph->Add(ld1Graph,"L");
+             
+             ShapeTalys* ld2 = new ShapeTalys("../Talys/140Ba/Ba140_ld2.out",false,1,0.0);
+             TGraph* ld2Graph = ld2->getDenPartialGraph();
+             ld2Graph->SetTitle("ld2");
+             ld2Graph->SetLineColor(61);
+             ld2Graph->SetLineWidth(2);
+             m_graph->Add(ld2Graph,"L");
+             
+             ShapeTalys* ld3 = new ShapeTalys("../Talys/140Ba/Ba140_ld3.out",false,1,0.0);
+             TGraph* ld3Graph = ld3->getDenPartialGraph();
+             ld3Graph->SetTitle("ld3");
+             ld3Graph->SetLineColor(71);
+             ld3Graph->SetLineWidth(2);
+             m_graph->Add(ld3Graph,"L");
+             
+             ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",false,0,0.139);
+             TGraph* ld4Graph = ld4->getDenPartialGraph();
+             ld4Graph->SetTitle("ld4");
+             ld4Graph->SetLineColor(81);
+             ld4Graph->SetLineWidth(2);
+             m_graph->Add(ld4Graph,"L");
+             
+             ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",true,0,0.712);
+             TGraph* ld5Graph = ld5->getDenPartialGraph();
+             ld5Graph->SetTitle("ld5");
+             ld5Graph->SetLineColor(91);
+             ld5Graph->SetLineWidth(2);
+             m_graph->Add(ld5Graph,"L");
+             
+             ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,0.4);
+             TGraph* ld6Graph = ld6->getDenPartialGraph();
+             ld6Graph->SetTitle("ld6");
+             ld6Graph->SetLineColor(kRed);
+             ld6Graph->SetLineWidth(2);
+             m_graph->Add(ld6Graph,"L");
+             
+             ShapeTalys* ld1 = new ShapeTalys("../../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
+             TGraph* ld1Graph = ld1->getDenPartialGraph();
+             ld1Graph->SetTitle("ld1");
+             ld1Graph->SetLineColor(51);
+             ld1Graph->SetLineWidth(2);
+             m_graph->Add(ld1Graph,"L");
+             
+             ShapeTalys* ld2 = new ShapeTalys("../../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
+             TGraph* ld2Graph = ld2->getDenPartialGraph();
+             ld2Graph->SetTitle("ld2");
+             ld2Graph->SetLineColor(61);
+             ld2Graph->SetLineWidth(2);
+             m_graph->Add(ld2Graph,"L");
+             
+             ShapeTalys* ld3 = new ShapeTalys("../../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
+             TGraph* ld3Graph = ld3->getDenPartialGraph();
+             ld3Graph->SetTitle("ld3");
+             ld3Graph->SetLineColor(71);
+             ld3Graph->SetLineWidth(2);
+             m_graph->Add(ld3Graph,"L");
+             
+             ShapeTalys* ld4 = new ShapeTalys("../../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
+             TGraph* ld4Graph = ld4->getDenPartialGraph();
+             ld4Graph->SetTitle("ld4");
+             ld4Graph->SetLineColor(81);
+             ld4Graph->SetLineWidth(2);
+             m_graph->Add(ld4Graph,"L");
+             
+             ShapeTalys* ld5 = new ShapeTalys("../../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
+             TGraph* ld5Graph = ld5->getDenPartialGraph();
+             ld5Graph->SetTitle("ld5");
+             ld5Graph->SetLineColor(91);
+             ld5Graph->SetLineWidth(2);
+             m_graph->Add(ld5Graph,"L");
+             
+             ShapeTalys* ld6 = new ShapeTalys("../../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
+             TGraph* ld6Graph = ld6->getDenPartialGraph();
+             ld6Graph->SetTitle("ld6");
+             ld6Graph->SetLineColor(kRed);
+             ld6Graph->SetLineWidth(2);
+             m_graph->Add(ld6Graph,"L");*/
+            
+            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/76Ge/Ge76_ld1.out",false,1,0.0);
+             TGraph* ld1Graph = ld1->getDenPartialGraph();
+             ld1Graph->SetTitle("ld1");
+             ld1Graph->SetLineColor(51);
+             ld1Graph->SetLineWidth(2);
+             m_graph->Add(ld1Graph,"L");
+             
+             ShapeTalys* ld2 = new ShapeTalys("../Talys/76Ge/Ge76_ld2.out",false,1,0.0);
+             TGraph* ld2Graph = ld2->getDenPartialGraph();
+             ld2Graph->SetTitle("ld2");
+             ld2Graph->SetLineColor(61);
+             ld2Graph->SetLineWidth(2);
+             m_graph->Add(ld2Graph,"L");
+             
+             ShapeTalys* ld3 = new ShapeTalys("../Talys/76Ge/Ge76_ld3.out",false,1,0.0);
+             TGraph* ld3Graph = ld3->getDenPartialGraph();
+             ld3Graph->SetTitle("ld3");
+             ld3Graph->SetLineColor(71);
+             ld3Graph->SetLineWidth(2);
+             m_graph->Add(ld3Graph,"L");
+             
+             ShapeTalys* ld4 = new ShapeTalys("../Talys/76Ge/Ge76_ld4.out",false,0,0.505);
+             TGraph* ld4Graph = ld4->getDenPartialGraph();
+             ld4Graph->SetTitle("ld4");
+             ld4Graph->SetLineColor(81);
+             ld4Graph->SetLineWidth(2);
+             m_graph->Add(ld4Graph,"L");
+             
+             ShapeTalys* ld5 = new ShapeTalys("../Talys/76Ge/Ge76_ld5.out",true,0,0.889);
+             TGraph* ld5Graph = ld5->getDenPartialGraph();
+             ld5Graph->SetTitle("ld5");
+             ld5Graph->SetLineColor(91);
+             ld5Graph->SetLineWidth(2);
+             m_graph->Add(ld5Graph,"L");
+             
+             ShapeTalys* ld6 = new ShapeTalys("../Talys/76Ge/Ge76_ld6.out",true,0,0.327);
+             TGraph* ld6Graph = ld6->getDenPartialGraph();
+             ld6Graph->SetTitle("ld6");
+             ld6Graph->SetLineColor(kRed);
+             ld6Graph->SetLineWidth(2);
+             m_graph->Add(ld6Graph,"L"); */
+            
+            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/88Kr/Kr88_ld1.out",false,1,0.0);
+             TGraph* ld1Graph = ld1->getDenPartialGraph();
+             ld1Graph->SetTitle("ld1");
+             ld1Graph->SetLineColor(51);
+             ld1Graph->SetLineWidth(2);
+             m_graph->Add(ld1Graph,"L");
+             
+             ShapeTalys* ld2 = new ShapeTalys("../Talys/88Kr/Kr88_ld2.out",false,1,0.0);
+             TGraph* ld2Graph = ld2->getDenPartialGraph();
+             ld2Graph->SetTitle("ld2");
+             ld2Graph->SetLineColor(61);
+             ld2Graph->SetLineWidth(2);
+             m_graph->Add(ld2Graph,"L");
+             
+             ShapeTalys* ld3 = new ShapeTalys("../Talys/88Kr/Kr88_ld3.out",false,1,0.0);
+             TGraph* ld3Graph = ld3->getDenPartialGraph();
+             ld3Graph->SetTitle("ld3");
+             ld3Graph->SetLineColor(71);
+             ld3Graph->SetLineWidth(2);
+             m_graph->Add(ld3Graph,"L");
+             
+             ShapeTalys* ld4 = new ShapeTalys("../Talys/88Kr/Kr88_ld4.out",false,0,0.06);
+             TGraph* ld4Graph = ld4->getDenPartialGraph();
+             ld4Graph->SetTitle("ld4");
+             ld4Graph->SetLineColor(81);
+             ld4Graph->SetLineWidth(2);
+             m_graph->Add(ld4Graph,"L");
+             
+             ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",true,0,0.78);
+             TGraph* ld5Graph = ld5->getDenPartialGraph();
+             ld5Graph->SetTitle("ld5");
+             ld5Graph->SetLineColor(91);
+             ld5Graph->SetLineWidth(2);
+             m_graph->Add(ld5Graph,"L");
+             
+             ShapeTalys* ld6 = new ShapeTalys("../Talys/88Kr/Kr88_ld6.out",true,0,0.68);
+             TGraph* ld6Graph = ld6->getDenPartialGraph();
+             ld6Graph->SetTitle("ld6");
+             ld6Graph->SetLineColor(kRed);
+             ld6Graph->SetLineWidth(2);
+             m_graph->Add(ld6Graph,"L");*/
+            
             fCanvas->SetLogy();
             fCanvas->BuildLegend();
-
-
+            
+            
         }
     }
     fCanvas->Modified();
