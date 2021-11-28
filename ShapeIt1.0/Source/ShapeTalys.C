@@ -274,7 +274,8 @@ int ShapeTalys::NewReadTree()
 
 void ShapeTalys::ReadDiscrete() {
     //ifstream file("../88Kr/kr88rho_discrete.txt");
-    ifstream file("../OsloFiles/Ba140_discrete.txt");
+    //ifstream file("../OsloFiles/Ba140_discrete.txt");
+   ifstream file("../../RawFiles/143Ba/Ba143_discrete.txt");
     if (!file)
     {
         cerr << "cannot read the discrete level file!"
@@ -282,7 +283,8 @@ void ShapeTalys::ReadDiscrete() {
     }
     
     float e, disc;
-    discreteHist = new TH1F("disLevel","discrete Levels",80,-1,7);
+    //discreteHist = new TH1F("disLevel","discrete Levels",80,-1,7); // this is for 140Ba
+    discreteHist = new TH1F("disLevel","discrete Levels",71,-1,8);    //this is for 88Kr
         while (file >> e >> disc) {
             discreteHist->Fill(e,disc);
         }

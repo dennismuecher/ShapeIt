@@ -1383,12 +1383,20 @@ void ShapeFrame::UpdateDisplay(int display) {
             m_graph->Add(rhoTrafo,"APE");
             
             //create ShapeTalys object using ld5 model for Kr88 data; this uses the recommended values for ptable and ctable
-            //ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",rhoTrafo,true,0,0.78,0.0);
+/*
             ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",rhoTrafo,false,0,0.139,0.0);
-            
             ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",rhoTrafo,true,0,0.712,0.0);
-            
             ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",rhoTrafo,true,0,0.4,0.0);
+            
+            
+            ShapeTalys* ld4 = new ShapeTalys("../Talys/88Kr/Kr88_ld4.out",rhoTrafo, false,0,0.06, 0.0);
+            ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",rhoTrafo, true,0,0.78, 0.0);
+            ShapeTalys* ld6 = new ShapeTalys("../Talys/88Kr/Kr88_ld6.out",rhoTrafo, true,0,0.68, 0.0);*/
+            
+            ShapeTalys* ld4 = new ShapeTalys("../../Talys/143Ba/Ba143_ld4.out",rhoTrafo,false,0,-0.06, 0.0);
+            ShapeTalys* ld5 = new ShapeTalys("../../Talys/143Ba/Ba143_ld5.out",rhoTrafo,true,0,-0.489, 0.0);
+            ShapeTalys* ld6 = new ShapeTalys("../../Talys/140Ba/Ba140_ld6.out",rhoTrafo,true,0,-0.694, 0.0);
+            
             
             TGraph* ld4Graph = ld4->getDenPartialGraphTrans();
             ld4Graph->SetTitle("ld4");
@@ -1467,7 +1475,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
-            m_graph->SetTitle("Level Density Ge#^{76}");
+            m_graph->SetTitle("Level Density Kr^{88}");
             //m_graph->Draw("apl");
             
             //draw discete levels into same canvas
