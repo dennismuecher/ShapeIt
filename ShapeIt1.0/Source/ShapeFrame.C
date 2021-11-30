@@ -16,6 +16,22 @@
 #include "ShapeInfo.C"
 #include "ShapeMultiGraph.C"
 
+double glo(double *x, double *par){
+  //par[0]: sigma
+  //par[1]: width
+  //par[2]: energy
+  //double Tf = 0.86; //CT model, T at final states (can be adjusted)
+  double Tf = par[3];
+  double a = 8.674E-8; //1/3pi^2hbar^2c^2 constant, in MeV^2 mb^-1
+  double b = 39.4784; //4pi^2 constant
+  double gamma = (par[1]*(pow(x[0] /1000.,2)+b*pow(Tf,2)))/pow(par[2],2);
+  double gamma0 = b*pow(Tf,2)*par[1]/pow(par[2],2);
+  double term1 = ((x[0]*gamma / 1000.)/(pow(pow(x[0] / 1000. ,2)-pow(par[2],2),2)+pow(x[0] / 1000.,2)*pow(gamma,2)));
+  double term2 = (0.7*gamma0)/(pow(par[2],3));
+  double f = a*par[0]*par[1]*(term1 + term2);
+  return f;
+}
+
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
 
 
@@ -911,6 +927,7 @@ void ShapeFrame::ShowGraph()
         gSFCollMC->Draw();
     else {
         gSFColl->Draw();
+       
         //display Chi2 minimum, in case literature values are shown
         if (getPaveTextShape() != NULL)
             getPaveTextShape()->Draw();
@@ -1384,11 +1401,11 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             //create ShapeTalys object using ld5 model for Kr88 data; this uses the recommended values for ptable and ctable
             //ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",rhoTrafo,true,0,0.78,0.0);
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",rhoTrafo,false,0,0.139,0.0);
+            ShapeTalys* ld4 = new ShapeTalys("../Talys/76Ge/Ge76_ld4.out",rhoTrafo,false,0,0.505,0.0);
             
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",rhoTrafo,true,0,0.712,0.0);
+            ShapeTalys* ld5 = new ShapeTalys("../Talys/76Ge/Ge76_ld5.out",rhoTrafo,true,0,0.889,0.0);
             
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",rhoTrafo,true,0,0.4,0.0);
+            ShapeTalys* ld6 = new ShapeTalys("../Talys/76Ge/Ge76_ld6.out",rhoTrafo,true,0,0.327,0.0);
             
             TGraph* ld4Graph = ld4->getDenPartialGraphTrans();
             ld4Graph->SetTitle("ld4");

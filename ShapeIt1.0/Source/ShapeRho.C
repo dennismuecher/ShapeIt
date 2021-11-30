@@ -23,7 +23,7 @@ void ShapeRho::Read() {
         
         //manually multiplying experimental level density!!!!!!!
       for (int i=0; i < rhoGraph->GetN(); i++) {
-        rhoGraph->SetPoint( i, rhoGraph->GetX()[i], 1.9*rhoGraph->GetY()[i]);
+        rhoGraph->SetPoint( i, rhoGraph->GetX()[i], 1*rhoGraph->GetY()[i]);
     }
             
         if (m_sett->verbose)

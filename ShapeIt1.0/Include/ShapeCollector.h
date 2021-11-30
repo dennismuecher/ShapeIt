@@ -37,7 +37,6 @@ private:
     int                             kmax = 5;            //maximum number of steps in sliding window variation
     int                             mc_run = 10;            //number of runs in Monte Carlo (MC) mode
     
-    TMultiGraph*                    getMultGraph();
     double                          Norm(ShapeGSF* T1, ShapeGSF* T2);
     void                            Merge();
     void                            Smooth(int res);
@@ -57,6 +56,9 @@ public:
     double                          getChi2();
     int                             GetN() {return gSFGraph->GetN();}
     int                             GetNSmooth() {return gSFGraphSmooth->GetN();}
+    TMultiGraph*                    getMultGraph();
+    TGraphErrors*                   getLitGraph(){return litCollector->GetLevGraph();}
+
 };
 #endif
 
