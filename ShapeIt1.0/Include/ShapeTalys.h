@@ -38,7 +38,7 @@ private:
     bool                        parityFlag;                            //talys output contains separate level densities for parities (parityFlag = 1) or not (parityFlag 0)
     bool                        format;                         //set to zero if rows 2 and 3 are empty in talys output, otherwise set to 1
     int                         spinLow = 0;                            //lower spin limit for partial level density
-    int                         spinHigh = 4;                           //upper spin limit for partial level density
+    int                         spinHigh = 3;                           //upper spin limit for partial level density
     std::string                 talysOutFile;                   //talys output file
     double                      chi2_min = 1E5;                  //minimum chi2 fit result
     int                         nOfDegFreedom=1;                   //noumber of degrees of freedom for chi2 fit (=#data points -1)
