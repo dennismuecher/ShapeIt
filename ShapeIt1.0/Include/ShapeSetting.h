@@ -36,6 +36,7 @@ public:
     std::string rhoFileName = "";                 //name of file containing reference data for level density
 	std::string effiFileName = "";				 //name of file containing efficiency correction
     std::string settFileName = "";                  //name of settings save file
+    std::string ldFileName[6] = {"","","","","",""};   //file names of the ldmodel talys calculations
     TFile *settFile;                         //the file used to safe the current settings
     int mode = 1;                           //mode: 1 = integration; 2 = autofit
 	
