@@ -273,9 +273,7 @@ int ShapeTalys::NewReadTree()
 }
 
 void ShapeTalys::ReadDiscrete() {
-    //ifstream file("../88Kr/kr88rho_discrete.txt");
-    //ifstream file("../OsloFiles/Ba140_discrete.txt");
-    ifstream file("76Ge/NLD/76Ge_discrete.txt");
+    ifstream file("NLD/kr88rho_discrete.txt");
     if (!file)
     {
         cerr << "cannot read the discrete level file!"
