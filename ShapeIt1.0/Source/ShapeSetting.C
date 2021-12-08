@@ -252,7 +252,8 @@ void ShapeSetting::ReadSettings() {
                 std::string pName;
                 rhoFileName.clear();
                 while (isstr >>pName)
-                    rhoFileName+=" "+pName;
+                    //rhoFileName+=" "+pName;
+                    rhoFileName+=pName;
             }
         }
         if (verbose)
