@@ -14,7 +14,6 @@
 
 //fills the fillGraph
 void ShapeMultiGraph::doFill(int min_index, int max_index) {
-    std::cout <<"cool so far!" <<std::endl;
     
     fillGraph = new TGraphErrors();
     fillGraph->Set(0);

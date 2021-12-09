@@ -1081,27 +1081,20 @@ void ShapeFrame::HandleMenu(Int_t id)
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-            std::cout <<"Alive 1"<<std::endl;
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
-            std::cout <<"Alive 2"<<std::endl;
-
             if (fi_sett.fFilename) {
                 std::string sname = fi_sett.fFilename;
-                std::cout <<"Alive 3"<<std::endl;
 
                 //store absolute pathname
                 sett->settFileName = sname;
-                std::cout <<"Alive 4"<<std::endl;
 
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 OB[5]->SetEnabled(false);
-                std::cout <<"Alive 5"<<std::endl;
 
                 //OB[6]->SetEnabled(false);
                 displayMode = 1;
                 sett->ReadSettings();
-                std::cout <<"Alive 6"<<std::endl;
 
                 UpdateGuiSetting(sett);
                 HandleVerboseMenu(sett->verbose);
@@ -1408,78 +1401,50 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             m_graph->Add(rhoTrafo,"APE");
             
-            //create ShapeTalys object using ld5 model for Kr88 data; this uses the recommended values for ptable and ctable
-            
-            ShapeTalys* ld4 = new ShapeTalys("Talys/Ba140_ld4.out",rhoTrafo,false,0,0.139,0.0);
-            
-            ShapeTalys* ld5 = new ShapeTalys("Talys/Ba140_ld5.out",rhoTrafo,true,0,0.712,0.0);
-            
-            ShapeTalys* ld6 = new ShapeTalys("Talys/Ba140_ld6.out",rhoTrafo,true,0,0.4,0.0);
-            
-            TGraph* ld4Graph = ld4->getDenPartialGraphTrans();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(kBlack);
-            ld4Graph->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)ld4Graph->Clone(),"L");
-            
-            TGraph* ld5Graph = ld5->getDenPartialGraphTrans();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(61);
-            ld5Graph->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)ld5Graph->Clone(),"L");
-            
-            TGraph* ld6Graph = ld6->getDenPartialGraphTrans();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(41);
-            ld6Graph->SetFillColor(kRed);
-            ld6Graph->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)ld6Graph->Clone(),"L");
+            //create ShapeTalys objects
+            ShapeTalys* ldmodel[6];
+            //ldmodel graphs using ptable, ctable from settings file
+            TGraph* ldmodelGraph[6];
+            //ldmodel graphs using ptable, ctable from best fit to ShapeIt data
+            TGraph* ldmodelFits[6];
+            int ldmodelCounter = 0;         //counts the number of ldmodels used
+            int ldmodelDiscrete = 0;    //a ldmodel which is present in the settings file; used to plot the discrete levels
+            for (int i = 0 ; i < 6; i++) {
+                if (sett->ldFileName[i]=="")
+                    continue;
+                ldmodelCounter++;
+                ldmodelDiscrete = i;
+                ldmodel[i] = new ShapeTalys(sett, sett->ldFileName[i], rhoTrafo, sett->parityFlag[i], sett->formatFlag[i], sett->pTable[i], sett->cTable[i]);
+                ldmodelGraph[i] = ldmodel[i]->getDenPartialGraphTrans();
+                string s = "ldmodel"+to_string(i+1);
+                ldmodelGraph[i]->SetTitle(s.c_str());
+                ldmodelGraph[i]->SetLineColor(kBlack);
+                ldmodelGraph[i]->SetLineWidth(3);
+                sMultiGraph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
+                //run chi2 minimization to fit experimental partial level density with theoretical model
+                ldmodel[i]->Chi2PartialLoop(2.0, 10.0);
+                //set ptable and ctable to this minimum
+                ldmodel[i]->BestFitPartial();
+                //add the best fit to the multigraph
+                ldmodelFits[i] = ldmodel[i]->getDenPartialGraphTrans();
+                s = "best fit ldmodel"+to_string(i+1);
+                ldmodelFits[i]->SetTitle(s.c_str());
+                ldmodelFits[i]->SetLineColor(i);
+                ldmodelFits[i]->SetLineWidth(3);
+                sMultiGraph->Add((TGraph*)ldmodelFits[i]->Clone());
+                    
+            }
             
             //create the band of theoretical values
-            sMultiGraph->doFill(1,3);
+            sMultiGraph->doFill(1,ldmodelCounter);
             TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
             theoBand->SetFillColor(4);
             theoBand->SetFillStyle(3010);
             //add band to the multigraph
             m_graph->Add(theoBand,"3");
             
-            
-            //run chi2 minimization to fit experimental partial level density with theoretical model
-            ld4->Chi2PartialLoop(2.0, 10.0);
-            //set ptable and ctable to this minimum
-            ld4->BestFitPartial();
-            //add the best fit to the multigraph
-            TGraph* bestPartialGraph4 = ld4->getDenPartialGraphTrans();
-            bestPartialGraph4->SetTitle("best fit data");
-            bestPartialGraph4->SetLineColor(kRed);
-            bestPartialGraph4->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)bestPartialGraph4->Clone());
-            
-            //run chi2 minimization to fit experimental partial level density with theoretical model
-            ld5->Chi2PartialLoop(2.0, 10.0);
-            //set ptable and ctable to this minimum
-            ld5->BestFitPartial();
-            //add the best fit to the multigraph
-            TGraph* bestPartialGraph = ld5->getDenPartialGraphTrans();
-            bestPartialGraph->SetTitle("best fit data");
-            bestPartialGraph->SetLineColor(51);
-            bestPartialGraph->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)bestPartialGraph->Clone());
-            
-            
-            //run chi2 minimization to fit experimental partial level density with theoretical model
-            ld6->Chi2PartialLoop(2.0, 10.0);
-            //set ptable and ctable to this minimum
-            ld6->BestFitPartial();
-            //add the best fit to the multigraph
-            TGraph* bestPartialGraph6 = ld6->getDenPartialGraphTrans();
-            bestPartialGraph6->SetTitle("best fit data ld6");
-            bestPartialGraph6->SetLineColor(51);
-            bestPartialGraph6->SetLineWidth(3);
-            sMultiGraph->Add((TGraph*)bestPartialGraph6->Clone());
-            
             //create the band of experimental values
-            sMultiGraph->doFill(4,6);
+            sMultiGraph->doFill(ldmodelCounter+1,2*ldmodelCounter);
             TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
             expBand->SetFillColorAlpha(kRed, 0.8);
             expBand->SetFillStyle(3010);
@@ -1493,11 +1458,11 @@ void ShapeFrame::UpdateDisplay(int display) {
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
-            m_graph->SetTitle("Level Density Ge#^{76}");
+            m_graph->SetTitle("Level Density");
             //m_graph->Draw("apl");
             
             //draw discete levels into same canvas
-            ld5->discreteHist->Draw("same hist");
+            ldmodel[ldmodelDiscrete]->discreteHist->Draw("same hist");
             
             fCanvas->SetLogy();
             fCanvas->BuildLegend();

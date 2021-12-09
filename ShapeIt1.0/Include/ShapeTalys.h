@@ -14,12 +14,14 @@
 #define SHAPETALYS_H
 
 #include <iostream>
+#include "ShapeSetting.h"
 
 class ShapeTalys {
     
 private:
     static const int            nOfSpins = 9;             //number of spins in talys output file
     TGraphAsymmErrors*          rhoGraph;                        //pointer to the experimental level densities
+    ShapeSetting*              sett;
     TGraph*                     denTotGraph;                //graph of total lev density
     TGraph*                     denTotGraphTrans;                //graph of total lev density transformed via ptable and ctable
     
@@ -39,19 +41,22 @@ private:
     bool                        format;                         //set to zero if rows 2 and 3 are empty in talys output, otherwise set to 1
     int                         spinLow = 0;                            //lower spin limit for partial level density
     int                         spinHigh = 3;                           //upper spin limit for partial level density
+    
     std::string                 talysOutFile;                   //talys output file
+    std::string                 discreteLevelFile;                  //file with discrete levels
+    
     double                      chi2_min = 1E5;                  //minimum chi2 fit result
     int                         nOfDegFreedom=1;                   //noumber of degrees of freedom for chi2 fit (=#data points -1)
 
     
 public:
     
-    ShapeTalys(std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable);
+    ShapeTalys(ShapeSetting* p_sett, std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable);
     double                      ptable = 0;
     double                      ctable = 0;
     double                      ptablePartial = 0;      //best fit result to partial level density
     double                      ctablePartial = 0;      //best fit result to partial level density
-    int NewReadTree();
+    int                         NewReadTree();
     TGraph*                     getDenTotGraph() {return denTotGraph;}
     TGraph*                     getDenPartialGraph() {return denPartialGraph;}
     TGraph*                     getDenPartialGraphTrans() {return denPartialGraphTrans;}

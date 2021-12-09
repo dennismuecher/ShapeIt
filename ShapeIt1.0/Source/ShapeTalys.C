@@ -13,11 +13,13 @@
 #include "../Include/ShapeTalys.h"
 
 //consstructor
-ShapeTalys::ShapeTalys(std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable) {
+ShapeTalys::ShapeTalys(ShapeSetting* p_sett, std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable) {
+    sett = p_sett;
     parityFlag = p_parityFlag;
     rhoGraph = p_rhoGraph;
     format = p_format;
     talysOutFile = p_talysOutFile;
+    discreteLevelFile = sett->discreteLevelFile;
     ptable = p_ptable;
     ctable = p_ctable;
     NewReadTree();
@@ -273,7 +275,7 @@ int ShapeTalys::NewReadTree()
 }
 
 void ShapeTalys::ReadDiscrete() {
-    ifstream file("NLD/Ba140_discrete_08.12.21.txt");
+    ifstream file(discreteLevelFile);
     if (!file)
     {
         cerr << "cannot read the discrete level file!"
@@ -281,7 +283,7 @@ void ShapeTalys::ReadDiscrete() {
     }
     
     float e, disc;
-    discreteHist = new TH1F("disLevel","discrete Levels",40,-1,7);
+    discreteHist = new TH1F("disLevel","discrete Levels",int(8000/sett->discreteBins),-1,7);
         while (file >> e >> disc) {
             discreteHist->Fill(e,disc);
         }

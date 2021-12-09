@@ -15,6 +15,13 @@
 ShapeSetting::ShapeSetting(void)
 {
     ResetWidth();
+    for (int i = 0; i < 6; i++) {
+        ldFileName[i] = "";
+        pTable[i] = 0;
+        cTable[i] = 0;
+        parityFlag[i] = false;
+        formatFlag[i] = false;
+    }
 }
 
 //resets the width calibration to zero
@@ -173,9 +180,13 @@ void ShapeSetting::SaveSettings() {
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
     outfile << "rhoFileName " << rhoFileName <<"\n";
+    outfile << "rhoScale " << rhoScale <<"\n";
+
+    outfile << "discreteLevelFile " << discreteLevelFile << " " << discreteBins << "\n";
+    
     for (int i = 0; i < 6; i++) {
         if (ldFileName[i]!="")
-            outfile << "ldmodel" <<i+1<<" " << ldFileName[i] <<" " <<pTable[i] <<" "<< cTable[i]<<"\n";
+            outfile << "ldmodel" <<i+1<<" " << ldFileName[i] <<" " <<pTable[i] <<" "<< cTable[i]<< " " << parityFlag[i] << " " << formatFlag[i] << "\n";
     }
     outfile.close();
     if (verbose)
@@ -251,6 +262,8 @@ void ShapeSetting::ReadSettings() {
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
+            if (word == "discreteLevelFile" ) { isstr >>discreteLevelFile; isstr >>discreteBins;}
+            if (word == "rhoScale" ) isstr >> rhoScale ;
             if (word == "rhoFileName" ) {
                 std::string pName;
                 rhoFileName.clear();
@@ -264,6 +277,8 @@ void ShapeSetting::ReadSettings() {
                     isstr >>ldFileName[i];
                     isstr >>pTable[i];
                     isstr >>cTable[i];
+                    isstr >>parityFlag[i];
+                    isstr >>formatFlag[i];
                 }
             }
         }
@@ -281,11 +296,18 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "matrixName " << matrixName<<"\n";
     std::cout  << "Literature values gSF " << osloFileName<<"\n";
     std::cout  << "Literature values level density " << rhoFileName<<"\n";
+    std::cout  << "Discrete Level File " << discreteLevelFile << " " << discreteBins <<"\n";
+
     for (int i =0; i < 6; i++) {
-        if (ldFileName[i]!="")
+        if (ldFileName[i]!="") {
             std::cout  << "ldmodel" <<i+1 <<" " << ldFileName[i]<<"\n";
             std::cout  << "ptable " << pTable[i]<<"\n";
             std::cout  << "ctable " << cTable[i]<<"\n";
+            std::cout  << "parityFlag " << parityFlag[i]<<"\n";
+            std::cout  << "formatFlag " << formatFlag[i]<<"\n";
+
+
+        }
 
     }
     std::cout  << "Efficiency correction " << effiFileName<<"\n";
@@ -323,6 +345,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "nOfBins " << nOfBins <<"\n";
     std::cout  << "eff_corr " << eff_corr <<"\n";
     std::cout  << "minCounts " << minCounts <<"\n";
+    std::cout  << "rhoScale " << rhoScale <<"\n";
     std::cout  << "doWidthCal " << doWidthCal <<"\n";
     std::cout  << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
     
