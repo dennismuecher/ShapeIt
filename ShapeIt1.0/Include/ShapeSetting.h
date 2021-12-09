@@ -37,6 +37,9 @@ public:
 	std::string effiFileName = "";				 //name of file containing efficiency correction
     std::string settFileName = "";                  //name of settings save file
     std::string ldFileName[6] = {"","","","","",""};   //file names of the ldmodel talys calculations
+    double pTable[6]={0,0,0,0,0,0};         //ptable parameter for each ldmodel
+    double cTable[6]={1,1,1,1,1,1};         //ctable parameter for each ldmodel
+
     TFile *settFile;                         //the file used to safe the current settings
     int mode = 1;                           //mode: 1 = integration; 2 = autofit
 	

@@ -1081,19 +1081,28 @@ void ShapeFrame::HandleMenu(Int_t id)
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-
+            std::cout <<"Alive 1"<<std::endl;
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
+            std::cout <<"Alive 2"<<std::endl;
+
             if (fi_sett.fFilename) {
                 std::string sname = fi_sett.fFilename;
+                std::cout <<"Alive 3"<<std::endl;
+
                 //store absolute pathname
                 sett->settFileName = sname;
-                
+                std::cout <<"Alive 4"<<std::endl;
+
                 //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 OB[5]->SetEnabled(false);
+                std::cout <<"Alive 5"<<std::endl;
+
                 //OB[6]->SetEnabled(false);
                 displayMode = 1;
                 sett->ReadSettings();
+                std::cout <<"Alive 6"<<std::endl;
+
                 UpdateGuiSetting(sett);
                 HandleVerboseMenu(sett->verbose);
                 fMain->SetWindowName(sname.c_str());

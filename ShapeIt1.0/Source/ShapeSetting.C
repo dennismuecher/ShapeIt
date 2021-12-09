@@ -173,8 +173,10 @@ void ShapeSetting::SaveSettings() {
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
     outfile << "rhoFileName " << rhoFileName <<"\n";
-    for (int i = 0; i < 6; i++)
-        outfile << "ldmodel" <<i+1<<" " << ldFileName[i] <<"\n";
+    for (int i = 0; i < 6; i++) {
+        if (ldFileName[i]!="")
+            outfile << "ldmodel" <<i+1<<" " << ldFileName[i] <<" " <<pTable[i] <<" "<< cTable[i]<<"\n";
+    }
     outfile.close();
     if (verbose)
         std::cout <<"Successfully saved Settings to file " << settFileName <<std::endl <<std::endl;
@@ -258,8 +260,11 @@ void ShapeSetting::ReadSettings() {
             }
             for (int i = 0; i < 6; i++) {
                 std::string ldname = "ldmodel"+to_string(i+1);
-                if (word == ldname)
+                if (word == ldname) {
                     isstr >>ldFileName[i];
+                    isstr >>pTable[i];
+                    isstr >>cTable[i];
+                }
             }
         }
         if (verbose)
@@ -277,7 +282,11 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "Literature values gSF " << osloFileName<<"\n";
     std::cout  << "Literature values level density " << rhoFileName<<"\n";
     for (int i =0; i < 6; i++) {
-        std::cout  << "ldmodel" <<i+1 <<" " << ldFileName[i]<<"\n";
+        if (ldFileName[i]!="")
+            std::cout  << "ldmodel" <<i+1 <<" " << ldFileName[i]<<"\n";
+            std::cout  << "ptable " << pTable[i]<<"\n";
+            std::cout  << "ctable " << cTable[i]<<"\n";
+
     }
     std::cout  << "Efficiency correction " << effiFileName<<"\n";
     std::cout  << "MeV: " << MeV<<"\n";
