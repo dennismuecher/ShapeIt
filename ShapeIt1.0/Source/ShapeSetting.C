@@ -181,6 +181,8 @@ void ShapeSetting::SaveSettings() {
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
     outfile << "rhoFileName " << rhoFileName <<"\n";
     outfile << "rhoScale " << rhoScale <<"\n";
+    outfile << "spinLow " << spinLow <<"\n";
+    outfile << "spinHigh " << spinHigh <<"\n";
 
     outfile << "discreteLevelFile " << discreteLevelFile << " " << discreteBins << "\n";
     
@@ -264,6 +266,9 @@ void ShapeSetting::ReadSettings() {
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
             if (word == "discreteLevelFile" ) { isstr >>discreteLevelFile; isstr >>discreteBins;}
             if (word == "rhoScale" ) isstr >> rhoScale ;
+            if (word == "spinLow" ) isstr >> spinLow ;
+            if (word == "spinHigh" ) isstr >> spinHigh ;
+
             if (word == "rhoFileName" ) {
                 std::string pName;
                 rhoFileName.clear();
@@ -346,6 +351,8 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "eff_corr " << eff_corr <<"\n";
     std::cout  << "minCounts " << minCounts <<"\n";
     std::cout  << "rhoScale " << rhoScale <<"\n";
+    std::cout  << "spinLow " << spinLow <<"\n";
+    std::cout  << "spinHigh " << spinHigh <<"\n";
     std::cout  << "doWidthCal " << doWidthCal <<"\n";
     std::cout  << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
     

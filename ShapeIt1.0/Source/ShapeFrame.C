@@ -1414,41 +1414,53 @@ void ShapeFrame::UpdateDisplay(int display) {
                     continue;
                 ldmodelCounter++;
                 ldmodelDiscrete = i;
-                ldmodel[i] = new ShapeTalys(sett, sett->ldFileName[i], rhoTrafo, sett->parityFlag[i], sett->formatFlag[i], sett->pTable[i], sett->cTable[i]);
+                //ldmodel[i] = new ShapeTalys(sett, sett->ldFileName[i], rhoTrafo, sett->parityFlag[i], sett->formatFlag[i], sett->pTable[i], sett->cTable[i]);
+                
+                ldmodel[i] = new ShapeTalys(sett, rhoTrafo, i+1);
+                
                 ldmodelGraph[i] = ldmodel[i]->getDenPartialGraphTrans();
                 string s = "ldmodel"+to_string(i+1);
                 ldmodelGraph[i]->SetTitle(s.c_str());
                 ldmodelGraph[i]->SetLineColor(kBlack);
                 ldmodelGraph[i]->SetLineWidth(3);
                 sMultiGraph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
-                //run chi2 minimization to fit experimental partial level density with theoretical model
-                ldmodel[i]->Chi2PartialLoop(2.0, 10.0);
-                //set ptable and ctable to this minimum
-                ldmodel[i]->BestFitPartial();
-                //add the best fit to the multigraph
-                ldmodelFits[i] = ldmodel[i]->getDenPartialGraphTrans();
-                s = "best fit ldmodel"+to_string(i+1);
-                ldmodelFits[i]->SetTitle(s.c_str());
-                ldmodelFits[i]->SetLineColor(i);
-                ldmodelFits[i]->SetLineWidth(3);
-                sMultiGraph->Add((TGraph*)ldmodelFits[i]->Clone());
-                    
+               
             }
-            
             //create the band of theoretical values
             sMultiGraph->doFill(1,ldmodelCounter);
             TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+            theoBand->SetTitle("talys ldmodel");
             theoBand->SetFillColor(4);
             theoBand->SetFillStyle(3010);
             //add band to the multigraph
             m_graph->Add(theoBand,"3");
+            
+            // do best fits of ptable and ctable
+            for (int i = 0 ; i < 6; i++) {
+                if (sett->ldFileName[i]=="")
+                    continue;
+            
+              //run chi2 minimization to fit experimental partial level density with theoretical model
+              ldmodel[i]->Chi2PartialLoop(2.0, 5);
+              //set ptable and ctable to this minimum
+              ldmodel[i]->BestFitPartial();
+              //add the best fit to the multigraph
+              ldmodelFits[i] = ldmodel[i]->getDenPartialGraphTrans();
+              string s = "best fit ldmodel"+to_string(i+1);
+              ldmodelFits[i]->SetTitle(s.c_str());
+              ldmodelFits[i]->SetLineColor(i);
+              ldmodelFits[i]->SetLineWidth(3);
+              sMultiGraph->Add((TGraph*)ldmodelFits[i]->Clone());
+              m_graph->Add((TGraph*)ldmodelFits[i]->Clone());
+            }
             
             //create the band of experimental values
             sMultiGraph->doFill(ldmodelCounter+1,2*ldmodelCounter);
             TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
             expBand->SetFillColorAlpha(kRed, 0.8);
             expBand->SetFillStyle(3010);
-            
+            expBand->SetTitle("best fit to data");
+
             //add band to the multigraph
             m_graph->Add(expBand,"3");
             

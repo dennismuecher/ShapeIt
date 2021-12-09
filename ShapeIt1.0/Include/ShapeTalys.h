@@ -39,19 +39,20 @@ private:
     vector<double>              densitySpin[nOfSpins];       //level density for each spin for each parity
     bool                        parityFlag;                            //talys output contains separate level densities for parities (parityFlag = 1) or not (parityFlag 0)
     bool                        format;                         //set to zero if rows 2 and 3 are empty in talys output, otherwise set to 1
-    int                         spinLow = 0;                            //lower spin limit for partial level density
-    int                         spinHigh = 3;                           //upper spin limit for partial level density
     
     std::string                 talysOutFile;                   //talys output file
     std::string                 discreteLevelFile;                  //file with discrete levels
     
     double                      chi2_min = 1E5;                  //minimum chi2 fit result
     int                         nOfDegFreedom=1;                   //noumber of degrees of freedom for chi2 fit (=#data points -1)
+    int                         levelmodelNr = 1;                      //number of the talys ldmodel (1-6)
 
     
 public:
     
-    ShapeTalys(ShapeSetting* p_sett, std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable);
+    ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_ldmodelNr);
+    
+    
     double                      ptable = 0;
     double                      ctable = 0;
     double                      ptablePartial = 0;      //best fit result to partial level density

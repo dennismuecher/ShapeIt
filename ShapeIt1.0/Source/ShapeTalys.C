@@ -13,19 +13,22 @@
 #include "../Include/ShapeTalys.h"
 
 //consstructor
-ShapeTalys::ShapeTalys(ShapeSetting* p_sett, std::string p_talysOutFile, TGraphAsymmErrors* p_rhoGraph, bool p_parityFlag, bool p_format, double p_ptable, double p_ctable) {
+
+ShapeTalys::ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_levelmodelNr) {
     sett = p_sett;
-    parityFlag = p_parityFlag;
+    levelmodelNr = p_levelmodelNr;
+    parityFlag = sett->parityFlag[levelmodelNr-1];
     rhoGraph = p_rhoGraph;
-    format = p_format;
-    talysOutFile = p_talysOutFile;
+    format = sett->formatFlag[levelmodelNr-1];
+    talysOutFile = sett->ldFileName[levelmodelNr-1];
     discreteLevelFile = sett->discreteLevelFile;
-    ptable = p_ptable;
-    ctable = p_ctable;
+    ptable = sett->pTable[levelmodelNr-1];
+    ctable =sett->cTable[levelmodelNr-1];
     NewReadTree();
     SetPCTable();
     ReadDiscrete();
 }
+
 
 //calculates Chi2 between actual theoretical level density for the partial graph and the experimental values stored in rho
 double ShapeTalys::GetChi2Partial(double lower_ene, double higher_ene) {
@@ -85,7 +88,6 @@ void ShapeTalys::Chi2PartialLoop(double lower_ene, double higher_ene) {
     
     TCanvas *canv;
     bool plot_fit = false;
-    //rhoGraph->Draw("APC");
 
     if (plot_fit) {
         canv = new TCanvas("c", "c", 300, 300);
@@ -94,8 +96,9 @@ void ShapeTalys::Chi2PartialLoop(double lower_ene, double higher_ene) {
     double min_ptable = -1.5;
     double max_ptable = +1.5;
     
-    double min_ctable = -1.5;
-    double max_ctable = +1.5;
+    double min_ctable = -2;
+    double max_ctable = 2;
+    delete gROOT->FindObject("chi2Fit");
     TH2D* t = new TH2D("chi2Fit","Chi2 value for partial level density fit",200,min_ptable,max_ptable,200,min_ctable,max_ctable);
     
     //the best chi2 result
@@ -137,12 +140,10 @@ void ShapeTalys::Chi2PartialLoop(double lower_ene, double higher_ene) {
         }
         //std::cout<< "Minimum: " << chi2_min <<" "<< p <<" "<<" " << c_min<<std::endl;
     }
-    //rhoGraph->SetLineColor(kBlack);
-     // rhoGraph->SetMarkerColor(kBlack);
-    //rhoGraph->Draw("same");
+   
     if (plot_fit)
         t->Draw("colz");
-    std::cout <<"Best Fit values: " <<ptablePartial <<" "<<ctablePartial<<" " <<chi2_min<<" "<<n<< std::endl;
+    std::cout <<"Best Fit values for ldmodel "<< levelmodelNr << ": ptable =" <<ptablePartial <<"  ctable ="<<ctablePartial<<" chi2: " <<chi2_min << std::endl;
 }
 
 //Sets ptable and ctable to best fest results of model to partial level density; requires Chi2PartialLoop to run before
@@ -235,7 +236,7 @@ int ShapeTalys::NewReadTree()
             double partial = 0;
             for (int j =0; j < nOfSpins; j++) {
                 densitySpin[j].push_back(p_densitySpin[j][i]+p_densitySpin[j][i+n]);
-                if (j >=spinLow && j <=spinHigh)
+                if (j >=sett->spinLow && j <=sett->spinHigh)
                     partial +=densitySpin[j][i];
             }
             densityPartial.push_back(partial);
@@ -249,7 +250,7 @@ int ShapeTalys::NewReadTree()
             double partial = 0;
             for (int j =0; j < nOfSpins; j++) {
                 densitySpin[j].push_back(2*p_densitySpin[j][i]);
-                if (j >=spinLow && j <=spinHigh)
+                if (j >=sett->spinLow && j <=sett->spinHigh)
                     partial +=densitySpin[j][i];
             }
             densityPartial.push_back(partial);
@@ -283,6 +284,7 @@ void ShapeTalys::ReadDiscrete() {
     }
     
     float e, disc;
+    delete gROOT->FindObject("disLevel");
     discreteHist = new TH1F("disLevel","discrete Levels",int(8000/sett->discreteBins),-1,7);
         while (file >> e >> disc) {
             discreteHist->Fill(e,disc);
