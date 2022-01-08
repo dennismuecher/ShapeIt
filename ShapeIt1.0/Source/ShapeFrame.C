@@ -14,6 +14,23 @@
 #include "../Include/ShapeFrame.h"
 #include "ShapeDialogAlpha.C"
 #include "ShapeInfo.C"
+#include "ShapeMultiGraph.C"
+
+double glo(double *x, double *par){
+  //par[0]: sigma
+  //par[1]: width
+  //par[2]: energy
+  //double Tf = 0.86; //CT model, T at final states (can be adjusted)
+  double Tf = par[3];
+  double a = 8.674E-8; //1/3pi^2hbar^2c^2 constant, in MeV^2 mb^-1
+  double b = 39.4784; //4pi^2 constant
+  double gamma = (par[1]*(pow(x[0] /1000.,2)+b*pow(Tf,2)))/pow(par[2],2);
+  double gamma0 = b*pow(Tf,2)*par[1]/pow(par[2],2);
+  double term1 = ((x[0]*gamma / 1000.)/(pow(pow(x[0] / 1000. ,2)-pow(par[2],2),2)+pow(x[0] / 1000.,2)*pow(gamma,2)));
+  double term2 = (0.7*gamma0)/(pow(par[2],3));
+  double f = a*par[0]*par[1]*(term1 + term2);
+  return f;
+}
 
 ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path) {
 
@@ -910,6 +927,7 @@ void ShapeFrame::ShowGraph()
         gSFCollMC->Draw();
     else {
         gSFColl->Draw();
+       
         //display Chi2 minimum, in case literature values are shown
         if (getPaveTextShape() != NULL)
             getPaveTextShape()->Draw();
@@ -993,6 +1011,53 @@ void ShapeFrame::HandleVerboseMenu(int vLevel) {
     }
 }
 
+//opens the settings file with name sname and loades main ShapeIt Window etc.
+void ShapeFrame::OpenSettingFile(std::string sname) {
+    //store absolute pathname
+    sett->settFileName = sname;
+
+    //convert to filename, only (for the display)
+    sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+    OB[5]->SetEnabled(false);
+    displayMode = 1;
+    sett->ReadSettings();
+
+    UpdateGuiSetting(sett);
+    HandleVerboseMenu(sett->verbose);
+    fMain->SetWindowName(sname.c_str());
+
+    //get nme of root file containing matrix
+    mname = sett->dataFileName;
+    mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
+
+    //create Matrix object
+    matrix = new ShapeMatrix(sett);
+
+    //status update
+    status = 1;
+
+    //update Combo Menu showing the matrices
+    int mIndex = MatrixSelector();
+    if (mIndex > 0) {
+    
+        fMatrix->Select(mIndex);
+        matrix->SetMatrix(mIndex);
+        DoDraw();
+    }
+    else {
+        MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
+        CloseWindow();
+    }
+    
+    //initialize histogram zoom
+    histX1 = 0;
+    histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
+    histY1 = 0; histY2 = 0;
+    //create projections
+    matrix->Diag();
+
+}
+
 void ShapeFrame::HandleMenu(Int_t id)
 {
     // Handle menu items.
@@ -1063,57 +1128,11 @@ void ShapeFrame::HandleMenu(Int_t id)
             TGFileInfo fi_sett;
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
-
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
-            if (fi_sett.fFilename) {
-                std::string sname = fi_sett.fFilename;
-                //store absolute pathname
-                sett->settFileName = sname;
-                
-                //convert to filename, only (for the display)
-                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
-                OB[5]->SetEnabled(false);
-                //OB[6]->SetEnabled(false);
-                displayMode = 1;
-                sett->ReadSettings();
-                UpdateGuiSetting(sett);
-                HandleVerboseMenu(sett->verbose);
-                fMain->SetWindowName(sname.c_str());
-
-                //get nme of root file containing matrix
-                mname = sett->dataFileName;
-                mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
-
-                //create Matrix object
-                matrix = new ShapeMatrix(sett);
-
-                //status update
-                status = 1;
-           
-                //update Combo Menu showing the matrices
-                int mIndex = MatrixSelector();
-                if (mIndex > 0) {
-                
-                    fMatrix->Select(mIndex);
-                    matrix->SetMatrix(mIndex);
-                    DoDraw();
-                }
-                else {
-                    MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
-                    CloseWindow();
-                }
-                
-                //initialize histogram zoom
-                histX1 = 0;
-                histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
-                histY1 = 0; histY2 = 0;
-                //create projections
-                matrix->Diag();
-
-            }
-            
-        }
+            if (fi_sett.fFilename)
+                OpenSettingFile(fi_sett.fFilename);
             break;
+        }
         case M_SETTING_SAVEAS:
         {
             UpdateSetting(sett);
@@ -1371,191 +1390,140 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             TMultiGraph* m_graph = new TMultiGraph();
             ShapeRho *rho = new ShapeRho(sett);
-            double alpha_error = 0.05; //THIS SHOULD NOT BE HARD CODED
+            double alpha_error = 0.06; //THIS SHOULD NOT BE HARD CODED
             TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - alpha_error, sett->lit_alpha + alpha_error );
+            ShapeMultiGraph *sMultiGraph = new ShapeMultiGraph();
             
-            m_graph->Add(rhoTrafo,"AP3");
+            rhoTrafo->SetMarkerColor(kBlack);
+            rhoTrafo->SetLineColor(kBlack);
             
-            ShapeTalys* ld1 = new ShapeTalys("../Talys/140Ba/Ba140_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
+            m_graph->Add(rhoTrafo,"APE");
             
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/140Ba/Ba140_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
+            //create ShapeTalys objects
+            ShapeTalys* ldmodel[6];
+            //ldmodel graphs using ptable, ctable from settings file
+            TGraph* ldmodelGraph[6];
+            //ldmodel graphs using ptable, ctable from best fit to ShapeIt data
+            TGraph* ldmodelFits[6];
+            int ldmodelCounter = 0;         //counts the number of ldmodels used
+            int ldmodelDiscrete = 0;    //a ldmodel which is present in the settings file; used to plot the discrete levels
+            for (int i = 0 ; i < 6; i++) {
+                if (sett->ldFileName[i]=="")
+                    continue;
+                ldmodelCounter++;
+                ldmodelDiscrete = i;
+                
+                ldmodel[i] = new ShapeTalys(sett, rhoTrafo, i+1);
+                
+                ldmodelGraph[i] = ldmodel[i]->getDenPartialGraphTrans();
+                string s = "ldmodel"+to_string(i+1);
+                ldmodelGraph[i]->SetTitle(s.c_str());
+                ldmodelGraph[i]->SetLineColor(kBlack);
+                ldmodelGraph[i]->SetLineWidth(3);
+                m_graph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
+                sMultiGraph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
+                //if (i ==4)
+                  //  m_graph->Add((TGraph*)ldmodelGraph[4]->Clone(),"L");
+                if  (i == 4) {
+                   ldmodel[i]->Chi2PartialLoopMC(2, 5.0);
+                    m_graph->Add((TGraph*)ldmodel[i]->expBand->Clone(),"3");
+                    ldmodel[i]->bestFitMC->Draw("colz");
+                }
+            }
             
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/140Ba/Ba140_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
             
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/140Ba/Ba140_ld4.out",false,0,0.139);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
+            //create the band of theoretical values
+            sMultiGraph->doFill(1,ldmodelCounter);
+            TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+            theoBand->SetTitle("talys ldmodel");
+            theoBand->SetFillColor(4);
+            theoBand->SetFillStyle(3010);
+            //add band to the multigraph
+            //m_graph->Add(theoBand,"3");
             
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/140Ba/Ba140_ld5.out",true,0,0.712);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
+            // do best fits of ptable and ctable
+            for (int i = 0 ; i < 6; i++) {
+                if (sett->ldFileName[i]=="")
+                    continue;
             
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/140Ba/Ba140_ld6.out",true,0,0.4);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");
+              //run chi2 minimization to fit experimental partial level density with theoretical model
+              ldmodel[i]->Chi2PartialLoop(2.0, 5);
+              //set ptable and ctable to this minimum
+              ldmodel[i]->BestFitPartial();
+              //add the best fit to the multigraph
+              ldmodelFits[i] = ldmodel[i]->getDenPartialGraphTrans();
+              string s = "best fit ldmodel"+to_string(i+1);
+              ldmodelFits[i]->SetTitle(s.c_str());
+              ldmodelFits[i]->SetLineColor(i);
+              ldmodelFits[i]->SetLineWidth(3);
+              sMultiGraph->Add((TGraph*)ldmodelFits[i]->Clone());
+              //m_graph->Add((TGraph*)ldmodelFits[i]->Clone());
+            }
             
-            /*ShapeTalys* ld1 = new ShapeTalys("../../Talys/143Ba/Ba143_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
+            //create the band of experimental values
+            sMultiGraph->doFill(ldmodelCounter+1,2*ldmodelCounter);
+            TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+            expBand->SetFillColorAlpha(kRed, 0.8);
+            expBand->SetFillStyle(3010);
+            expBand->SetTitle("best fit to data");
+
+            //add band to the multigraph
+            //m_graph->Add(expBand,"3");
             
-            ShapeTalys* ld2 = new ShapeTalys("../../Talys/143Ba/Ba143_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
+            //fit using ctable = +-cTableExtreme and ldmodel ldmodelNr
+            double cTableExtreme = -0.7;
+            int ldmodelNr = 5;
+            ShapeTalys* discFit[2];
+            TGraph* discFitGraph;
+            ShapeMultiGraph* disc_sgraph = new ShapeMultiGraph();
+            for (int i =0; i <15; i++) {
+                cTableExtreme = -0.7 +( 0.1 * i );
+                sett->cTable[ldmodelNr-1] = cTableExtreme;
+                discFit[i] = new ShapeTalys(sett, rhoTrafo, ldmodelNr);
+
+                double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3.3);
+                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable <<std::endl;
+                sett->pTable[ldmodelNr-1] = m_ptable;
+                discFit[i]->SetPCTable(m_ptable, cTableExtreme);
+                discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                discFitGraph->SetLineWidth(4);
+                discFitGraph->SetLineColor(kBlack);
+                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
+                
+                double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,3,3.7);
+                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable2 <<std::endl;
+                sett->pTable[ldmodelNr-1] = m_ptable2;
+                discFit[i]->SetPCTable(m_ptable2, cTableExtreme);
+                discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                discFitGraph->SetLineWidth(4);
+                discFitGraph->SetLineColor(kBlack);
+                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
+
+            }
+            disc_sgraph->doFill(1,28);
+            TGraphErrors* discBand = (TGraphErrors*)disc_sgraph->fillGraph->Clone();
+            discBand->SetTitle("fit to discrete levels");
+            discBand->SetFillColorAlpha(kBlue, 0.7);
+
+            discBand->SetFillStyle(3010);
+            m_graph->Add(discBand,"3");
             
-            ShapeTalys* ld3 = new ShapeTalys("../../Talys/143Ba/Ba143_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
-            
-            ShapeTalys* ld4 = new ShapeTalys("../../Talys/143Ba/Ba143_ld4.out",false,0,-0.06);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
-            
-            ShapeTalys* ld5 = new ShapeTalys("../../Talys/143Ba/Ba143_ld5.out",true,0,-0.489);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
-            
-            ShapeTalys* ld6 = new ShapeTalys("../../Talys/140Ba/Ba140_ld6.out",true,0,-0.694);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");*/
-            
-            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/76Ge/Ge76_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
-            
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/76Ge/Ge76_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
-            
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/76Ge/Ge76_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
-            
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/76Ge/Ge76_ld4.out",false,0,0.505);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
-            
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/76Ge/Ge76_ld5.out",true,0,0.889);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
-            
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/76Ge/Ge76_ld6.out",true,0,0.327);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L"); */
-            
-            /*ShapeTalys* ld1 = new ShapeTalys("../Talys/88Kr/Kr88_ld1.out",false,1,0.0);
-            TGraph* ld1Graph = ld1->getDenPartialGraph();
-            ld1Graph->SetTitle("ld1");
-            ld1Graph->SetLineColor(51);
-            ld1Graph->SetLineWidth(2);
-            m_graph->Add(ld1Graph,"L");
-            
-            ShapeTalys* ld2 = new ShapeTalys("../Talys/88Kr/Kr88_ld2.out",false,1,0.0);
-            TGraph* ld2Graph = ld2->getDenPartialGraph();
-            ld2Graph->SetTitle("ld2");
-            ld2Graph->SetLineColor(61);
-            ld2Graph->SetLineWidth(2);
-            m_graph->Add(ld2Graph,"L");
-            
-            ShapeTalys* ld3 = new ShapeTalys("../Talys/88Kr/Kr88_ld3.out",false,1,0.0);
-            TGraph* ld3Graph = ld3->getDenPartialGraph();
-            ld3Graph->SetTitle("ld3");
-            ld3Graph->SetLineColor(71);
-            ld3Graph->SetLineWidth(2);
-            m_graph->Add(ld3Graph,"L");
-            
-            ShapeTalys* ld4 = new ShapeTalys("../Talys/88Kr/Kr88_ld4.out",false,0,0.06);
-            TGraph* ld4Graph = ld4->getDenPartialGraph();
-            ld4Graph->SetTitle("ld4");
-            ld4Graph->SetLineColor(81);
-            ld4Graph->SetLineWidth(2);
-            m_graph->Add(ld4Graph,"L");
-            
-            ShapeTalys* ld5 = new ShapeTalys("../Talys/88Kr/Kr88_ld5.out",true,0,0.78);
-            TGraph* ld5Graph = ld5->getDenPartialGraph();
-            ld5Graph->SetTitle("ld5");
-            ld5Graph->SetLineColor(91);
-            ld5Graph->SetLineWidth(2);
-            m_graph->Add(ld5Graph,"L");
-            
-            ShapeTalys* ld6 = new ShapeTalys("../Talys/88Kr/Kr88_ld6.out",true,0,0.68);
-            TGraph* ld6Graph = ld6->getDenPartialGraph();
-            ld6Graph->SetTitle("ld6");
-            ld6Graph->SetLineColor(kRed);
-            ld6Graph->SetLineWidth(2);
-            m_graph->Add(ld6Graph,"L");*/
-            
+            //plot MultiGraph
+            m_graph->GetYaxis()->SetRangeUser(0.01,1000);
+            m_graph->Draw("apl");
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
-            m_graph->SetTitle("Level Density Ge#^{76}");
-
-            m_graph->Draw("apl");
+            m_graph->SetTitle("Level Density");
             
-            m_graph->GetYaxis()->SetRangeUser(0.01,1000);
+            //draw discete levels into same canvas
+            ShapeTalys* discLevels = new ShapeTalys(sett, rhoTrafo, ldmodelDiscrete + 1);
+            discLevels->discreteHist->Draw("same hist");
+            
             fCanvas->SetLogy();
             fCanvas->BuildLegend();
-
-
+            
+            
         }
     }
     fCanvas->Modified();

@@ -206,5 +206,6 @@ public:
     void TransGraph();
     TMultiGraph *wgraph ;
     double lit_chi2 = 0;                    //value of chi2 fit of lit gSF to fit gSF
+    void OpenSettingFile(std::string sname);
 };
 #endif

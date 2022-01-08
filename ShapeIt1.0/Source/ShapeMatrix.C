@@ -438,13 +438,6 @@ void ShapeMatrix::Diag(){
 	xbins = (int) (eMax_y - eMin_diag) / inputMatrix->GetXaxis()->GetBinWidth(1);
     //calculate number of ybins
 	ybins = ( ene1 - ene0 ) / esize;
-    std::cout <<"In Diag: " << std::endl;
-
-    std::cout <<"esize: " << esize << std::endl;
-
-    std::cout <<"ene0: " << ene0 << std::endl;
-
-    std::cout <<"ene1: " << ene1 << std::endl;
 	//increase number of ybins by one if we haven't reached the chosen maximum excitation energy, yet
 	if (  (int)(ene1 - ene0) % (int)esize != 0)
 		ybins++;

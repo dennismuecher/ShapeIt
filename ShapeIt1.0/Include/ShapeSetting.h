@@ -36,9 +36,21 @@ public:
     std::string rhoFileName = "";                 //name of file containing reference data for level density
 	std::string effiFileName = "";				 //name of file containing efficiency correction
     std::string settFileName = "";                  //name of settings save file
+    std::string discreteLevelFile = "";             //name of discrete level density file 
+    std::string ldFileName[6];                   //file names of the ldmodel talys calculations
+    double pTable[6];                        //ptable parameter for each ldmodel
+    double cTable[6];                      //ctable parameter for each ldmodel
+    double rhoScale = 1;                    //scaling factor for experimetnal level density
+    int spinLow = 0;                          //lower spin limit for partial level density
+    int spinHigh = 8;                          //upper spin limit for partial level density
+    
+    double rhoChi2LowLimit = 2;
+    double rhoChi2HighLimit = 2;
+    bool parityFlag[6];                     //if true, talys file has both parities
+    bool formatFlag[6];                     //if true, talys file has no a and sigma values
     TFile *settFile;                         //the file used to safe the current settings
     int mode = 1;                           //mode: 1 = integration; 2 = autofit
-	
+    int discreteBins = 100;                   //bin size for discrete level density file in keV
     double MeV = 1.;
     bool doOslo = false;					//if true, plot reference data
     bool doEffi = false;					//if true, apply efficiency correction

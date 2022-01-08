@@ -103,8 +103,30 @@ void ShapeCollector::Draw() {
 }
 
 void ShapeCollector::Print() {
-    for (auto coll : gSFCollector)
-        coll->Print();
+    
+    if (m_sett->displayAvg) {
+        std::cout <<"gSF values for smoothed graph:" <<std::endl;
+        std::cout <<"energy    gSF   error gSF" <<std::endl;
+
+        for (int i = 0; i < gSFGraphSmooth->GetN(); i++) {
+            double e = gSFGraphSmooth->GetX()[i];
+            double g = gSFGraphSmooth->GetY()[i];
+            double dgHigh = gSFGraphSmooth->GetEYhigh()[i];
+            double dgLow = gSFGraphSmooth->GetEYlow()[i];
+
+            if (dgHigh == dgLow)
+                std::cout << e <<" " << g << " " << dgHigh <<std::endl;
+            else
+                std::cout << e <<" " << g << " + " << dgHigh << " - " << dgLow<<std::endl;
+
+        }
+    }
+    
+    if (m_sett->displaySingle) {
+        for (auto coll : gSFCollector)
+            coll->Print();
+    }
+    
     if (m_sett->doOslo)
         litCollector->Print();
 }
@@ -230,7 +252,7 @@ double ShapeCollector::mc_getChi2(){
         double y = gSFGraph->GetY()[i];
         double y_oslo = litCollector->GetLevGraph()->Eval(x);
         if (y > 0) {
-            chi2 += TMath::Power( (y_oslo - y) /y, 2);
+            chi2 += TMath::Power( (y_oslo - y) /y_oslo, 2);
         }
         else {
             std::cout <<"Error in getChi2: zero or negative value for y_oslo error for point " <<i<<" ! Skipping this data point" <<std::endl;
@@ -328,18 +350,20 @@ void ShapeCollector::Smooth(int res) {
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
             x += gSFGraph->GetX()[j];
             y += gSFGraph->GetY()[j];
-            dy += TMath::Power(gSFGraph->GetEY()[j] , 2);
+            
+            //this error is the max error of any individual error point; this does not take into account the fluctuations in the data points (i.e. the standard deviation, see below)
+            double m_dy = TMath::Abs(gSFGraph->GetEY()[j]);
+            if (m_dy > dy)
+                dy = m_dy;
             
         }
         int nOfP = i_bin[i+1] - i_bin[i];     //number of points in this bin
         if (nOfP ==0) continue;
         x = x / nOfP;
         y = y / nOfP;
-        //this error is the error of the mean value, based on the propagation of the indiviual errors, only; this does not take into account the fluctuations in the data points (i.e. the standard deviation)
-        dy = TMath::Sqrt(dy) / nOfP;
+        
         gSFGraphSmooth->SetPoint(gSFGraphSmooth->GetN(),x,y);
-        //gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dy, dy);
-       
+        
         double st_dev = 0;
         for (int j = i_bin[i]; j < i_bin[i+1]; j++) {
             st_dev += TMath::Power(gSFGraph->GetY()[j] - y, 2);
@@ -348,9 +372,11 @@ void ShapeCollector::Smooth(int res) {
             st_dev = TMath::Sqrt(st_dev / (nOfP -1) );
         
         //take care about points with small errors; those impact the chi2 fitting in a very biased way because they don't refelct the statistical fluctuations of the Shape Method
-        if (st_dev < 0.1 * y)
-            st_dev = 0.1 * y;
-        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, st_dev, st_dev);
+        //if (st_dev < 0.1 * y)
+          //  st_dev = 0.1 * y;
+        double dySum = TMath::Sqrt( TMath::Power(st_dev, 2) + TMath::Power(dy, 2));
+        std::cout <<x <<" " << y <<" " << dy <<" " << st_dev <<std::endl;
+        gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dySum, dySum);
         
         //calculate max errors including errors of individual data points
 
