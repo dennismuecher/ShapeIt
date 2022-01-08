@@ -26,5 +26,7 @@
 
 void ShapeIt() {
   static const std::string path = gSystem->pwd();
-	ShapeFrame* test = new ShapeFrame(gClient->GetRoot(),700,500, path);
+	ShapeFrame* shapeIt = new ShapeFrame(gClient->GetRoot(),700,500, path);
+    //shapeIt->OpenSettingFile("../Analysis/88Kr/88KrDec2021.dat");
+    
 }

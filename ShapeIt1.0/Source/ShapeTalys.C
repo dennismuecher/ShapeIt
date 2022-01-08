@@ -11,6 +11,7 @@
 *************************************************************************/
 
 #include "../Include/ShapeTalys.h"
+#include "../Include/ShapeMultiGraph.h"
 
 //consstructor
 
@@ -29,6 +30,40 @@ ShapeTalys::ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int 
     ReadDiscrete();
 }
 
+//calculates a new MC representation of the level density graph
+TGraph* ShapeTalys::MCRhoGraph() {
+    
+    double e, r, dr;
+    TGraph* mcGraph = new TGraph();
+    TRandom3 *ran = new TRandom3(0);
+
+    for (int i =0; i < rhoGraph->GetN(); i++) {
+        e = rhoGraph->GetPointX(i);
+        r = rhoGraph->GetPointY(i);
+        dr = (rhoGraph->GetEYlow()[i] + rhoGraph->GetEYhigh()[i]) / 2.;
+        mcGraph->SetPoint(mcGraph->GetN(), e, ran->Gaus(r,dr));
+    }
+    rhoGraphMC = mcGraph;
+    return mcGraph;
+}
+
+//calculates Chi2 between actual theoretical level density for the partial graph and the experimental MC values
+double ShapeTalys::GetChi2PartialMC(double lower_ene, double higher_ene) {
+    
+    double chi2 = 0;
+    double e, rho, rho_theo;
+    
+    for (int i =0; i < rhoGraphMC->GetN(); i++) {
+        e = rhoGraphMC->GetPointX(i);
+        rho = rhoGraphMC->GetPointY(i);
+        if (e > lower_ene && e < higher_ene ) {
+            rho_theo = denPartialGraphTrans->Eval(e);
+            //chi2 += TMath::Power((rho-rho_theo),2)/rho_theo;
+            chi2 += TMath::Power((rho-rho_theo)/rho_theo,2);
+        }
+    }
+    return chi2;
+}
 
 //calculates Chi2 between actual theoretical level density for the partial graph and the experimental values stored in rho
 double ShapeTalys::GetChi2Partial(double lower_ene, double higher_ene) {
@@ -61,7 +96,7 @@ double ShapeTalys::GetChi2Partial(double lower_ene, double higher_ene) {
         return (-1);
 }
 
-/*//calculates Chi2 between actual theoretical level density for the partial graph and the discrete levels
+//calculates Chi2 between actual theoretical level density for the partial graph and the discrete levels
 double ShapeTalys::GetChi2Discrete(double lower_ene, double higher_ene) {
     
     double chi2 = 0;
@@ -77,13 +112,135 @@ double ShapeTalys::GetChi2Discrete(double lower_ene, double higher_ene) {
         if (e > lower_ene && e < higher_ene ) {
             rho_theo = denPartialGraphTrans->Eval(e);
             chi2 += TMath::Power(rho-rho_theo,2)/rho_theo;
+            //chi2 += TMath::Power((rho-rho_theo)/rho_theo,2);
             n++;
         }
     }
     return chi2/n;
 }
 
-*/
+//determines a best fit to the discrete levels for ptable using a fixed ctable
+double ShapeTalys::PTableFromCTableDiscrete(double m_ctable, double lower_ene, double higher_ene) {
+    
+    double min_ptable = -4;
+    double max_ptable = +4;
+    double m_ptable;
+    double best_ptable;
+    double red_chi2;
+    double min_chi2 = 1E5;
+    for (int i = 0; i < 100; i++) {
+        m_ptable = i* (max_ptable - min_ptable)/100 + min_ptable;
+        SetPCTable(m_ptable, m_ctable);
+        red_chi2 = GetChi2Discrete(lower_ene,higher_ene);
+
+        if (red_chi2 < min_chi2) {
+            min_chi2 = red_chi2;
+            best_ptable = m_ptable;
+        }
+            
+    }
+    return best_ptable;
+}
+
+void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
+
+    bool showPlot = false;
+    TMultiGraph* m_graph = new TMultiGraph();
+    //TCanvas *c1 = new TCanvas("c1","Canvas Example",200,10,600,480);
+    gPad->SetLogy();
+
+    if (showPlot) {
+        //m_graph->Add(rhoGraph, "APE");
+        rhoGraph->Draw("APE");
+    }
+    double min_ptable = 0.8;
+    double max_ptable = +1.4;
+    
+    double min_ctable = 0.5;
+    double max_ctable = 1.4;
+    
+    double ptable_mean = 1.05;
+    double ptable_sigma = 0.2;
+    
+    double ctable_mean = 0.9;
+    double ctable_sigma = 0.2;
+    
+    ShapeMultiGraph* s_graph = new ShapeMultiGraph();
+    
+    delete gROOT->FindObject("bestFitMC");
+    bestFitMC = new TH2D("bestFitMC","ptable vs ctable from MC simulation",40,min_ptable,max_ptable,40,min_ctable,max_ctable);
+    
+    int nOfIter = 21;
+    int nOfGraphs = 0;
+    
+    TGraph* m_rhoGraph = new TGraph();
+
+    for (int mc_run = 0; mc_run < nOfIter; mc_run++) {
+        //get new representation of level densities
+        m_rhoGraph = MCRhoGraph();
+        
+        if (showPlot) {
+            rhoGraph->Draw("APE");
+            m_rhoGraph->Draw(" * same");
+            m_graph->Add(rhoGraphMC,"AP");
+        }
+        //the best chi2 result
+        chi2_min = 1E5;
+        double chi2;
+        
+        for (double p = min_ptable; p < max_ptable; p +=0.025) {
+            
+            for (double c = min_ctable; c < max_ctable; c +=0.025) {
+                SetPCTable(p,c);
+                chi2 = GetChi2PartialMC(lower_ene, higher_ene);
+                if (chi2 < chi2_min) {
+                    chi2_min = chi2;
+                    ptablePartialMC = p;
+                    ctablePartialMC = c;
+                }
+            }
+           
+        }
+        if (mc_run % 10 ==0) {
+            std::cout <<"MC Iteration: " <<mc_run <<std::endl;
+            std::cout <<"accepted fits in 1-sigma: " <<nOfGraphs <<std::endl;
+        }
+        
+        bestFitMC->Fill(ptablePartialMC,ctablePartialMC);
+        
+        //cut on 1-sigma accetance for ptable and ctable; the values for the mean and sigma of ptable and ctable can be determined through the MC process
+        if (TMath::Abs(ptablePartialMC - ptable_mean) > ptable_sigma)
+           continue;
+        if (TMath::Abs(ctablePartialMC - ctable_mean) > ctable_sigma)
+            continue;
+        nOfGraphs++;
+        //std::cout << std::setprecision(2)<<ptablePartialMC << " " << ctablePartialMC <<std::endl;
+        SetPCTable(ptablePartialMC,ctablePartialMC);
+        //denPartialGraphTrans->Draw("same");
+        m_graph->Add(denPartialGraphTrans,"L");
+        denPartialGraphTrans->Draw("L same");
+        s_graph->Add((TGraph*)denPartialGraphTrans->Clone(),"L");
+
+        // make sure to update display
+        //m_graph->Draw("apl");
+        //gPad->Modified();
+        //gPad->Update();
+        //m_graph->GetHistogram()->GetYaxis()->SetRangeUser(1E-2,1E3);
+        //m_graph->GetHistogram()->GetXaxis()->SetRangeUser(1,7);
+
+        //gSystem->ProcessEvents(); gSystem->ProcessEvents();
+        //gSystem->Sleep(10);
+        
+    }
+    s_graph->doFill(1,nOfGraphs);
+    expBand = (TGraphErrors*)s_graph->fillGraph->Clone();
+    expBand->SetFillColorAlpha(kMagenta, 0.8);
+    expBand->SetFillStyle(3010);
+    string s = "1-sigma fit ldmodel"+to_string(levelmodelNr);
+    expBand->SetTitle(s.c_str());
+
+}
+
 void ShapeTalys::Chi2PartialLoop(double lower_ene, double higher_ene) {
     
     TCanvas *canv;
@@ -96,8 +253,8 @@ void ShapeTalys::Chi2PartialLoop(double lower_ene, double higher_ene) {
     double min_ptable = -1.5;
     double max_ptable = +1.5;
     
-    double min_ctable = -2;
-    double max_ctable = 2;
+    double min_ctable = -1.5;
+    double max_ctable = 1.5;
     delete gROOT->FindObject("chi2Fit");
     TH2D* t = new TH2D("chi2Fit","Chi2 value for partial level density fit",200,min_ptable,max_ptable,200,min_ctable,max_ctable);
     

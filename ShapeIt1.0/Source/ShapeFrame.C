@@ -1011,6 +1011,53 @@ void ShapeFrame::HandleVerboseMenu(int vLevel) {
     }
 }
 
+//opens the settings file with name sname and loades main ShapeIt Window etc.
+void ShapeFrame::OpenSettingFile(std::string sname) {
+    //store absolute pathname
+    sett->settFileName = sname;
+
+    //convert to filename, only (for the display)
+    sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+    OB[5]->SetEnabled(false);
+    displayMode = 1;
+    sett->ReadSettings();
+
+    UpdateGuiSetting(sett);
+    HandleVerboseMenu(sett->verbose);
+    fMain->SetWindowName(sname.c_str());
+
+    //get nme of root file containing matrix
+    mname = sett->dataFileName;
+    mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
+
+    //create Matrix object
+    matrix = new ShapeMatrix(sett);
+
+    //status update
+    status = 1;
+
+    //update Combo Menu showing the matrices
+    int mIndex = MatrixSelector();
+    if (mIndex > 0) {
+    
+        fMatrix->Select(mIndex);
+        matrix->SetMatrix(mIndex);
+        DoDraw();
+    }
+    else {
+        MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
+        CloseWindow();
+    }
+    
+    //initialize histogram zoom
+    histX1 = 0;
+    histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
+    histY1 = 0; histY2 = 0;
+    //create projections
+    matrix->Diag();
+
+}
+
 void ShapeFrame::HandleMenu(Int_t id)
 {
     // Handle menu items.
@@ -1082,58 +1129,10 @@ void ShapeFrame::HandleMenu(Int_t id)
             fi_sett.fFileTypes = filetypes_s;
             fi_sett.fIniDir    = StrDup(dir);
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
-            if (fi_sett.fFilename) {
-                std::string sname = fi_sett.fFilename;
-
-                //store absolute pathname
-                sett->settFileName = sname;
-
-                //convert to filename, only (for the display)
-                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
-                OB[5]->SetEnabled(false);
-
-                //OB[6]->SetEnabled(false);
-                displayMode = 1;
-                sett->ReadSettings();
-
-                UpdateGuiSetting(sett);
-                HandleVerboseMenu(sett->verbose);
-                fMain->SetWindowName(sname.c_str());
-
-                //get nme of root file containing matrix
-                mname = sett->dataFileName;
-                mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
-
-                //create Matrix object
-                matrix = new ShapeMatrix(sett);
-
-                //status update
-                status = 1;
-           
-                //update Combo Menu showing the matrices
-                int mIndex = MatrixSelector();
-                if (mIndex > 0) {
-                
-                    fMatrix->Select(mIndex);
-                    matrix->SetMatrix(mIndex);
-                    DoDraw();
-                }
-                else {
-                    MessageBox("Error", "Cannot find matrix name stored in settings file in current root file!");
-                    CloseWindow();
-                }
-                
-                //initialize histogram zoom
-                histX1 = 0;
-                histX2 = histX2 = matrix->GetEne0() + matrix->GetESize();
-                histY1 = 0; histY2 = 0;
-                //create projections
-                matrix->Diag();
-
-            }
-            
-        }
+            if (fi_sett.fFilename)
+                OpenSettingFile(fi_sett.fFilename);
             break;
+        }
         case M_SETTING_SAVEAS:
         {
             UpdateSetting(sett);
@@ -1391,9 +1390,8 @@ void ShapeFrame::UpdateDisplay(int display) {
             
             TMultiGraph* m_graph = new TMultiGraph();
             ShapeRho *rho = new ShapeRho(sett);
-            double alpha_error = 0.05; //THIS SHOULD NOT BE HARD CODED
+            double alpha_error = 0.06; //THIS SHOULD NOT BE HARD CODED
             TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - alpha_error, sett->lit_alpha + alpha_error );
-            
             ShapeMultiGraph *sMultiGraph = new ShapeMultiGraph();
             
             rhoTrafo->SetMarkerColor(kBlack);
@@ -1414,7 +1412,6 @@ void ShapeFrame::UpdateDisplay(int display) {
                     continue;
                 ldmodelCounter++;
                 ldmodelDiscrete = i;
-                //ldmodel[i] = new ShapeTalys(sett, sett->ldFileName[i], rhoTrafo, sett->parityFlag[i], sett->formatFlag[i], sett->pTable[i], sett->cTable[i]);
                 
                 ldmodel[i] = new ShapeTalys(sett, rhoTrafo, i+1);
                 
@@ -1423,9 +1420,18 @@ void ShapeFrame::UpdateDisplay(int display) {
                 ldmodelGraph[i]->SetTitle(s.c_str());
                 ldmodelGraph[i]->SetLineColor(kBlack);
                 ldmodelGraph[i]->SetLineWidth(3);
+                m_graph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
                 sMultiGraph->Add((TGraph*)ldmodelGraph[i]->Clone(),"L");
-               
+                //if (i ==4)
+                  //  m_graph->Add((TGraph*)ldmodelGraph[4]->Clone(),"L");
+                if  (i == 4) {
+                   ldmodel[i]->Chi2PartialLoopMC(2, 5.0);
+                    m_graph->Add((TGraph*)ldmodel[i]->expBand->Clone(),"3");
+                    ldmodel[i]->bestFitMC->Draw("colz");
+                }
             }
+            
+            
             //create the band of theoretical values
             sMultiGraph->doFill(1,ldmodelCounter);
             TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
@@ -1433,7 +1439,7 @@ void ShapeFrame::UpdateDisplay(int display) {
             theoBand->SetFillColor(4);
             theoBand->SetFillStyle(3010);
             //add band to the multigraph
-            m_graph->Add(theoBand,"3");
+            //m_graph->Add(theoBand,"3");
             
             // do best fits of ptable and ctable
             for (int i = 0 ; i < 6; i++) {
@@ -1451,7 +1457,7 @@ void ShapeFrame::UpdateDisplay(int display) {
               ldmodelFits[i]->SetLineColor(i);
               ldmodelFits[i]->SetLineWidth(3);
               sMultiGraph->Add((TGraph*)ldmodelFits[i]->Clone());
-              m_graph->Add((TGraph*)ldmodelFits[i]->Clone());
+              //m_graph->Add((TGraph*)ldmodelFits[i]->Clone());
             }
             
             //create the band of experimental values
@@ -1462,19 +1468,57 @@ void ShapeFrame::UpdateDisplay(int display) {
             expBand->SetTitle("best fit to data");
 
             //add band to the multigraph
-            m_graph->Add(expBand,"3");
+            //m_graph->Add(expBand,"3");
             
+            //fit using ctable = +-cTableExtreme and ldmodel ldmodelNr
+            double cTableExtreme = -0.7;
+            int ldmodelNr = 5;
+            ShapeTalys* discFit[2];
+            TGraph* discFitGraph;
+            ShapeMultiGraph* disc_sgraph = new ShapeMultiGraph();
+            for (int i =0; i <15; i++) {
+                cTableExtreme = -0.7 +( 0.1 * i );
+                sett->cTable[ldmodelNr-1] = cTableExtreme;
+                discFit[i] = new ShapeTalys(sett, rhoTrafo, ldmodelNr);
+
+                double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3.3);
+                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable <<std::endl;
+                sett->pTable[ldmodelNr-1] = m_ptable;
+                discFit[i]->SetPCTable(m_ptable, cTableExtreme);
+                discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                discFitGraph->SetLineWidth(4);
+                discFitGraph->SetLineColor(kBlack);
+                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
+                
+                double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,3,3.7);
+                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable2 <<std::endl;
+                sett->pTable[ldmodelNr-1] = m_ptable2;
+                discFit[i]->SetPCTable(m_ptable2, cTableExtreme);
+                discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                discFitGraph->SetLineWidth(4);
+                discFitGraph->SetLineColor(kBlack);
+                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
+
+            }
+            disc_sgraph->doFill(1,28);
+            TGraphErrors* discBand = (TGraphErrors*)disc_sgraph->fillGraph->Clone();
+            discBand->SetTitle("fit to discrete levels");
+            discBand->SetFillColorAlpha(kBlue, 0.7);
+
+            discBand->SetFillStyle(3010);
+            m_graph->Add(discBand,"3");
+            
+            //plot MultiGraph
             m_graph->GetYaxis()->SetRangeUser(0.01,1000);
             m_graph->Draw("apl");
-            //sMultiGraph->Draw("apl");
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
             m_graph->SetTitle("Level Density");
-            //m_graph->Draw("apl");
             
             //draw discete levels into same canvas
-            ldmodel[ldmodelDiscrete]->discreteHist->Draw("same hist");
+            ShapeTalys* discLevels = new ShapeTalys(sett, rhoTrafo, ldmodelDiscrete + 1);
+            discLevels->discreteHist->Draw("same hist");
             
             fCanvas->SetLogy();
             fCanvas->BuildLegend();

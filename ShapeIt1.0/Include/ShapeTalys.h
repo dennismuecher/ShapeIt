@@ -20,7 +20,8 @@ class ShapeTalys {
     
 private:
     static const int            nOfSpins = 9;             //number of spins in talys output file
-    TGraphAsymmErrors*          rhoGraph;                        //pointer to the experimental level densities
+    TGraphAsymmErrors*          rhoGraph;               // experimental level densities
+    TGraph*                     rhoGraphMC;             //MC version of exp. level densities
     ShapeSetting*              sett;
     TGraph*                     denTotGraph;                //graph of total lev density
     TGraph*                     denTotGraphTrans;                //graph of total lev density transformed via ptable and ctable
@@ -46,8 +47,9 @@ private:
     double                      chi2_min = 1E5;                  //minimum chi2 fit result
     int                         nOfDegFreedom=1;                   //noumber of degrees of freedom for chi2 fit (=#data points -1)
     int                         levelmodelNr = 1;                      //number of the talys ldmodel (1-6)
-
-    
+    double                      GetChi2Discrete(double lower_ene, double higher_ene);
+    TGraph*                        MCRhoGraph();
+    double                      GetChi2PartialMC(double lower_ene, double higher_ene);
 public:
     
     ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_ldmodelNr);
@@ -57,12 +59,17 @@ public:
     double                      ctable = 0;
     double                      ptablePartial = 0;      //best fit result to partial level density
     double                      ctablePartial = 0;      //best fit result to partial level density
+    double                      ptablePartialMC = 0;      //best fit result to partial level density using MC
+    double                      ctablePartialMC = 0;      //best fit result to partial level density using MC
     int                         NewReadTree();
     TGraph*                     getDenTotGraph() {return denTotGraph;}
     TGraph*                     getDenPartialGraph() {return denPartialGraph;}
     TGraph*                     getDenPartialGraphTrans() {return denPartialGraphTrans;}
     TGraph*                     getDenSpinGraph(int spin) {return denSpinGraph[spin];}
-    
+    TGraphErrors*               expBand;
+    TH2D*                       bestFitMC;
+    double                      PTableFromCTableDiscrete(double m_ctable, double lower_ene, double higher_ene);
+
     TH1F*                       discreteHist;                      //graph of discrete levels
 
     void                        SetPCTable(double m_ptable, double m_ctable);
@@ -71,6 +78,7 @@ public:
     double                      GetChi2Partial(double lower_ene, double higher_ene);
     void                        Chi2PartialLoop(double lower_ene, double higher_ene);
     void                        BestFitPartial();
+    void                        Chi2PartialLoopMC(double lower_ene, double higher_ene);
 
 
 
