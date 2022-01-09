@@ -513,9 +513,10 @@ void ShapeFrame::BinSelect(Int_t sbin)
         histY1 = 0;
         histY2 = 0;
     }
-    
+    std::cout <<"Selecting bin "<< sbin <<std::endl;
     diagHisto = matrix->GetDiagEx(sbin, mname);
-    
+    std::cout <<"Succesfully projected bin "<< sbin <<std::endl;
+
     //when re-drawing, use the same X and Y ranges as before
     diagHisto->GetXaxis()->SetRangeUser(histX1, histX2);
     if (histY1 !=0 && histY2 !=0) {

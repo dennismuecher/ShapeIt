@@ -95,6 +95,11 @@ void ShapeCollector::Collect() {
     
     //normalize all data to each other
     NormCollect();
+    
+    m_matrix->SetEne0( m_sett->exiEne[0] );
+    m_matrix->SetEne1( m_sett->exiEne[1] );
+    m_matrix->SetESize( m_sett->exi_size[0] );
+    m_matrix->Diag();
 }
 
 void ShapeCollector::Draw() {
