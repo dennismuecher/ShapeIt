@@ -380,7 +380,7 @@ void ShapeCollector::Smooth(int res) {
         //if (st_dev < 0.1 * y)
           //  st_dev = 0.1 * y;
         double dySum = TMath::Sqrt( TMath::Power(st_dev, 2) + TMath::Power(dy, 2));
-        std::cout <<x <<" " << y <<" " << dy <<" " << st_dev <<std::endl;
+        
         gSFGraphSmooth->SetPointError(gSFGraphSmooth->GetN()-1, 0, 0, dySum, dySum);
         
         //calculate max errors including errors of individual data points

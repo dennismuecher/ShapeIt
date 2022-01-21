@@ -164,6 +164,7 @@ void ShapeSetting::SaveSettings() {
     outfile << "gSF_norm " << gSF_norm<<"\n";
     outfile << "lit_norm " << lit_norm<<"\n";
     outfile << "lit_alpha " << lit_alpha<<"\n";
+    outfile << "lit_alpha_error " << lit_alpha_error[0] <<" "<<lit_alpha_error[1] <<"\n";
     outfile << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
     outfile << "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     outfile << "bg_level1 " << bgEne[0][0] <<" "<< bgEne[0][1] <<" "<< bgEne[0][2] <<" "<< bgEne[0][3] <<"\n";
@@ -249,6 +250,7 @@ void ShapeSetting::ReadSettings() {
             if (word == "gSF_norm" ) isstr >> gSF_norm;
             if (word == "lit_norm" ) isstr >> lit_norm;
             if (word == "lit_alpha" ) isstr >> lit_alpha;
+            if (word == "lit_alpha_error" ) { isstr >> lit_alpha_error[0]; isstr >> lit_alpha_error[1];}
             if (word == "level1" ) { isstr >> levEne[0]; isstr >>levEne[1];}
 			if (word == "level1_2" ) { isstr >> levEne_2[0]; isstr >>levEne_2[1];}
             if (word == "level2" ) { isstr >> levEne[2]; isstr >>levEne[3];}
@@ -335,6 +337,7 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "gSF norm " << gSF_norm<<"\n";
     std::cout  << "lit norm " << lit_norm<<"\n";
     std::cout  << "lit alpha " << lit_alpha<<"\n";
+    std::cout  << "lit alpha_error " << lit_alpha_error[0] << " "<<lit_alpha_error[1] <<"\n";
     std::cout  << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
 	std::cout  <<  "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
     std::cout  << "left background level1 " << bgEne[0][0] <<"-" << bgEne[0][1] <<"\n";

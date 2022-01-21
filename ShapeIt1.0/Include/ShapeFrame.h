@@ -88,6 +88,7 @@ enum ETestCommandIdentifiers {
     M_DISPLAY_PROJBIN,
     M_DISPLAY_FITWIDTH,
     M_DISPLAY_PRINT,
+    M_DISPLAY_PRINT_RHO,
     M_DISPLAY_AVG,
     M_DISPLAY_SINGLE,
     M_DISPLAY_GSF,
@@ -200,6 +201,7 @@ public:
     void PrintMessage();
 	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
     void ShowGraph(double norm, double slope);   //applies literature value transformation and updates gSF graph
+    
     void Scale(Double_t scale);					//scale results of gSF and refresh display
     double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
     TGFileInfo fi;                              //file containing matrix

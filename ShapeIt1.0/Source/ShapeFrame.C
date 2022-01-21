@@ -470,6 +470,7 @@ void ShapeFrame::SetupMenu() {
     
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Print Table of gSF results", M_DISPLAY_PRINT);
+    fDisplayFile->AddEntry("&Print Table of rho results", M_DISPLAY_PRINT_RHO);
     
     fDisplayFile->AddSeparator();
     fDisplayFile->AddEntry("&Draw level density", M_DISPLAY_RHO);
@@ -1302,6 +1303,20 @@ void ShapeFrame::HandleMenu(Int_t id)
             else
                 MessageBox("Error", "Press ShapeIt button, first! No gamma ray strength values to show");
             break;
+        case M_DISPLAY_PRINT_RHO: {
+            ShapeRho *rho = new ShapeRho(sett);
+
+            TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - sett->lit_alpha_error[0], sett->lit_alpha + sett->lit_alpha_error[1] );
+            for (int i = 0; i < rhoTrafo->GetN(); i++) {
+                double e = rhoTrafo->GetX()[i];
+                double r = rhoTrafo->GetY()[i];
+                double drHigh = rhoTrafo->GetEYhigh()[i];
+                double drLow = rhoTrafo->GetEYlow()[i];
+                std::cout <<"Level densities after transformation with alpha = " <<sett->lit_alpha<<std::endl;
+                std::cout << e <<" " << r << " + " << drHigh << " - " << drLow<<std::endl;
+            }
+            break;
+        }
             
     default:
             break;
@@ -1388,11 +1403,11 @@ void ShapeFrame::UpdateDisplay(int display) {
             break;
         }
         case 11: {
-            
+                        
             TMultiGraph* m_graph = new TMultiGraph();
             ShapeRho *rho = new ShapeRho(sett);
-            double alpha_error = 0.06; //THIS SHOULD NOT BE HARD CODED
-            TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - alpha_error, sett->lit_alpha + alpha_error );
+
+            TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - sett->lit_alpha_error[0], sett->lit_alpha + sett->lit_alpha_error[1] );
             ShapeMultiGraph *sMultiGraph = new ShapeMultiGraph();
             
             rhoTrafo->SetMarkerColor(kBlack);
@@ -1408,7 +1423,9 @@ void ShapeFrame::UpdateDisplay(int display) {
             TGraph* ldmodelFits[6];
             int ldmodelCounter = 0;         //counts the number of ldmodels used
             int ldmodelDiscrete = 0;    //a ldmodel which is present in the settings file; used to plot the discrete levels
+            
             for (int i = 0 ; i < 6; i++) {
+                
                 if (sett->ldFileName[i]=="")
                     continue;
                 ldmodelCounter++;
@@ -1431,19 +1448,22 @@ void ShapeFrame::UpdateDisplay(int display) {
                     ldmodel[i]->bestFitMC->Draw("colz");
                 }
             }
-            
+            //std::cout <<"ldmodelCounter: " <<ldmodelcounter <<std::endl;
             
             //create the band of theoretical values
-            sMultiGraph->doFill(1,ldmodelCounter);
-            TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
-            theoBand->SetTitle("talys ldmodel");
-            theoBand->SetFillColor(4);
-            theoBand->SetFillStyle(3010);
-            //add band to the multigraph
-            //m_graph->Add(theoBand,"3");
+            if (ldmodelCounter > 0) {
+                sMultiGraph->doFill(1,ldmodelCounter);
+                TGraphErrors* theoBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+                theoBand->SetTitle("talys ldmodel");
+                theoBand->SetFillColor(4);
+                theoBand->SetFillStyle(3010);
+                //add band to the multigraph
+                //m_graph->Add(theoBand,"3");
+            }
             
             // do best fits of ptable and ctable
             for (int i = 0 ; i < 6; i++) {
+                
                 if (sett->ldFileName[i]=="")
                     continue;
             
@@ -1462,65 +1482,68 @@ void ShapeFrame::UpdateDisplay(int display) {
             }
             
             //create the band of experimental values
-            sMultiGraph->doFill(ldmodelCounter+1,2*ldmodelCounter);
-            TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
-            expBand->SetFillColorAlpha(kRed, 0.8);
-            expBand->SetFillStyle(3010);
-            expBand->SetTitle("best fit to data");
+            if (ldmodelCounter > 0) {
+                sMultiGraph->doFill(ldmodelCounter+1,2*ldmodelCounter);
+                TGraphErrors* expBand = (TGraphErrors*)sMultiGraph->fillGraph->Clone();
+                expBand->SetFillColorAlpha(kRed, 0.8);
+                expBand->SetFillStyle(3010);
+                expBand->SetTitle("best fit to data");
 
-            //add band to the multigraph
-            //m_graph->Add(expBand,"3");
+                //add band to the multigraph
+                //m_graph->Add(expBand,"3");
             
-            //fit using ctable = +-cTableExtreme and ldmodel ldmodelNr
-            double cTableExtreme = -0.7;
-            int ldmodelNr = 5;
-            ShapeTalys* discFit[2];
-            TGraph* discFitGraph;
-            ShapeMultiGraph* disc_sgraph = new ShapeMultiGraph();
-            for (int i =0; i <15; i++) {
-                cTableExtreme = -0.7 +( 0.1 * i );
-                sett->cTable[ldmodelNr-1] = cTableExtreme;
-                discFit[i] = new ShapeTalys(sett, rhoTrafo, ldmodelNr);
+                //fit using ctable = +-cTableExtreme and ldmodel ldmodelNr
+                double cTableExtreme = -0.7;
+                int ldmodelNr = 5;
+                ShapeTalys* discFit[2];
+                TGraph* discFitGraph;
+                ShapeMultiGraph* disc_sgraph = new ShapeMultiGraph();
+                for (int i =0; i <15; i++) {
+                    cTableExtreme = -0.7 +( 0.1 * i );
+                    sett->cTable[ldmodelNr-1] = cTableExtreme;
+                    discFit[i] = new ShapeTalys(sett, rhoTrafo, ldmodelNr);
 
-                double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3.3);
-                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable <<std::endl;
-                sett->pTable[ldmodelNr-1] = m_ptable;
-                discFit[i]->SetPCTable(m_ptable, cTableExtreme);
-                discFitGraph = discFit[i]->getDenPartialGraphTrans();
-                discFitGraph->SetLineWidth(4);
-                discFitGraph->SetLineColor(kBlack);
-                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
+                    double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3.3);
+                    std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable <<std::endl;
+                    sett->pTable[ldmodelNr-1] = m_ptable;
+                    discFit[i]->SetPCTable(m_ptable, cTableExtreme);
+                    discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                    discFitGraph->SetLineWidth(4);
+                    discFitGraph->SetLineColor(kBlack);
+                    disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
                 
-                double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,3,3.7);
-                std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable2 <<std::endl;
-                sett->pTable[ldmodelNr-1] = m_ptable2;
-                discFit[i]->SetPCTable(m_ptable2, cTableExtreme);
-                discFitGraph = discFit[i]->getDenPartialGraphTrans();
-                discFitGraph->SetLineWidth(4);
-                discFitGraph->SetLineColor(kBlack);
-                disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
-
-            }
-            disc_sgraph->doFill(1,28);
-            TGraphErrors* discBand = (TGraphErrors*)disc_sgraph->fillGraph->Clone();
-            discBand->SetTitle("fit to discrete levels");
-            discBand->SetFillColorAlpha(kBlue, 0.7);
-
-            discBand->SetFillStyle(3010);
-            m_graph->Add(discBand,"3");
+                    double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,3,3.7);
+                    std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable2 <<std::endl;
+                    sett->pTable[ldmodelNr-1] = m_ptable2;
+                    discFit[i]->SetPCTable(m_ptable2, cTableExtreme);
+                    discFitGraph = discFit[i]->getDenPartialGraphTrans();
+                    discFitGraph->SetLineWidth(4);
+                    discFitGraph->SetLineColor(kBlack);
+                    disc_sgraph->Add((TGraph*)discFitGraph->Clone(),"L");
             
+                }
+                disc_sgraph->doFill(1,28);
+                TGraphErrors* discBand = (TGraphErrors*)disc_sgraph->fillGraph->Clone();
+                discBand->SetTitle("fit to discrete levels");
+                discBand->SetFillColorAlpha(kBlue, 0.7);
+
+                discBand->SetFillStyle(3010);
+                m_graph->Add(discBand,"3");
+            }
             //plot MultiGraph
             m_graph->GetYaxis()->SetRangeUser(0.01,1000);
             m_graph->Draw("apl");
+
             m_graph->GetYaxis()->SetTitleOffset(1.4);
             m_graph->GetYaxis()->SetTitle("Level density #rho (E) (MeV^{-1})");
             m_graph->GetXaxis()->SetTitle("Energy (MeV)");
             m_graph->SetTitle("Level Density");
             
             //draw discete levels into same canvas
-            ShapeTalys* discLevels = new ShapeTalys(sett, rhoTrafo, ldmodelDiscrete + 1);
+            ShapeTalys* discLevels = new ShapeTalys(sett, rhoTrafo, 0);
             discLevels->discreteHist->Draw("same hist");
-            
+            m_graph->GetXaxis()->SetLimits(0.,discLevels->discreteMax+1);
+
             fCanvas->SetLogy();
             fCanvas->BuildLegend();
             

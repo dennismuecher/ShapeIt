@@ -40,6 +40,10 @@ TH2* ShapeMatrix::GetInputMatrix (std::string title) {
 
 void ShapeMatrix::openMatrix(){
     dataFile = new TFile(sett->dataFileName.c_str(),"read");
+    if (dataFile->IsZombie()) {
+          cout << "Error opening root file " <<sett->dataFileName.c_str() << endl;
+          exit(-1);
+       }
 }
 
 void ShapeMatrix::SetMatrix(int mNr) {

@@ -18,15 +18,18 @@
 ShapeTalys::ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_levelmodelNr) {
     sett = p_sett;
     levelmodelNr = p_levelmodelNr;
-    parityFlag = sett->parityFlag[levelmodelNr-1];
-    rhoGraph = p_rhoGraph;
-    format = sett->formatFlag[levelmodelNr-1];
-    talysOutFile = sett->ldFileName[levelmodelNr-1];
+    //if levelmodelNr == 0, only the discrete level File is requested
+    if (levelmodelNr >0) {
+        parityFlag = sett->parityFlag[levelmodelNr-1];
+        rhoGraph = p_rhoGraph;
+        format = sett->formatFlag[levelmodelNr-1];
+        talysOutFile = sett->ldFileName[levelmodelNr-1];
+        ptable = sett->pTable[levelmodelNr-1];
+        ctable =sett->cTable[levelmodelNr-1];
+        NewReadTree();
+        SetPCTable();
+    }
     discreteLevelFile = sett->discreteLevelFile;
-    ptable = sett->pTable[levelmodelNr-1];
-    ctable =sett->cTable[levelmodelNr-1];
-    NewReadTree();
-    SetPCTable();
     ReadDiscrete();
 }
 
@@ -442,10 +445,25 @@ void ShapeTalys::ReadDiscrete() {
     
     float e, disc;
     delete gROOT->FindObject("disLevel");
-    discreteHist = new TH1F("disLevel","discrete Levels",int(8000/sett->discreteBins),-1,7);
-        while (file >> e >> disc) {
-            discreteHist->Fill(e,disc);
-        }
+    std::vector <float> ene;
+    std::vector <float> discLev;
+    
+    //read the discrete level file data
+    while (file >> e >> disc) {
+        ene.push_back(e);
+        discLev.push_back(disc);
+    }
+    
+    //find the maximum energy
+    discreteMax = *max_element(ene.begin(), ene.end());
+    
+    //define histogram
+    discreteHist = new TH1F("disLevel","discrete Levels",((1000*(discreteMax+1)/sett->discreteBins)),-1,discreteMax);
+    
+    //fill histogram
+    for (int i = 0; i < ene.size(); i++)
+        discreteHist->Fill(ene[i],discLev[i]);
+    
     discreteHist->SetLineColor(kBlack);
 }
 

@@ -69,7 +69,7 @@ public:
 	double gSF_norm = 1 ;				//normalization factor for gSF from ShapeIt analysis
     double lit_norm = 1 ;                //normalization factor for Oslo literature value
     double lit_alpha = 0 ;                //transformation "slope" parameter for literature values
-
+    double lit_alpha_error[2]={0,0} ;   //error in slop parameter alpha
 	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
 	double levEne_2[4] = {0, 0, 0, 0};						//energies for doublet peaks level 1 and level 2 (upper, lower)	
 	double bgEne[2][4];                      //background regions for level 1 and level 2

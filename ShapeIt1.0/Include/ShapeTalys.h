@@ -61,6 +61,7 @@ public:
     double                      ctablePartial = 0;      //best fit result to partial level density
     double                      ptablePartialMC = 0;      //best fit result to partial level density using MC
     double                      ctablePartialMC = 0;      //best fit result to partial level density using MC
+    double                      discreteMax = 0;            //the maximum energy found in the datafile of discrete level denisties
     int                         NewReadTree();
     TGraph*                     getDenTotGraph() {return denTotGraph;}
     TGraph*                     getDenPartialGraph() {return denPartialGraph;}
