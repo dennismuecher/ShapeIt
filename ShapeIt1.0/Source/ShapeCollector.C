@@ -132,8 +132,10 @@ void ShapeCollector::Print() {
             coll->Print();
     }
     
-    if (m_sett->doOslo)
+    if (m_sett->doOslo) {
+        std::cout <<"Here are the literature gSF values:"<<std::endl;
         litCollector->Print();
+    }
 }
 
 void ShapeCollector::Transform(double B_t, double alpha_t) {

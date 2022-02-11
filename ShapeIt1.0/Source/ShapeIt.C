@@ -15,6 +15,7 @@
 #include <TSystem.h>
 
 #include "ShapeTalys.C"
+#include "ShapeRhoCollector.C"
 #include "ShapeFrame.C"
 #include "ShapeSetting.C"
 #include "ShapeMatrix.C"

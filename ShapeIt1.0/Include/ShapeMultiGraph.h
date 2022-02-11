@@ -31,12 +31,14 @@ This class is derived from TMultiGraph. Once TGraphs have been added, the functi
 class ShapeMultiGraph: public TMultiGraph {
 
 private:
-    double                  lower_ene = 1.0;
-    double                  higher_ene = 7.0;
+    double                  lower_ene = 2.0;
+    double                  higher_ene = 10.0;
     bool                    visible = true; //if true, the lines will be drawn
 
 public:
     TGraphErrors*           fillGraph;
+    TGraph*                 fillGraphUpper;     //upper bounds of fillGraph; used to plot boundary lines
+    TGraph*                 fillGraphLower;     //lower bounds of fillGraph; used to plot boundary lines
     void                    doFill(int min_index, int max_index);
     
     void                    getLowerEne() {return lower_ene;}

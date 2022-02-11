@@ -50,6 +50,8 @@ private:
     double                      GetChi2Discrete(double lower_ene, double higher_ene);
     TGraph*                        MCRhoGraph();
     double                      GetChi2PartialMC(double lower_ene, double higher_ene);
+    string                      talysNames[6]={"Const. temp. + Fermi","Back-shift. Fermi","Gen. superf.","HFB, Skyrme","HFB, Skyrme + comb.","temp. dep. HFB, Gogny"};
+
 public:
     
     ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_ldmodelNr);
@@ -65,7 +67,7 @@ public:
     int                         NewReadTree();
     TGraph*                     getDenTotGraph() {return denTotGraph;}
     TGraph*                     getDenPartialGraph() {return denPartialGraph;}
-    TGraph*                     getDenPartialGraphTrans() {return denPartialGraphTrans;}
+    TGraph*                     getDenPartialGraphTrans(); 
     TGraph*                     getDenSpinGraph(int spin) {return denSpinGraph[spin];}
     TGraphErrors*               expBand;
     TH2D*                       bestFitMC;

@@ -157,27 +157,28 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         rhoGraph->Draw("APE");
     }
     double min_ptable = 0.8;
-    double max_ptable = +1.4;
+    double max_ptable = +2;
     
     double min_ctable = 0.5;
     double max_ctable = 1.4;
     
-    double ptable_mean = 1.05;
-    double ptable_sigma = 0.2;
+    double ptable_mean = 1.36;
+    double ptable_sigma = 0.15;
     
-    double ctable_mean = 0.9;
-    double ctable_sigma = 0.2;
+    double ctable_mean = 0.85;
+    double ctable_sigma = 0.13;
     
     ShapeMultiGraph* s_graph = new ShapeMultiGraph();
     
     delete gROOT->FindObject("bestFitMC");
     bestFitMC = new TH2D("bestFitMC","ptable vs ctable from MC simulation",40,min_ptable,max_ptable,40,min_ctable,max_ctable);
     
-    int nOfIter = 21;
+    int nOfIter = 51;
     int nOfGraphs = 0;
     
     TGraph* m_rhoGraph = new TGraph();
-
+    double ptableAccepted[100];
+    double ctableAccepted[100];
     for (int mc_run = 0; mc_run < nOfIter; mc_run++) {
         //get new representation of level densities
         m_rhoGraph = MCRhoGraph();
@@ -191,9 +192,12 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         chi2_min = 1E5;
         double chi2;
         
+       
+        
         for (double p = min_ptable; p < max_ptable; p +=0.025) {
             
             for (double c = min_ctable; c < max_ctable; c +=0.025) {
+
                 SetPCTable(p,c);
                 chi2 = GetChi2PartialMC(lower_ene, higher_ene);
                 if (chi2 < chi2_min) {
@@ -217,7 +221,13 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         if (TMath::Abs(ctablePartialMC - ctable_mean) > ctable_sigma)
             continue;
         nOfGraphs++;
-        //std::cout << std::setprecision(2)<<ptablePartialMC << " " << ctablePartialMC <<std::endl;
+        if (nOfGraphs < 100) {
+            ptableAccepted[nOfGraphs] =ptablePartialMC;
+            ctableAccepted[nOfGraphs] =ctablePartialMC;
+
+        }
+        std::cout << std::setprecision(3)<<ptablePartialMC << " " << ctablePartialMC <<std::endl;
+        
         SetPCTable(ptablePartialMC,ctablePartialMC);
         //denPartialGraphTrans->Draw("same");
         m_graph->Add(denPartialGraphTrans,"L");
@@ -235,11 +245,23 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         //gSystem->Sleep(10);
         
     }
+    TColor* color;
+    std::cout <<"ptable = {";
+    for (int i = 0; i < nOfGraphs; i++) {
+        std::cout << std::setprecision(3) << ptableAccepted[i] <<", ";
+    }
+    std::cout <<"};"<<std::endl;
+    std::cout <<"ctable = {";
+
+    for (int i = 0; i < nOfGraphs; i++) {
+        std::cout << std::setprecision(3) << ctableAccepted[i] <<", ";
+    }
     s_graph->doFill(1,nOfGraphs);
     expBand = (TGraphErrors*)s_graph->fillGraph->Clone();
-    expBand->SetFillColorAlpha(kMagenta, 0.8);
-    expBand->SetFillStyle(3010);
-    string s = "1-sigma fit ldmodel"+to_string(levelmodelNr);
+    //expBand->SetFillColorAlpha(kMagenta, 0.8);
+    expBand->SetFillColorAlpha(color->GetColor(87,132,186),0.7);
+    //expBand->SetFillStyle(3010);
+    string s = talysNames[levelmodelNr-1]+" (1#sigma fit to data)";
     expBand->SetTitle(s.c_str());
 
 }
@@ -339,7 +361,7 @@ void ShapeTalys::SetPCTable(double m_ptable, double m_ctable)
         e = denTotGraph->GetPointX(i) + m_ptable;
         
         //energy can be smaller zero at this point
-        if (e >= 0)
+        if ( (e >= 2) && (e <=10) )
             f = TMath::Exp((m_ctable)*TMath::Sqrt(denTotGraph->GetPointX(i) ));
         else
             continue;
@@ -458,7 +480,7 @@ void ShapeTalys::ReadDiscrete() {
     discreteMax = *max_element(ene.begin(), ene.end());
     
     //define histogram
-    discreteHist = new TH1F("disLevel","discrete Levels",((1000*(discreteMax+1)/sett->discreteBins)),-1,discreteMax);
+    discreteHist = new TH1F("disLevel","discrete levels",((1000.*(discreteMax)/sett->discreteBins)),0,discreteMax);
     
     //fill histogram
     for (int i = 0; i < ene.size(); i++)
@@ -467,4 +489,10 @@ void ShapeTalys::ReadDiscrete() {
     discreteHist->SetLineColor(kBlack);
 }
 
+TGraph* ShapeTalys::getDenPartialGraphTrans() {
+    TGraph* test = new TGraph();
+    *test = *denPartialGraphTrans;
+    return test;
+    
+}
 

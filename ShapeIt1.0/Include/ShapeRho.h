@@ -29,6 +29,7 @@ public:
     
     ShapeRho(ShapeSetting* t_setting);
     TGraphErrors *rhoGraph;
+    double rhoScaleTrafo = 1;        //scaling factor for transformed graph
     void Read();
     void Draw();
     TGraphAsymmErrors* rhoTrafoGraph(double alpha, double alpha_l, double alpha_h);

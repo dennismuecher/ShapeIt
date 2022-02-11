@@ -311,7 +311,10 @@ double ShapeGSF::getBgRatio(int bin, int level) {
 //prints the gSF values, sorted for egamma
 void ShapeGSF::Print() {
     std::cout << "\n\nResults for gamma ray strength function: " <<std::endl;
-    levGraph->Print();
+    for (int i = 0; i < levGraph->GetN(); i++) {
+        std::cout << levGraph->GetX()[i] <<" "<<levGraph->GetY()[i] <<" "<<levGraph->GetEY()[i]<<std::endl;
+    }
+    //levGraph->Print();
 }
 
 void ShapeGSF::Scale(double factor){

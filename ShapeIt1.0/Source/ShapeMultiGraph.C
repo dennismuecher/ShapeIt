@@ -16,6 +16,8 @@
 void ShapeMultiGraph::doFill(int min_index, int max_index) {
     
     fillGraph = new TGraphErrors();
+    fillGraphUpper = new TGraph();
+    fillGraphLower = new TGraph();
     fillGraph->Set(0);
     TIter next(fGraphs);
     TObject *obj;
@@ -55,6 +57,11 @@ void ShapeMultiGraph::doFill(int min_index, int max_index) {
         }
         fillGraph->SetPoint(fillGraph->GetN(), x, (y_min+y_max)/2.);
         fillGraph->SetPointError(fillGraph->GetN()-1, 0, (y_max - y_min)/2.);
+        fillGraphUpper->SetPoint(fillGraphUpper->GetN(), x, y_max);
+        fillGraphLower->SetPoint(fillGraphLower->GetN(), x, y_min);
+        fillGraphUpper->SetLineStyle(4);
+        fillGraphLower->SetLineStyle(4);
+
         //std::cout <<"y: " <<y_min << " " << y_max << std::endl;
     }
 }
