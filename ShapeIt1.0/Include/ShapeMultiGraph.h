@@ -31,7 +31,7 @@ This class is derived from TMultiGraph. Once TGraphs have been added, the functi
 class ShapeMultiGraph: public TMultiGraph {
 
 private:
-    double                  lower_ene = 2.0;
+    double                  lower_ene = 1.0;
     double                  higher_ene = 10.0;
     bool                    visible = true; //if true, the lines will be drawn
 

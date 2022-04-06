@@ -217,7 +217,7 @@ void ShapeRhoCollector::DiscreteBand() {
         discFit[i] = new ShapeTalys(sett, rhoTrafo, ldmodelNr);
         discFitGraph[i] = new TGraph();
         
-        double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3.3);
+        double m_ptable = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,3);
         std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable <<std::endl;
         discFit[i]->SetPCTable(m_ptable, cTableExtreme);
         discFitGraph[i] = discFit[i]->getDenPartialGraphTrans();
@@ -226,7 +226,7 @@ void ShapeRhoCollector::DiscreteBand() {
         disc_sgraph->Add(discFitGraph[i],"L");
         //disc_sgraph->Add(discFitGraph,"L");
         
-        double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,3,3.7);
+        double m_ptable2 = discFit[i]->PTableFromCTableDiscrete(cTableExtreme,2,2.8);
         std::cout <<"Best result for ctable = " <<cTableExtreme <<" : m_ptable: " <<m_ptable2 <<std::endl;
         discFit[i]->SetPCTable(m_ptable2, cTableExtreme);
         discFitGraph[i] = discFit[i]->getDenPartialGraphTrans();

@@ -361,7 +361,7 @@ void ShapeTalys::SetPCTable(double m_ptable, double m_ctable)
         e = denTotGraph->GetPointX(i) + m_ptable;
         
         //energy can be smaller zero at this point
-        if ( (e >= 2) && (e <=10) )
+        if ( (e >= 0.5) && (e <=10) )
             f = TMath::Exp((m_ctable)*TMath::Sqrt(denTotGraph->GetPointX(i) ));
         else
             continue;
