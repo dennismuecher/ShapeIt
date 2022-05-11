@@ -173,7 +173,7 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
     delete gROOT->FindObject("bestFitMC");
     bestFitMC = new TH2D("bestFitMC","ptable vs ctable from MC simulation",40,min_ptable,max_ptable,40,min_ctable,max_ctable);
     
-    int nOfIter = 51;
+    int nOfIter = 11;
     int nOfGraphs = 0;
     
     TGraph* m_rhoGraph = new TGraph();

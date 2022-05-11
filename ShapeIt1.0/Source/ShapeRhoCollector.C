@@ -49,7 +49,7 @@ ShapeRhoCollector::ShapeRhoCollector(ShapeSetting* p_sett) {
     ExpMC();
     
     //determine band of discrete level fits
-    DiscreteBand();
+    //DiscreteBand();
     
     //add literature Graph
     //AddLitGraph("/Users/dmuecher/iCloud/ShapeIt/ShapeIt1.0/Analysis/76Ge/NLD/ld_70_new_av.dat");
@@ -256,7 +256,6 @@ void ShapeRhoCollector::FillTalys() {
     
     ldmodelCounter = 0;
     for (int i = 0 ; i < 6; i++) {
-        std::cout <<" greetings from FillTalys! " <<i <<std::endl;
         if (sett->ldFileName[i]=="")
             continue;
         ldmodelCounter++;
