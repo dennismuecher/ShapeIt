@@ -46,7 +46,7 @@ private:
     void                    ExpNorm();              //finds normalization for level density
     void                    DiscreteBand();         //provides a fit of discrete levels
     double                  Chi2DiscreteExp(double eMin, double eMax, double norm); //chi2 between discrete levels and data
-    string                  talysNames[6]={"Const. temp. + Fermi","Back-shift. Fermi","Gen. superf.","HFB, Skyrme","HFB, Skyrme + comb.","temp. dep. HFB, Gogny"};
+    string                  talysNames[6]={"ld1: Const. temp. + Fermi","ld2: Back-shift. Fermi","ld3: Gen. superf.","ld4: HFB, Skyrme","ld5: HFB, Skyrme + comb.","ld6: temp. dep. HFB, Gogny"};
     
     
 public:

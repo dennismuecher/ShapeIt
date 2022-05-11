@@ -219,8 +219,8 @@ void ShapeGSF::FillgSF() {
             gSF1 = r->Gaus(gSF1,dgSF1);
             gSF2 = r->Gaus(gSF2,dgSF2);
             //now set error bars to zero, they are not used for anything anymore
-            dgSF1 = 0;
-            dgSF2 = 0;
+            //dgSF1 = 0;
+            //dgSF2 = 0;
         }
         
         //add a constant fractional error do dgSF as otherwise points with high statistics dominate all fitting results for the slope; in a way, this tries to account for hte fluctuations in the shape method

@@ -259,6 +259,7 @@ double ShapeCollector::mc_getChi2(){
         double y = gSFGraph->GetY()[i];
         double y_oslo = litCollector->GetLevGraph()->Eval(x);
         if (y > 0) {
+            //chi2 += TMath::Power( (y_oslo - y) /y_oslo, 2);
             chi2 += TMath::Power( (y_oslo - y) /y_oslo, 2);
         }
         else {

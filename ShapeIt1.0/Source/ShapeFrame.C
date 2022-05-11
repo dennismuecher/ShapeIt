@@ -1307,12 +1307,12 @@ void ShapeFrame::HandleMenu(Int_t id)
             ShapeRho *rho = new ShapeRho(sett);
 
             TGraphAsymmErrors* rhoTrafo = rho->rhoTrafoGraph(sett->lit_alpha,sett->lit_alpha - sett->lit_alpha_error[0], sett->lit_alpha + sett->lit_alpha_error[1] );
+            std::cout <<"Level densities after transformation with alpha = " <<sett->lit_alpha<<std::endl;
             for (int i = 0; i < rhoTrafo->GetN(); i++) {
                 double e = rhoTrafo->GetX()[i];
                 double r = rhoTrafo->GetY()[i];
                 double drHigh = rhoTrafo->GetEYhigh()[i];
                 double drLow = rhoTrafo->GetEYlow()[i];
-                std::cout <<"Level densities after transformation with alpha = " <<sett->lit_alpha<<std::endl;
                 std::cout << e <<" " << r << " + " << drHigh << " - " << drLow<<std::endl;
             }
             break;

@@ -156,17 +156,17 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         //m_graph->Add(rhoGraph, "APE");
         rhoGraph->Draw("APE");
     }
-    double min_ptable = 0.8;
-    double max_ptable = +2;
+    double min_ptable = -0.4;
+    double max_ptable = +1.4;
     
-    double min_ctable = 0.5;
-    double max_ctable = 1.4;
+    double min_ctable = -0.5;
+    double max_ctable =  1.4;
     
-    double ptable_mean = 1.36;
-    double ptable_sigma = 0.15;
+    double ptable_mean = 0.6;
+    double ptable_sigma = 0.45;
     
-    double ctable_mean = 0.85;
-    double ctable_sigma = 0.13;
+    double ctable_mean = 0.6;
+    double ctable_sigma = 0.45;
     
     ShapeMultiGraph* s_graph = new ShapeMultiGraph();
     
@@ -179,7 +179,14 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
     TGraph* m_rhoGraph = new TGraph();
     double ptableAccepted[100];
     double ctableAccepted[100];
+    TRandom3 *r = new TRandom3(0);
+
     for (int mc_run = 0; mc_run < nOfIter; mc_run++) {
+        
+        //shuffle lower_ene
+        double low_ene_rand = r->Gaus(lower_ene, 0.5);
+        std::cout <<"Random lower ene: " <<low_ene_rand<<std::endl;
+        
         //get new representation of level densities
         m_rhoGraph = MCRhoGraph();
         
@@ -199,7 +206,7 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
             for (double c = min_ctable; c < max_ctable; c +=0.025) {
 
                 SetPCTable(p,c);
-                chi2 = GetChi2PartialMC(lower_ene, higher_ene);
+                chi2 = GetChi2PartialMC(low_ene_rand, higher_ene);
                 if (chi2 < chi2_min) {
                     chi2_min = chi2;
                     ptablePartialMC = p;
@@ -229,7 +236,7 @@ void ShapeTalys::Chi2PartialLoopMC(double lower_ene, double higher_ene) {
         std::cout << std::setprecision(3)<<ptablePartialMC << " " << ctablePartialMC <<std::endl;
         
         SetPCTable(ptablePartialMC,ctablePartialMC);
-        //denPartialGraphTrans->Draw("same");
+        denPartialGraphTrans->Draw("same");
         m_graph->Add(denPartialGraphTrans,"L");
         denPartialGraphTrans->Draw("L same");
         s_graph->Add((TGraph*)denPartialGraphTrans->Clone(),"L");

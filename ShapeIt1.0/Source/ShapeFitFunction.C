@@ -22,7 +22,7 @@ private:
     bool fix_width;							//keep the width of all peaks the same during fit
     double bgRanges[4];						//ranges of the background (left and right region)
     double peakRanges[2];					//ranges of the peak
-    double multi_gaus[4];					//guass of multiplet peaks
+    double multi_gaus[4];					//gauss of multiplet peaks
     double gauss;							//gauss of main peak
     bool do_reject;							// flag to control if events outside the background ranges should be rejected
     

@@ -151,7 +151,7 @@ void ShapeRhoCollector::ExpMC() {
     
     for (int i = 0 ; i < 6; i++) {
         if (ldmodel[i] && ldmodelChi2Display[i])
-            ldmodel[i]->Chi2PartialLoopMC(2.5, 6.0);
+            ldmodel[i]->Chi2PartialLoopMC(2.2, 4);
     }
 }
 
@@ -208,6 +208,7 @@ void ShapeRhoCollector::DiscreteBand() {
     
     double cTableExtreme = -0.7;
     int ldmodelNr = 5;
+    double ctableBak = sett->cTable[ldmodelNr-1];
     ShapeTalys* discFit[15];
     ShapeMultiGraph* disc_sgraph = new ShapeMultiGraph();
     
@@ -232,11 +233,11 @@ void ShapeRhoCollector::DiscreteBand() {
         discFitGraph[i] = discFit[i]->getDenPartialGraphTrans();
         discFitGraph[i]->SetLineWidth(4);
         discFitGraph[i]->SetLineColor(kBlack);
-        disc_sgraph->Add(discFitGraph[i],"L");
+        //disc_sgraph->Add(discFitGraph[i],"L");
 
     }
 
-    disc_sgraph->doFill(1,30);
+    disc_sgraph->doFill(1,15);
 
     //discBand = (TGraphErrors*)disc_sgraph->fillGraph->Clone();
     discBand = new TGraphErrors();
@@ -256,7 +257,6 @@ void ShapeRhoCollector::FillTalys() {
     
     ldmodelCounter = 0;
     for (int i = 0 ; i < 6; i++) {
-        std::cout <<" greetings from FillTalys! " <<i <<std::endl;
         if (sett->ldFileName[i]=="")
             continue;
         ldmodelCounter++;
@@ -265,9 +265,22 @@ void ShapeRhoCollector::FillTalys() {
         
         ldmodelGraph[i] = ldmodel[i]->getDenPartialGraphTrans();
         
-        ldmodelGraph[i]->SetTitle((talysNames[i]+" (RIPL3)").c_str());
+        ldmodelGraph[i]->SetTitle((talysNames[i]).c_str());
         ldmodelGraph[i]->SetLineColor(kBlack);
         ldmodelGraph[i]->SetLineWidth(3);
+        switch(i) {
+          case 3:
+            ldmodelGraph[i]->SetLineStyle(2);
+            break;
+          case 4:
+            ldmodelGraph[i]->SetLineStyle(1);
+            break;
+          case 5:
+            ldmodelGraph[i]->SetLineStyle(3);
+            break;
+          
+        }
+        
         
     }
 }
