@@ -191,7 +191,7 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     
     TGLabel *l7 = new TGLabel(fEnergy[6], "   gSF scaling");
     fEnergy[6]->AddFrame(l7, fR2);
-    scaling = new TGNumberEntry(fEnergy[6], 0.012, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEAPositive,TGNumberFormat::kNELLimitMinMax,0, 9999999);
+    scaling = new TGNumberEntry(fEnergy[6], 1, 9,10, TGNumberFormat::kNESReal,TGNumberFormat::kNEAPositive,TGNumberFormat::kNELLimitMinMax,0, 9999999);
     scaling->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[6]->AddFrame(scaling, fR2);
     fG[3]->AddFrame(fEnergy[6], fL2);
@@ -337,10 +337,12 @@ void ShapeFrame::UpdateGuiSetting(ShapeSetting *sett_t)
     
     if (sett->doAutoScale) {
         autoScale->SetState(kButtonDown);
+        scaling->SetNumber(sett_t->gSF_norm);
         scaling->SetState(false);
     }
     else {
         autoScale->SetState(kButtonUp);
+        scaling->SetNumber(sett_t->gSF_norm);
         scaling->SetState(true);
     }
     
@@ -589,7 +591,6 @@ void ShapeFrame::DoRadio()
             break;
         case 40:
             sett->doAutoScale = !sett->doAutoScale;
-            ShowGraph();
             UpdateGuiSetting(sett);
             break;
     }
@@ -1147,14 +1148,12 @@ void ShapeFrame::HandleMenu(Int_t id)
             new TGFileDialog(gClient->GetRoot(), fMain, kFDSave, &fi_sett);
 
             if (fi_sett.fFilename) {
-                //store absolute pathname
+                //store relative pathname
                 std::string sname = fi_sett.fFilename;
-
-                sett->settFileName = sname;
-
-                //convert to filename, only (for the display)
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 fMain->SetWindowName(sname.c_str());
+                sett->settFileName = sname;
+                
                 //call save settings
 
                 sett->SaveSettings();
@@ -1183,7 +1182,10 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                sett->osloFileName = fi_sett.fFilename;
+                //save relative file name
+                std::string sname = fi_sett.fFilename;
+                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+                sett->osloFileName = sname;
                 sett->doOslo = true;
                 UpdateGuiSetting(sett);
             }
@@ -1199,7 +1201,10 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                sett->effiFileName = fi_sett.fFilename;
+                //save relative file name
+                std::string sname = fi_sett.fFilename;
+                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+                sett->effiFileName = sname;
                 sett->doEffi = true;
                 sett->readEffi();
                 UpdateGuiSetting(sett);
@@ -1215,7 +1220,10 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                sett->rhoFileName = fi_sett.fFilename;
+                //save relative file name
+                std::string sname = fi_sett.fFilename;
+                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
+                sett->rhoFileName = sname;
                 UpdateGuiSetting(sett);
             }
             break;

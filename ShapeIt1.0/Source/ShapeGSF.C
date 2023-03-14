@@ -60,10 +60,8 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
         
         double e_gamma;
         double oslo_gSF_high, oslo_gSF_low, oslo_gSF, oslo_dgSF;
-        
         while ( !inp.eof() ) {
             inp >> e_gamma >> oslo_gSF_high >>oslo_gSF_low;
-            
             oslo_gSF = ( oslo_gSF_high + oslo_gSF_low ) / 2;
             oslo_dgSF =( oslo_gSF_high - oslo_gSF_low ) / 2;
             
