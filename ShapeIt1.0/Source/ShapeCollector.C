@@ -212,7 +212,7 @@ void ShapeCollector::Merge() {
         Smooth(0);
 }
 
-//calcualtion of a normalization factor to match T1 to T2
+//calcualation of a normalization factor to match T1 to T2
 double ShapeCollector::Norm(ShapeGSF* T1, ShapeGSF* T2 ) {
     
     double c1 = 0, c2 = 0;
@@ -220,13 +220,24 @@ double ShapeCollector::Norm(ShapeGSF* T1, ShapeGSF* T2 ) {
     std::vector<double> da;
     std::vector<double> b;
     
+    //determine maximum energy stored in T2 graph; I assume T2 is sorted in energy
+    
+    int nOfEntriesT2 = T2->GetLevGraph()->GetN();
+    double maxE = T2->GetLevGraph()->GetX()[nOfEntriesT2-1];
+    std::cout <<"max Energy: " << maxE <<std::endl;
     for (int i = 0; i < T1->GetLevGraph()->GetN(); i++) {
+        //stop once we reach the highest energy stored in T2
+        if (T1->GetLevGraph()->GetX()[i] > maxE ) {
+            std::cout <<"energy of T1: " << T1->GetLevGraph()->GetX()[i] <<std::endl;
+            break;
+        
+        }
         a.push_back( T1->GetLevGraph()->GetY()[i] );
         da.push_back( T1->GetLevGraph()->GetEY()[i] );
         b.push_back( T2->GetLevGraph()->Eval( T1->GetLevGraph()->GetX()[i] ) );
     }
     
-    for (int i = 0; i < T1->GetLevGraph()->GetN(); i++) {
+    for (int i = 0; i < a.size(); i++) {
         //in case of MC mode, there are no error bars
         if (m_sett->doMC) {
             c1 += ( a[i] * b[i] );
