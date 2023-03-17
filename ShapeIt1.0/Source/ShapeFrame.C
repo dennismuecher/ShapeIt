@@ -1016,6 +1016,7 @@ void ShapeFrame::HandleVerboseMenu(int vLevel) {
 
 //opens the settings file with name sname and loades main ShapeIt Window etc.
 void ShapeFrame::OpenSettingFile(std::string sname) {
+    
     //store absolute pathname
     sett->settFileName = sname;
 
@@ -1029,10 +1030,9 @@ void ShapeFrame::OpenSettingFile(std::string sname) {
     HandleVerboseMenu(sett->verbose);
     fMain->SetWindowName(sname.c_str());
 
-    //get nme of root file containing matrix
+    //get name of root file containing matrix
     mname = sett->dataFileName;
-    mname = mname.substr(mname.find_last_of("\\/") + 1, mname.length());
-
+    
     //create Matrix object
     matrix = new ShapeMatrix(sett);
 
@@ -1148,12 +1148,11 @@ void ShapeFrame::HandleMenu(Int_t id)
             new TGFileDialog(gClient->GetRoot(), fMain, kFDSave, &fi_sett);
 
             if (fi_sett.fFilename) {
-                //store relative pathname
+                //relative pathname for display
                 std::string sname = fi_sett.fFilename;
+                sett->settFileName = sname;
                 sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
                 fMain->SetWindowName(sname.c_str());
-                sett->settFileName = sname;
-                
                 //call save settings
 
                 sett->SaveSettings();
@@ -1182,10 +1181,8 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                //save relative file name
-                std::string sname = fi_sett.fFilename;
-                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
-                sett->osloFileName = sname;
+                //save file name
+                sett->osloFileName = fi_sett.fFilename;
                 sett->doOslo = true;
                 UpdateGuiSetting(sett);
             }
@@ -1201,10 +1198,8 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                //save relative file name
-                std::string sname = fi_sett.fFilename;
-                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
-                sett->effiFileName = sname;
+                //save file name
+                sett->effiFileName = fi_sett.fFilename;
                 sett->doEffi = true;
                 sett->readEffi();
                 UpdateGuiSetting(sett);
@@ -1220,10 +1215,8 @@ void ShapeFrame::HandleMenu(Int_t id)
             
             new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi_sett);
             if (fi_sett.fFilename) {
-                //save relative file name
-                std::string sname = fi_sett.fFilename;
-                sname = sname.substr(sname.find_last_of("\\/") + 1, sname.length());
-                sett->rhoFileName = sname;
+                //save file name
+                sett->rhoFileName = fi_sett.fFilename;
                 UpdateGuiSetting(sett);
             }
             break;

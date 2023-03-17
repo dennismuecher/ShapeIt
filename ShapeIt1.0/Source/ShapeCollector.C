@@ -224,14 +224,10 @@ double ShapeCollector::Norm(ShapeGSF* T1, ShapeGSF* T2 ) {
     
     int nOfEntriesT2 = T2->GetLevGraph()->GetN();
     double maxE = T2->GetLevGraph()->GetX()[nOfEntriesT2-1];
-    std::cout <<"max Energy: " << maxE <<std::endl;
     for (int i = 0; i < T1->GetLevGraph()->GetN(); i++) {
         //stop once we reach the highest energy stored in T2
-        if (T1->GetLevGraph()->GetX()[i] > maxE ) {
-            std::cout <<"energy of T1: " << T1->GetLevGraph()->GetX()[i] <<std::endl;
+        if (T1->GetLevGraph()->GetX()[i] > maxE )
             break;
-        
-        }
         a.push_back( T1->GetLevGraph()->GetY()[i] );
         da.push_back( T1->GetLevGraph()->GetEY()[i] );
         b.push_back( T2->GetLevGraph()->Eval( T1->GetLevGraph()->GetX()[i] ) );
