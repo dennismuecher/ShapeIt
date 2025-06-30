@@ -500,7 +500,7 @@ void ShapeFrame::fBinComboDraw(TGComboBox *combo)
     char name[50];
     combo->RemoveAll();
     for (int i = 1; i < sett->nOfBins+1 ; i++) {
-        sprintf(name,"bin %d",i);
+        snprintf(name,50,"bin %d",i);
         combo->AddEntry(name,i);
     }
     combo->Resize(80,20);
@@ -1075,16 +1075,31 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_FILE_OPEN:
         {
+            //static TString dir(".");
+            //std::cout <<"Alive!"<<std::endl;
+            //TGFileInfo fi;
+            //fi.fFileTypes = filetypes;
+            //std::cout <<"Alive2!"<<std::endl;
+            //std::cout << &fi <<std::endl;
+            //fi.fIniDir    = StrDup(dir);
+            //std::cout <<"Alive3!"<<std::endl;
+            
             static TString dir(".");
+                        TGFileInfo fi;
+                        fi.fFileTypes = filetypes;
+                        fi.SetIniDir(dir);
+                        printf("fIniDir = %s\n", fi.fIniDir);
+                        new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi);
+                        printf("Open file: %s (dir: %s)\n", fi.fFilename, fi.fIniDir);
+                        dir = fi.fIniDir;
             
-            fi.fFileTypes = filetypes;
-            fi.fIniDir    = StrDup(dir);
             
-            new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi);
+            
+            
+            //new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi);
             if (fi.fFilename) {
                 //make sure the previous settings file will not be overwritten
                 sett->settFileName="";
-                
                 mname = fi.fFilename;
                 //store absolute pathname
                 sett->SetFileName(mname);

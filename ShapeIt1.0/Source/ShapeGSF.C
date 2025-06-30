@@ -148,7 +148,6 @@ void ShapeGSF::Transform(double B_t, double alpha_t) {
 
 //fills of levGraph_1 and levGraph_2 with values
 void ShapeGSF::FillgSF() {
-   
     //clean up matrix
     m_matrix->Reset();
     

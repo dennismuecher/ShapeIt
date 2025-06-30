@@ -72,8 +72,8 @@ TH1D* ShapeMatrix::GetDiagEx(int bbin, std::string title) {
     if (bbin <= ybins) {
         char name[50];
         char title[50];
-        sprintf(name,"diag_bin%d",bbin);
-        sprintf(title,"projection %d - %d ",(int) ( (bbin -1) * esize + ene0 ), (int) ( bbin * esize + ene0 ) );
+        snprintf(name,50,"diag_bin%d",bbin);
+        snprintf(title,50,"projection %d - %d ",(int) ( (bbin -1) * esize + ene0 ), (int) ( bbin * esize + ene0 ) );
         
 		//delet eprevious object
 		delete gROOT->FindObject(name);
@@ -267,7 +267,7 @@ void ShapeMatrix::FitIntegral(){
 
 //performs a gauss fit to histo of bin "bin" for level 1 (level =0) or level 2 (level =1)
 void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
-    char name[20];
+    char name[50];
     bool is_doublet = true;
     //background regions
     double bgRange[4];
@@ -309,7 +309,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     fitfunc->SetBgRanges(bgRange);
     
     //TF1 object for the fit
-    sprintf(name,"fit_level%d_bin%d",level+1, bin);
+    snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     if (is_doublet)
 		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 8 );
 	else
@@ -385,7 +385,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     }
     
     //perform fit
-    sprintf(name,"fit_level%d_bin%d",level+1, bin);
+    snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
 	//fix all fit parameters and refitfit function without rejection for a nicer display

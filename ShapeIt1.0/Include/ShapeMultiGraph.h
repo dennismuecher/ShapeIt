@@ -41,8 +41,8 @@ public:
     TGraph*                 fillGraphLower;     //lower bounds of fillGraph; used to plot boundary lines
     void                    doFill(int min_index, int max_index);
     
-    void                    getLowerEne() {return lower_ene;}
-    void                    getHigherEne() {return higher_ene;}
+    double                    getLowerEne() {return lower_ene;}
+    double                    getHigherEne() {return higher_ene;}
     void                    setLowerEne(double p_lower_ene) {lower_ene = p_lower_ene;}
     void                    setHigherEne(double p_higher_ene) {higher_ene = p_higher_ene;}
 

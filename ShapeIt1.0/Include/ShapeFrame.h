@@ -102,9 +102,9 @@ enum ETestCommandIdentifiers {
 };
 
 
-const char *filetypes[2] = {"ROOT files", "*.root"};
-const char *filetypes_s[2] = {"dat files", "*.dat"};
-const char *filetypes_t[2] = {"txt files", "*.txt"};
+const char *filetypes[] = {"ROOT files", "*.root",0, 0};
+const char *filetypes_s[] = {"dat files", "*.dat", 0, 0};
+const char *filetypes_t[] = {"txt files", "*.txt", 0, 0};
 
 class ShapeFrame {
     RQ_OBJECT("ShapeFrame");
@@ -204,7 +204,7 @@ public:
     
     void Scale(Double_t scale);					//scale results of gSF and refresh display
     double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
-    TGFileInfo fi;                              //file containing matrix
+    //TGFileInfo fi;                              //file containing matrix
     void TransGraph();
     TMultiGraph *wgraph ;
     double lit_chi2 = 0;                    //value of chi2 fit of lit gSF to fit gSF
