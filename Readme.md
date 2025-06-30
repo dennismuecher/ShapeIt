@@ -4,5 +4,7 @@ This software allows extracting the gamma-ray strength function for a given nucl
 
 To run ShapeIt, change to ShapeIt1.0/Source and say "root ShapeIt.C"
 
-Currently, ShapeIt is only tested using root 6.16.00 under Mac Os 10.14 (Mojave). ShapeIt seems NOT to run under Root5. 
+Currently, ShapeIt is tested using root 6.34.08 under Mac Os 14.5 (Sonoma). Please report any bugs or incompatibilities with different operating systems or root versions, thank you!
+
+Dennis
 
