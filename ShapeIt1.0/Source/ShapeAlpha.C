@@ -144,9 +144,12 @@ void ShapeAlpha::AlphaRange() {
 //calculates the chi2 values relative to literature values for a range of alpha values
 void ShapeAlpha::Chi2Loop() {
     
-    double alphaX[nOfPoints*nOfExi];
-    double chi2Y[nOfPoints*nOfExi];
-    double enes[nOfPoints*nOfExi];
+    std::vector<double> alphaX(nOfPoints * nOfExi);
+    //double alphaX[nOfPoints*nOfExi];
+    std::vector<double> chi2Y(nOfPoints * nOfExi);
+    std::vector<double> enes(nOfPoints * nOfExi);
+    //double chi2Y[nOfPoints*nOfExi];
+    //double enes[nOfPoints*nOfExi];
     int pointC = 0;
     
     //store current values of alpha and exiEne[0]
@@ -171,7 +174,7 @@ void ShapeAlpha::Chi2Loop() {
     
     //store values in chi2Graph
     //delete chi2Graph;
-    chi2Graph = new TGraph(nOfPoints, alphaX, chi2Y);
+    chi2Graph = new TGraph(nOfPoints, alphaX.data(), chi2Y.data());
     chi2Graph->SetMarkerStyle(22);
     chi2Graph->SetMarkerColor(6);
     chi2Graph->SetTitle("#chi^{2} fit to literature gSF data; slope #alpha; #chi^{2}" );

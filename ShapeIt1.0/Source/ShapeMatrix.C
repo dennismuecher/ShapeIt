@@ -504,32 +504,22 @@ void ShapeMatrix::Diag(){
 
 TGraph* ShapeMatrix::getFitWidthGraph(int level) {
     
-    std::vector <double> width;
-    std::vector <double> allgamma;
-
+    const std::vector<double>& width = (level == 0) ? width1 : width2;
+    const std::vector<double>& allgamma = (level == 0) ? allgamma1 : allgamma2;
+    
     double peakEne = ( sett->levEne[2*level] + sett->levEne[2*level+1] ) /2;
-    if (level == 0) {
-        width = width1;
-        allgamma  = allgamma1;
-    }
-    else {
-        width = width2;
-        allgamma = allgamma2;
-    }
+
+    std::vector<double> x;
+    std::vector<double> y;
     
-    double x[width.size()];
-    double y[width.size()];
-    
-    int counter = 0;
     for (int i = 0; i < width.size(); i++) {
         if (allgamma[i] >= sett->exiEne[0] - peakEne && allgamma[i] <= sett->exiEne[1] - peakEne && width[i] > 0) {
-            x[counter] = allgamma[i];
-            y[counter] = width[i];
-            counter++;
+           x.push_back(allgamma[i]);
+            y.push_back(width[i]);
         }
     }
     
-    TGraph *T = new TGraph(counter, x, y);
+    TGraph *T = new TGraph(x.size(), x.data(), y.data());
     
     if (level == 0)
         T->SetMarkerColor(kRed);
