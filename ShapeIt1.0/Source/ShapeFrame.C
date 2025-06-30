@@ -1075,15 +1075,6 @@ void ShapeFrame::HandleMenu(Int_t id)
         }
         case M_FILE_OPEN:
         {
-            //static TString dir(".");
-            //std::cout <<"Alive!"<<std::endl;
-            //TGFileInfo fi;
-            //fi.fFileTypes = filetypes;
-            //std::cout <<"Alive2!"<<std::endl;
-            //std::cout << &fi <<std::endl;
-            //fi.fIniDir    = StrDup(dir);
-            //std::cout <<"Alive3!"<<std::endl;
-            
             static TString dir(".");
                         TGFileInfo fi;
                         fi.fFileTypes = filetypes;
@@ -1093,10 +1084,6 @@ void ShapeFrame::HandleMenu(Int_t id)
                         printf("Open file: %s (dir: %s)\n", fi.fFilename, fi.fIniDir);
                         dir = fi.fIniDir;
             
-            
-            
-            
-            //new TGFileDialog(gClient->GetRoot(), fMain, kFDOpen, &fi);
             if (fi.fFilename) {
                 //make sure the previous settings file will not be overwritten
                 sett->settFileName="";
