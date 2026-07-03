@@ -1,0 +1,58 @@
+site_name: ShapeIt
+site_description: Symmetric sewing and Monte Carlo uncertainty quantification for the Shape method
+repo_url: https://github.com/dennismuecher/ShapeIt
+repo_name: dennismuecher/ShapeIt
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Input data format: data-format.md
+  - User guide:
+      - "1. Loading a matrix": user-guide/loading-a-matrix.md
+      - "2. Defining the two levels": user-guide/defining-levels.md
+      - "3. Choosing mode and binning": user-guide/mode-and-binning.md
+      - "4. Options and sewing": user-guide/options-and-sewing.md
+      - "5. Running ShapeIt and reading results": user-guide/running-and-results.md
+      - "6. Monte Carlo uncertainty and absolute level density": user-guide/monte-carlo-uncertainty.md
+  - The algorithm: algorithm.md
+  - Settings files: settings-files.md
+  - API Reference: api.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.arithmatex:
+      generic: true
+  - attr_list
+  - md_in_html
+  - footnotes
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
