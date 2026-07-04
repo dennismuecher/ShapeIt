@@ -48,6 +48,21 @@ result.
 - **Start MC!** — runs the randomized procedure. The button toggles to a
   stop control while running, so you can interrupt a long run early.
 
+!!! important "Why the lower edge matters"
+    The extracted slope correction $\delta\alpha$ depends on which γ-ray
+    energies are included in the χ² comparison between the Shape-method γSF
+    and the literature γSF. This sensitivity is not a numerical artefact —
+    it reflects real physics. The Shape method relies on the nucleus behaving
+    statistically, which breaks down at **low excitation energy**, where
+    individual levels and non-statistical structure dominate and the ratio of
+    Eq. for $R$ (see [The algorithm](../algorithm.md)) no longer cleanly
+    reflects the γSF. Including bins that are too low therefore biases the
+    slope. Varying the lower edge of the excitation-energy range is what lets
+    the Monte Carlo fold this sensitivity into $\delta\alpha$ and its
+    uncertainty, rather than committing to one (possibly too-low) starting
+    energy. Choose the **Lower / Higher excitation energy** window so it
+    stays within the range where the Shape method is valid for your nucleus.
+
 On each iteration, ShapeIt redraws:
 
 1. the excitation-energy bin width (uniformly, over the same range as the
@@ -62,6 +77,17 @@ On each iteration, ShapeIt redraws:
 then repeats diagonal extraction, peak fitting, and symmetric sewing from
 scratch, and records the best-fit $\alpha$ from a χ² comparison against the
 (resampled) comparison curve.
+
+### Watching the run
+
+While the Monte Carlo runs, the main plot shows the current iteration's
+Shape-method γSF overlaid with that iteration's *resampled* literature γSF —
+so **both curves change from iteration to iteration**, the Shape data
+because it's re-extracted with freshly drawn bins and peak areas, and the
+literature curve because each of its points is redrawn within its
+uncertainty. To keep the randomization from being slowed down by constant
+redrawing, the display refreshes only every **10th** iteration; the
+underlying calculation still runs every iteration.
 
 ## Reading the result
 
