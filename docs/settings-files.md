@@ -50,7 +50,15 @@ per line: a keyword followed by its value(s). The main keys are:
 !!! tip
     You don't need to hand-edit these files — **Save Settings as...** writes
     a complete, valid file from your current GUI state. Hand-editing is
-    mainly useful for scripting a batch of related analyses.
+    mainly useful for the few settings with no GUI control (the `MeV:` unit
+    flag and the doublet windows `level1_2` / `level2_2`), or for scripting a
+    batch of related analyses.
+
+!!! warning "Reload after hand-editing"
+    ShapeIt reads the settings file only when you load it — it does **not**
+    watch the file for background changes. If you edit the file by hand while
+    ShapeIt is open, the change has no effect until you re-read it with
+    **Settings → Load Settings**.
 
 ## Related loaders and their file formats
 
