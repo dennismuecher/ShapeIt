@@ -121,10 +121,12 @@ and [The algorithm](algorithm.md) work with directly.
 
 ## Citing ShapeIt
 
-If you use ShapeIt in a publication, please cite the Shape method itself and
-the ShapeIt software:
+If you use ShapeIt in a publication, please cite:
+
+- D. Mücher, A. Spyrou, M. Wiedeking, M. Guttormsen, A. C. Larsen, F. Zeiser, C. Harris, A. L. Richard, M. K. Smith, A. Görgen, S. N. Liddick, S. Siem, *et al.*, *Extracting model-independent nuclear level densities away from stability*, Phys. Rev. C **107** (2023) L011602. [doi:10.1103/PhysRevC.107.L011602](https://doi.org/10.1103/PhysRevC.107.L011602)
+
+The Shape method itself was introduced in:
+
+- M. Wiedeking, M. Guttormsen, A. C. Larsen, F. Zeiser, A. Görgen, S. N. Liddick, D. Mücher, S. Siem, A. Spyrou, *Independent normalization for γ-ray strength functions: The shape method*, Phys. Rev. C **104** (2021) 014311. [doi:10.1103/PhysRevC.104.014311](https://doi.org/10.1103/PhysRevC.104.014311)
 
 [^1]: M. Wiedeking, M. Guttormsen, A. C. Larsen, F. Zeiser, A. Görgen, S. N. Liddick, D. Mücher, S. Siem, A. Spyrou, *Independent normalization for γ-ray strength functions: The shape method*, Phys. Rev. C **104** (2021) 014311. [doi:10.1103/PhysRevC.104.014311](https://doi.org/10.1103/PhysRevC.104.014311)
-
-- D. Mücher, A. Spyrou, *ShapeIt: a software framework for the model-independent extraction of the γ-ray strength function and absolute partial level density with the Shape method*, Nucl. Instrum. Methods Phys. Res. A, in preparation.
-- D. Mücher, A. Spyrou, M. Wiedeking, M. Guttormsen, A. C. Larsen, F. Zeiser, C. Harris, A. L. Richard, M. K. Smith, A. Görgen, S. N. Liddick, S. Siem, *et al.*, *Extracting model-independent nuclear level densities away from stability*, Phys. Rev. C **107** (2023) L011602. [doi:10.1103/PhysRevC.107.L011602](https://doi.org/10.1103/PhysRevC.107.L011602)
