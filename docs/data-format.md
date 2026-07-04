@@ -11,18 +11,19 @@ the matrix dropdown once the file is loaded.
 | x | γ-ray energy, Eγ | keV |
 | y | Excitation energy, Ex | keV |
 
-!!! warning "Units: keV is strongly recommended"
-    ShapeIt works most naturally with a matrix binned in **keV**, and all the
+!!! warning "Your matrix must be in keV"
+    ShapeIt expects the input matrix to be binned in **keV**, and all the
     energy windows you type into the **Energies** panel are interpreted in
-    keV. There is no GUI control to switch units — the only way to tell
-    ShapeIt your matrix is in MeV is to set the `MeV:` key in the
-    [settings file](settings-files.md#file-format) by hand
-    (`MeV: 1` for a keV matrix, `MeV: 1000` for a MeV matrix), then re-read
-    it with **Settings → Load Settings**. ShapeIt does **not** notice
-    settings-file edits made in the background, so the reload is required for
-    the change to take effect. Because this path is easy to forget, the
-    simplest approach is to prepare your input matrix in keV in the first
-    place.
+    keV. If your matrix is in **MeV**, convert its axes to keV *before*
+    loading it into ShapeIt — e.g. rebin/relabel the `TH2` axes so a
+    transition at 0.8 MeV sits at 800 keV.
+
+    A `MeV:` flag does exist in the [settings file](settings-files.md#file-format),
+    intended to handle MeV matrices internally, but it is **not reliable** —
+    it does not consistently convert the axis coordinates used for peak
+    finding, so peak windows may fail to line up with your data. Converting
+    the matrix to keV up front is the supported, dependable approach; don't
+    rely on the flag.
 
 ## What the matrix should contain
 

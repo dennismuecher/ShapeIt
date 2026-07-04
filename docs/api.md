@@ -17,7 +17,6 @@ under `ShapeIt1.0/Source`:
 | `ShapeInfo` | `ShapeInfo.C` | The "About" info panel |
 
 !!! info "Auto-generated reference"
-    This table is a manually curated map of the codebase. If you'd like a
-    fully auto-generated, function-level API reference (e.g. via Doxygen),
-    I'm happy to set that up as a follow-up — it works well alongside this
-    narrative guide.
+    This table is a manually curated map of the codebase. A fully
+    auto-generated, function-level API reference (e.g. via Doxygen) could
+    complement this narrative guide.

@@ -22,7 +22,7 @@ per line: a keyword followed by its value(s). The main keys are:
 
 | Key | Meaning |
 |---|---|
-| `MeV:` | Unit scale factor (1 = matrix already in keV, 1000 = matrix in MeV) |
+| `MeV:` | Intended unit flag (1 = keV, 1000 = MeV) — **unreliable, see the [units warning](data-format.md); convert your matrix to keV instead** |
 | `mode` | Integration (1) or Autofit (2) |
 | `level1`, `level2` | Window (low, high) on the Ex − Eγ axis bracketing final level $L_1$ / $L_2$ |
 | `level1_2`, `level2_2` | Optional second window per level, for **doublet** peak fitting — see the walkthrough in [Defining the two levels](user-guide/defining-levels.md#fitting-a-peak-as-a-doublet). Leave at `0 0` for a single peak. |
@@ -117,12 +117,12 @@ energy    rho    rho_error
 
 ### Load Efficiency Calibration...
 
-This is the **energy-dependent** efficiency correction — yes, it's the
-energy-dependent counterpart to the scalar **Eff. Corr.** field. When
-loaded, it's interpolated and applied to *both* levels at their respective
-γ-ray energies (returning a factor of 1 outside the energy range covered by
-the file), and it combines with the scalar **Eff. Corr.** (which always
-additionally multiplies Level 2). See
+This is the **energy-dependent** efficiency correction — the energy-dependent
+counterpart to the scalar **Eff. Corr.** field. When loaded, it's
+interpolated and applied to *both* levels at their respective γ-ray energies
+(returning a factor of 1 outside the energy range covered by the file), and
+it combines with the scalar **Eff. Corr.** (which always additionally
+multiplies Level 2). See
 [Choosing mode and binning](user-guide/mode-and-binning.md#eff-corr).
 
 Two columns per line:

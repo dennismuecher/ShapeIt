@@ -13,26 +13,25 @@ excitation-energy bin:
   nearby contaminant lines. The fitted Gaussian's integral is used as the
   peak's intensity, in place of the raw sum.
 
-### Does Integration mode use the same background fit as Autofit?
+### How background subtraction works in each mode
 
-Yes — but not in the way you might expect. When **Background subtraction**
-is enabled, ShapeIt always performs the Autofit-style Gaussian-on-background
-fit internally to obtain a background estimate under each peak, *regardless*
-of which Mode is selected. What differs between the two modes is what
-happens to the **signal**:
+When **Background subtraction** is enabled, ShapeIt performs the
+Autofit-style Gaussian-on-background fit internally to obtain a background
+estimate under each peak, *regardless* of which Mode is selected. What
+differs between the two modes is how the **signal** is treated:
 
 - In **Autofit** mode, the peak's reported intensity is the fitted
   Gaussian's integral, with the fitted background's integral subtracted.
-- In **Integration** mode, the peak's reported intensity is still the raw
-  rectangular sum over the peak window — but that raw sum is then rescaled
-  by the fraction of it that the background fit says *isn't* background,
-  i.e. by $(\text{raw sum} - \text{fitted background})/\text{raw sum}$.
+- In **Integration** mode, the peak's reported intensity is the raw
+  rectangular sum over the peak window, rescaled by the fraction of it that
+  the background fit identifies as signal rather than background, i.e. by
+  $(\text{raw sum} - \text{fitted background})/\text{raw sum}$.
 
-So both modes end up using the same underlying background fit when
-background subtraction is on; Integration mode just applies it as a
-correction factor to the raw counts rather than replacing the counts with
-the fitted peak shape. If **Background subtraction** is off, Integration
-mode uses the raw rectangular sum with no correction at all.
+Both modes therefore use the same underlying background fit when background
+subtraction is on; Integration mode applies it as a correction factor to the
+raw counts rather than replacing the counts with the fitted peak shape. If
+**Background subtraction** is off, Integration mode uses the raw rectangular
+sum with no correction.
 
 ## Binning the excitation-energy axis
 
