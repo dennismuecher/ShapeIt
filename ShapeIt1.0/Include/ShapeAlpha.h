@@ -20,6 +20,7 @@
 #include "ShapeCollector.h"
 
 #include <TGraph.h>
+#include <TPaveText.h>
 
 
 /* **************************************************************************
@@ -59,6 +60,7 @@ public:
     
     //constructor
     ShapeAlpha(ShapeSetting* t_sett, ShapeCollector* t_collector);
+    ~ShapeAlpha();
     
     TGraph*             getChi2Graph() {return chi2Graph;}
     double              getMinChi2()   {return minChi2;}

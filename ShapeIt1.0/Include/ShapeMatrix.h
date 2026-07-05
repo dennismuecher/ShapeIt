@@ -21,6 +21,8 @@
 
 #include "ShapeSetting.h"
 
+class ShapeFitFunction;
+
 #include <TMath.h>
 #include <TObject.h>
 #include <TFile.h>
@@ -38,11 +40,11 @@ private:
     ShapeSetting * sett;
     TFile* dataFile;                           //the data file containing the matrix
     TH2* inputMatrix;                          //the input matrix in dataFile
-    TH1F* diag;	                                //the matrix of (excitation energy - gamma-ray energy)
-    TH2F* diagEx;                               ///diag matrix vs excitation energy
+    TH1F* diag = nullptr;	                                //the matrix of (excitation energy - gamma-ray energy)
+    TH2F* diagEx = nullptr;                               ///diag matrix vs excitation energy
     
-    TH2F* diagExSquare;                           //diag matrix with factor E_g^2 for each entry vs excitation energy; used for calculating the average E_gamma for each bin
-    TH2F* diagExCube;                           //diag matrix with factor E_g^3 for each entry vs excitation energy
+    TH2F* diagExSquare = nullptr;                           //diag matrix with factor E_g^2 for each entry vs excitation energy; used for calculating the average E_gamma for each bin
+    TH2F* diagExCube = nullptr;                           //diag matrix with factor E_g^3 for each entry vs excitation energy
     void diagMatrix();	                       //creates the diagonalized matrices
     void openMatrix();                         //opens the matrix defined in settings
     void openMatrix(std::string fname);              //open root file with name fname
@@ -60,6 +62,7 @@ private:
     
 public:
 	ShapeMatrix(ShapeSetting* setting);
+    ~ShapeMatrix();
     
 	double GetEne0() {return ene0;}
 	double GetEne1() {return ene1;}
@@ -114,7 +117,8 @@ public:
     std::vector <double> integral1Cube;           //integral values of level1 in diagExCube
     std::vector <double> integral2Cube;           //integral values of level2 in diagExCube
     void FitGauss(TH1D *histo, int bin , int level);             //performs a gauss fit for bin and level
-    TF1* fit_result[2];                                 //stores the autofit results
+    TF1* fit_result[2] = {nullptr, nullptr};                                 //stores the autofit results
+    ShapeFitFunction* fit_func[2] = {nullptr, nullptr};                     //the functor object owning each fit_result's fit function; TF1 does not take ownership of it, so we must
     TGraph* getFitWidthGraph(int level);                           //returns a graph containing the width results of the autofit for level 1
 };
 #endif

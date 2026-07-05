@@ -38,6 +38,7 @@ private:
     int                             mc_run = 10;            //number of runs in Monte Carlo (MC) mode
     
     double                          Norm(ShapeGSF* T1, ShapeGSF* T2);
+    void                            ClearCollector();   //deletes every ShapeGSF* owned by gSFCollector, then empties the vector
     void                            Merge();
     void                            Smooth(int res);
     void                            NormCollect();
@@ -49,6 +50,7 @@ private:
 public:
 
     ShapeCollector(ShapeSetting* t_setting, ShapeMatrix* t_matrix);
+    ~ShapeCollector();
     void                            Draw();
     void                            Print();
     void                            Collect();

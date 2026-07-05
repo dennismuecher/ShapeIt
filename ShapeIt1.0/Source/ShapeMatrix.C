@@ -22,6 +22,17 @@ ShapeMatrix::ShapeMatrix(ShapeSetting* setting) {
     BrowseRootFile();
 }
 
+ShapeMatrix::~ShapeMatrix() {
+    delete fit_result[0];
+    delete fit_result[1];
+    delete fit_func[0];
+    delete fit_func[1];
+    delete diag;
+    delete diagEx;
+    delete diagExSquare;
+    delete diagExCube;
+}
+
 
 //cleaning up before new "ShapeIt" run (but not while running different iterations during bin size and sliding window variation)
 
@@ -205,7 +216,12 @@ void ShapeMatrix::FitIntegral(){
         }
         else {
             //Gauss fit
-            FitGauss(diagEx->ProjectionX("fit",i+1,i+1,"o"), i, 0);
+            //NOTE: ProjectionX() allocates a new histogram every call. It used to be passed
+            //straight into FitGauss() as a temporary with no variable ever holding the
+            //pointer, so it (and everything FitGauss()'s three Fit(...,"+",...) calls attach
+            //to it) was never freed -- once per bin, per level, per iteration.
+            TH1D *projLevel1 = diagEx->ProjectionX("fit",i+1,i+1,"o");
+            FitGauss(projLevel1, i, 0);
             
             //integration
             double integral_tot =fit_result[0]->Integral(sett->levEne[0], sett->levEne[1]) / integral_norm;
@@ -225,6 +241,8 @@ void ShapeMatrix::FitIntegral(){
             
             if (sett->verbose)
                 std::cout <<"Autofit results for level 1 in bin " << i <<"(tot, bg, net): " <<integral_tot <<" " <<integral_bg <<" " <<fit_integral1Net[i] <<std::endl;
+
+            delete projLevel1;
         }
     }
     //level 2
@@ -240,7 +258,8 @@ void ShapeMatrix::FitIntegral(){
         }
         else {
             //Gauss fit
-            FitGauss(diagEx->ProjectionX("fit",i+1,i+1,"o"), i, 1);
+            TH1D *projLevel2 = diagEx->ProjectionX("fit",i+1,i+1,"o");
+            FitGauss(projLevel2, i, 1);
             
             //integration
             double integral_tot =fit_result[1]->Integral(sett->levEne[2], sett->levEne[3]) / integral_norm;
@@ -259,6 +278,8 @@ void ShapeMatrix::FitIntegral(){
                 
             if (sett->verbose)
                 std::cout <<"Autofit results for level 2 in bin " << i <<"(tot, bg, net): " <<integral_tot <<" " <<integral_bg <<" " <<fit_integral2Net[i] <<std::endl;
+
+            delete projLevel2;
         }
         
     }
@@ -303,13 +324,17 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 	double dp_2 = ( sett->levEne_2[2*level+1] - sett->levEne_2[2*level] )/6;
 
     //define fit function and set ranges
-    
+    //free the previous fit's functor and TF1 before overwriting fit_result[level]/fit_func[level] --
+    //this used to just overwrite the pointers, leaking both every single call (i.e. every bin, every level, every iteration)
+    delete fit_func[level];
 	ShapeFitFunction *fitfunc = new ShapeFitFunction(is_doublet);
+    fit_func[level] = fitfunc;
     fitfunc->SetPeakRanges(peakRange);
     fitfunc->SetBgRanges(bgRange);
     
     //TF1 object for the fit
     snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
+    delete fit_result[level];
     if (is_doublet)
 		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 8 );
 	else
@@ -455,12 +480,18 @@ void ShapeMatrix::Diag(){
         std::cout <<"\ny binnings for diag matrix:"<< ybins <<" " <<ene0 << " " <<ene1_diag <<std::endl;
 	}
 	
-    //cleaning up before generating matrices  
-	delete gROOT->FindObject("diag");
-	delete gROOT->FindObject("diag_ex");
-	delete gROOT->FindObject("diag_ex_square");
-	delete gROOT->FindObject("diag_ex_cube");
-	delete gROOT->FindObject("matrix_ex");
+    //cleaning up before generating matrices.
+    //NOTE: this used to be gROOT->FindObject("diag") etc. followed by delete -- but new
+    //histograms register to whatever TDirectory is "current" at construction time, which
+    //while a matrix TFile is open is usually that file, not gROOT. So the lookup would
+    //silently find nothing and the delete was a no-op, leaking a full set of these
+    //histograms on every call (i.e. every Monte Carlo iteration, since this runs once per
+    //ShapeGSF construction). Deleting the actual member pointers is robust regardless of
+    //the current directory.
+    delete diag;
+    delete diagEx;
+    delete diagExSquare;
+    delete diagExCube;
     
 	//creating histograms;
     diag  = new TH1F("diag","Diagonal Projection",xbins, eMin_diag, eMax_y);

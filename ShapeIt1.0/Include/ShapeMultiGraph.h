@@ -28,6 +28,10 @@ This class is derived from TMultiGraph. Once TGraphs have been added, the functi
 
 #include <iostream>
 
+#include <TMultiGraph.h>
+#include <TGraph.h>
+#include <TGraphErrors.h>
+
 class ShapeMultiGraph: public TMultiGraph {
 
 private:

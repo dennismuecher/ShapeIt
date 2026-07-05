@@ -58,6 +58,7 @@ public:
     
     ShapeGSF(ShapeSetting* t_sett, ShapeMatrix* t_matrix);
     ShapeGSF(ShapeSetting* t_sett);
+    ~ShapeGSF();
 
     void                Print();
     void                Reset();

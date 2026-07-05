@@ -44,13 +44,15 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
     levGraph_2 = new TGraphErrors();
     levGraph   = new TGraphErrors();
     
-    TRandom3 *r = new TRandom3(0);
-
     //read file data into gSF
     if (m_sett->osloFileName == "") {
         std::cout << "No Literature File loaded!"<<std::endl;
         return;
     }
+    
+    //only needed once we know we're actually reading a file; allocating it earlier
+    //meant the early return above would leak it
+    TRandom3 *r = new TRandom3(0);
     
     if (m_sett->verbose)
         std::cout <<"\nReading OSLO DATA... " <<std::endl;
@@ -83,6 +85,13 @@ ShapeGSF::ShapeGSF(ShapeSetting* t_sett):m_sett(t_sett)
         if (m_sett->verbose)
             levGraph->Print();
     }
+    delete r;
+}
+
+ShapeGSF::~ShapeGSF() {
+    delete levGraph_1;
+    delete levGraph_2;
+    delete levGraph;
 }
 
 TGraphErrors* ShapeGSF::GetLevGraph() {
@@ -125,6 +134,12 @@ void ShapeGSF::Merge() {
     levGraph->Merge(mArray);
     //sort
     levGraph->Sort();
+
+    //mArray does not own levGraph_1/levGraph_2 (TObjArray::SetOwner() was never called),
+    //so deleting the array container doesn't touch them. This was previously leaked on
+    //every single call -- and GetLevGraph() calls Merge() every time it's invoked, with
+    //no caching, from inside a loop that runs ~alphaIter times per Monte Carlo iteration.
+    delete mArray;
 }
 
 //transforms literature values using setting file
@@ -243,6 +258,7 @@ void ShapeGSF::FillgSF() {
     //Scale data according to settings file; this also updates levGraph
     
     Scale(m_sett->gSF_norm);
+    delete r;
 }
 
 double ShapeGSF::Slope(int i) {

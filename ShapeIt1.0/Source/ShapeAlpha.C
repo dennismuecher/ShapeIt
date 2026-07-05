@@ -18,6 +18,10 @@ ShapeAlpha::ShapeAlpha(ShapeSetting* t_sett, ShapeCollector* t_collector):m_sett
 
 }
 
+ShapeAlpha::~ShapeAlpha() {
+    delete chi2Graph;
+}
+
 void ShapeAlpha::FindMinimum() {
     double x_min = 0, y_min = 0;
     int i_min = 0;

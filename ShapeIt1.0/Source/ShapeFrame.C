@@ -15,6 +15,7 @@
 #include "ShapeDialogAlpha.C"
 #include "ShapeInfo.C"
 #include "ShapeMultiGraph.C"
+#include "ShapeController.C"
 
 double glo(double *x, double *par){
   //par[0]: sigma
@@ -76,32 +77,55 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
                             2, 2, 3, 0);
     fL2 = new TGLayoutHints( kLHintsLeft | kLHintsExpandY | kLHintsExpandX,
                             2, 5, 5, 2);
-    TGLayoutHints *fR2 = new TGLayoutHints( kLHintsLeft | kLHintsExpandY,
+    fR2 = new TGLayoutHints( kLHintsLeft | kLHintsExpandY,
                             2, 5, 5, 2);
-    TGLayoutHints* fL3 = new TGLayoutHints( kLHintsLeft, 2, 5, 0, 2);
+    fL3 = new TGLayoutHints( kLHintsLeft, 2, 5, 0, 2);
     
-    //left half of main window
+    //left half of main window: each of these builds one panel (a TGGroupFrame) and
+    //attaches it to f1. Split out of what used to be one long constructor so that,
+    //e.g., adding an option checkbox means opening SetupOptionsPanel() rather than
+    //searching through the whole window-construction sequence for the right spot.
+    SetupModeAndMatrixPanel();
+    SetupOptionsPanel();
+    SetupEnergyPanel();
+    SetupBinPanel();
+    SetupDisplayPanel();
+    SetupShapeItButton();
     
+    //right half of main window
+    SetupCanvas(fSuper);
+    
+    fSuper->AddFrame(f1, fL1);
+    fSuper->AddFrame(f2, fL2);
+  
+    fMain->AddFrame(fSuper, fL2);
+    // Set a name to the main frame
+    fMain->SetWindowName("unsaved");
+    
+    // Map all subwindows of main frame
+    fMain->MapSubwindows();
+    
+    // Initialize the layout algorithm
+    fMain->Resize(fMain->GetDefaultSize());
+    // Map main frame
+    fMain->MapWindow();
+    // store default settings in settings object
+    UpdateSetting(sett);
+}
+
+//Mode radio buttons (Integration/Autofit) and the input matrix selector combo box
+void ShapeFrame::SetupModeAndMatrixPanel() {
+
     TGCompositeFrame* f3 = new TGCompositeFrame(f1, 300, 300, kHorizontalFrame);
-    
+
     fG[0] = new TGGroupFrame(f3, new TGString("Mode"),kVerticalFrame|kRaisedFrame);
-    fG[1] = new TGGroupFrame(f1, new TGString("Energies (all in keV)"),kVerticalFrame|kRaisedFrame);
-    fG[2] = new TGGroupFrame(f1, new TGString("Options"),kVerticalFrame|kRaisedFrame);
-    fG[3] = new TGGroupFrame(f1, new TGString("Integration bin"),kVerticalFrame|kRaisedFrame);
     fG[4] = new TGGroupFrame(f3, new TGString("Input Matrix"),kVerticalFrame|kRaisedFrame);
-    fG[5] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
-    
-    for (int i = 0; i < 3; i++)
-        fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
-    for (int i = 3; i < 8; i++)
-        fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
-    
+
     //Mode
-    
     fR[0] = new TGRadioButton(fG[0], new TGHotString("Integration"), 11);
     fR[0]->SetState(kButtonDown);
     fR[1] = new TGRadioButton(fG[0], new TGHotString("Autofit"), 12);
-    
+
     //Matrix selector
     fMatrix = new TGComboBox(fG[4], 120);
     fMatrix->AddEntry("no file open",1);
@@ -109,7 +133,22 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     fMatrix->Select(1);
     fMatrix->SetEnabled(false);
     fG[4]->AddFrame(fMatrix, fL2);
-    
+
+    fG[0]->AddFrame(fR[0], fL3);
+    fG[0]->AddFrame(fR[1], fL3);
+    f3->AddFrame(fG[0], fL3 );
+    f3->AddFrame(fG[4], fL3 );
+    f1->AddFrame(f3, fL3 );
+}
+
+//Level 1/2 energies and excitation energy entries
+void ShapeFrame::SetupEnergyPanel() {
+
+    fG[1] = new TGGroupFrame(f1, new TGString("Energies (all in keV)"),kVerticalFrame|kRaisedFrame);
+
+    for (int i = 0; i < 3; i++)
+        fEnergy[i] = new TGCompositeFrame(fG[1], 1, 1, kHorizontalFrame);
+
     //Level Energy Settings
     energy[0] = new TGNumberEntry(fEnergy[0], 410, 9,1, TGNumberFormat::kNESInteger,TGNumberFormat::kNEAAnyNumber,TGNumberFormat::kNELLimitMinMax,-10000, 99999);
     fEnergy[0]->AddFrame(energy[0], fL2);
@@ -148,7 +187,18 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     exi[1]->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[2]->AddFrame(exi[1], fL2);
     fG[1]->AddFrame(fEnergy[2], fL2);
-    
+
+    f1->AddFrame(fG[1], fL3 );
+}
+
+//integration bin size/count, min counts, gSF scaling, efficiency correction
+void ShapeFrame::SetupBinPanel() {
+
+    fG[3] = new TGGroupFrame(f1, new TGString("Integration bin"),kVerticalFrame|kRaisedFrame);
+
+    for (int i = 3; i < 8; i++)
+        fEnergy[i] = new TGCompositeFrame(fG[3], 1, 1, kHorizontalFrame);
+
     //intgeration bin settings
     TGLabel *l4 = new TGLabel(fEnergy[3], "Bin size [keV]");
     fEnergy[3]->AddFrame(l4, fR2);
@@ -205,8 +255,15 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     effCorr->Connect("ValueSet(Long_t)", "ShapeFrame", this, "DoNumberEntry()");
     fEnergy[7]->AddFrame(effCorr, fR2);
     fG[3]->AddFrame(fEnergy[7], fL2);
-    
-    //options
+
+    f1->AddFrame(fG[3], fL3);
+}
+
+//the checkbox options (sewing, sliding window, background subtraction, etc.)
+void ShapeFrame::SetupOptionsPanel() {
+
+    fG[2] = new TGGroupFrame(f1, new TGString("Options"),kVerticalFrame|kRaisedFrame);
+
     OB[0] = new TGCheckButton(fG[2], new TGHotString("Sewing Interpolation"), 14);
     OB[1] = new TGCheckButton(fG[2], new TGHotString("Display expectation"), 15);
     OB[2] = new TGCheckButton(fG[2], new TGHotString("Sliding window variation"), 21);
@@ -220,16 +277,15 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
         OB[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
          fG[2]->AddFrame(OB[i], fL3);
     }
-    fG[0]->AddFrame(fR[0], fL3);
-    fG[0]->AddFrame(fR[1], fL3);
-    f3->AddFrame(fG[0], fL3 );
-    f3->AddFrame(fG[4], fL3 );
-    f1->AddFrame(f3, fL3 );
+
     f1->AddFrame(fG[2], fL3 );
-    f1->AddFrame(fG[1], fL3 );
-    f1->AddFrame(fG[3], fL3);
-    
-    //display settings
+}
+
+//projection-spectrum display selector
+void ShapeFrame::SetupDisplayPanel() {
+
+    fG[5] = new TGGroupFrame(f1, new TGString("Display"),kVerticalFrame|kRaisedFrame);
+
     fBin = new TGCompositeFrame(fG[5], 1, 1, kHorizontalFrame);
     fR[2] = new TGRadioButton(fBin, new TGHotString("Diagonal Projection"), 18);
     fBin->AddFrame(fR[2], new TGLayoutHints( kLHintsTop, 2, 2 , 3, 2));
@@ -243,8 +299,14 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
     fG[5]->AddFrame(fBin);
     
     f1->AddFrame(fG[5], fL3);
+
+    //connects fR[0] and fR[1] (created in SetupModeAndMatrixPanel) as well as fR[2]
+    //(just created above) -- kept together here since fR[2] must exist first
     for (int i = 0 ; i < 3; i++)
         fR[i]->Connect("Clicked()", "ShapeFrame", this, "DoRadio()");
+}
+
+void ShapeFrame::SetupShapeItButton() {
 
     //show ShapeIt Button
     TGPictureButton *fPicture = new TGPictureButton(f1,
@@ -255,31 +317,15 @@ ShapeFrame::ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string pa
         fPicture->Connect("Clicked()", "ShapeFrame", this, "ShapeItBaby()");
     f1->AddFrame(fPicture,new TGLayoutHints(kLHintsLeft,
                                             1, 1, 1, 1));
-    
-    //right half of main window
-    
-    //the drawing window
+}
+
+//the drawing window (right half of main window)
+void ShapeFrame::SetupCanvas(TGCompositeFrame *fSuper) {
+
     fEcanvas = new TRootEmbeddedCanvas("Ecanvas",f2,100,100);
     fEcanvas->GetCanvas()->Connect("ProcessedEvent(Int_t,Int_t,Int_t,TObject*)",
                               "ShapeFrame", this, "HandleMyCanvas(Int_t,Int_t,Int_t,TObject*)");
     f2->AddFrame(fEcanvas, fL2);
-    
-    fSuper->AddFrame(f1, fL1);
-    fSuper->AddFrame(f2, fL2);
-  
-    fMain->AddFrame(fSuper, fL2);
-    // Set a name to the main frame
-    fMain->SetWindowName("unsaved");
-    
-    // Map all subwindows of main frame
-    fMain->MapSubwindows();
-    
-    // Initialize the layout algorithm
-    fMain->Resize(fMain->GetDefaultSize());
-    // Map main frame
-    fMain->MapWindow();
-    // store default settings in settings object
-    UpdateSetting(sett);
 }
 
 
@@ -816,8 +862,8 @@ void ShapeFrame::MonteCarlo() {
             //start-stop button pressed in the Transformation Dialog window?
             if (!AlphaDialog->GetStartStatus())
                return;
-            gSFCollMC = new ShapeCollector(sett, matrix);
-            gSFCollMC->Collect();
+            delete gSFCollMC;
+            gSFCollMC = ShapeController::RunMonteCarloStep(sett, matrix);
             
             //display results
             if (i%10 ==0)
@@ -864,11 +910,9 @@ void ShapeFrame::ShapeItBaby() {
     //update settings accordings to the GUI settings
     UpdateSetting(sett);
     
-    sett->nOfBins = sett->SizeToBin();
-    
-    //this call triggers the calculation of gSF values according to the actual settings stored int he settings file
-    gSFColl = new ShapeCollector(sett, matrix);
-    gSFColl->Collect();
+    //this call triggers the calculation of gSF values according to the actual settings stored in the settings file
+    delete gSFColl;
+    gSFColl = ShapeController::RunAnalysis(sett, matrix);
     
     //status update: will have values for gSF
     status = 2;
@@ -1063,14 +1107,62 @@ void ShapeFrame::OpenSettingFile(std::string sname) {
 
 void ShapeFrame::HandleMenu(Int_t id)
 {
-    // Handle menu items.
-    
+    // Top-level dispatcher: groups menu IDs by submenu and hands off to a dedicated
+    // handler for each. This used to be one ~270-line switch covering File, Settings,
+    // and Display menus all in the same block; splitting it means editing e.g. a
+    // Display menu entry no longer requires reading through File/Settings logic first.
     switch (id) {
-            
+        case M_FILE_ABOUT:
+        case M_FILE_OPEN:
+        case M_FILE_EXIT:
+            HandleFileMenu(id);
+            break;
+
+        case M_SETTING_OPEN:
+        case M_SETTING_SAVE:
+        case M_SETTING_SAVEAS:
+        case M_SETTING_PRINT:
+        case M_SETTING_OSLO:
+        case M_SETTING_EFFI:
+        case M_SETTING_RHO:
+        case M_SETTING_WIDTHRESET:
+        case M_SETTING_TRAFO:
+            HandleSettingsMenu(id);
+            break;
+
+        case M_DISPLAY_MAT:
+        case M_DISPLAY_DIAG:
+        case M_DISPLAY_DIAGCUBE:
+        case M_DISPLAY_PROJTOT:
+        case M_DISPLAY_PROJBIN:
+        case M_DISPLAY_GSF:
+        case M_DISPLAY_FITWIDTH:
+        case M_DISPLAY_VERBOSE0:
+        case M_DISPLAY_VERBOSE1:
+        case M_DISPLAY_VERBOSE2:
+        case M_DISPLAY_AVG:
+        case M_DISPLAY_SINGLE:
+        case M_DISPLAY_COLOUR:
+        case M_DISPLAY_EFFI:
+        case M_DISPLAY_RHO:
+        case M_DISPLAY_PRINT:
+        case M_DISPLAY_PRINT_RHO:
+            HandleDisplayMenu(id);
+            break;
+
+        default:
+            break;
+    }
+}
+
+void ShapeFrame::HandleFileMenu(Int_t id)
+{
+    switch (id) {
+
         case M_FILE_ABOUT:
         {
             //new ShapeInfo(gClient->GetRoot(), fMain, 600, 300, absPath);
-            MessageBox("Welcome to ShapeIt!","ShapeIt Version 1.1 \n © 2021 Dennis Muecher \n Questions? Comments? dmuecher@uoguelph.ca \n This program is free software: you can redistribute it and/or modify it under the \n terms of the GNU General Public License as published by the Free Software Foundation, \n either version 3 of the License, or (at your option) any later version. \n You should have received a copy of the GNU General Public License \n along with this program. If not, see  http://www.gnu.org/licenses/.");
+            MessageBox("Welcome to ShapeIt!",Form("ShapeIt Version %s (%s) \n © %s Dennis Muecher \n Questions? Comments? muecher@ikp.uni-koeln.de \n Documentation: https://dennismuecher.github.io/ShapeIt/ \n Bug reports & feature requests: https://github.com/dennismuecher/ShapeIt/issues \n This program is free software: you can redistribute it and/or modify it under the \n terms of the GNU General Public License as published by the Free Software Foundation, \n either version 3 of the License, or (at your option) any later version. \n You should have received a copy of the GNU General Public License \n along with this program. If not, see  http://www.gnu.org/licenses/.", SHAPEIT_VERSION, SHAPEIT_RELEASE_DATE, SHAPEIT_COPYRIGHT_YEARS));
             break;
         }
         case M_FILE_OPEN:
@@ -1126,7 +1218,16 @@ void ShapeFrame::HandleMenu(Int_t id)
         case M_FILE_EXIT:
             CloseWindow();   // terminate theApp no need to use SendCloseMessage()
             break;
-        
+
+        default:
+            break;
+    }
+}
+
+void ShapeFrame::HandleSettingsMenu(Int_t id)
+{
+    switch (id) {
+
         case M_SETTING_OPEN:
         {
             static TString dir(".");
@@ -1235,7 +1336,16 @@ void ShapeFrame::HandleMenu(Int_t id)
             AlphaDialog = new ShapeDialogAlpha(sett, gClient->GetRoot(), fMain, this, 400, 200, sett->lit_norm, sett->lit_alpha);
             break;
         }
-        
+
+        default:
+            break;
+    }
+}
+
+void ShapeFrame::HandleDisplayMenu(Int_t id)
+{
+    switch (id) {
+
         case M_DISPLAY_MAT:
             UpdateDisplay(1);
             break;
@@ -1321,7 +1431,7 @@ void ShapeFrame::HandleMenu(Int_t id)
             break;
         }
             
-    default:
+        default:
             break;
     }
 }
@@ -1429,33 +1539,24 @@ double ShapeFrame::AlphaChi2() {
         return 0;
     }
         
-    ShapeAlpha* frameAlpha;
+    ShapeCollector* activeColl = sett->doMC ? gSFCollMC : gSFColl;
 
-    if (sett->doMC)
-        frameAlpha = new ShapeAlpha(sett,gSFCollMC);
-    else
-        frameAlpha = new ShapeAlpha(sett,gSFColl);
+    //free the previous fit result before replacing it -- this used to never happen at
+    //all, so every call here (including every Monte Carlo iteration) leaked a whole
+    //ShapeAlpha object plus its internal chi2Graph
+    delete alphaFit;
+    alphaFit = ShapeController::FitAlpha(sett, activeColl);
 
-    //run search for chi2 minimum
-    frameAlpha->Chi2Loop();
-    
-    TGraph *test = frameAlpha->getChi2Graph();
-    
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
-    TPaveText* t = frameAlpha->getPaveTextChi2();
-    
+    //GUI part: draw the chi2 curve, unless we're mid-Monte-Carlo (too slow to redraw every iteration)
     if (!sett->doMC) {
-        test->Draw("APC*");
-        t->Draw();
+        TCanvas *fCanvas = fEcanvas->GetCanvas();
+        alphaFit->getChi2Graph()->Draw("APC*");
+        alphaFit->getPaveTextChi2()->Draw();
         fCanvas->Modified();
         fCanvas->Update();
     }
     
-    if (sett->verbose)
-        std::cout <<"Minimum chi2 value of "<< frameAlpha->getMinChi2() << " found for alpha = " << frameAlpha->getMinAlpha() <<std::endl;
-    
-    
-    return (frameAlpha->getMinAlpha()) ;
+    return (alphaFit->getMinAlpha()) ;
 }
 
 void ShapeFrame::CloseWindow()
@@ -1468,6 +1569,9 @@ void ShapeFrame::CloseWindow()
 ShapeFrame::~ShapeFrame() {
     // Clean up used widgets: frames, buttons, layout hints
     delete fMenuFile;
+    delete gSFColl;
+    delete gSFCollMC;
+    delete alphaFit;
     
     fMain->Cleanup();
     delete fMain;

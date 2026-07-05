@@ -1,5 +1,7 @@
 ShapeIt
 
+[![Latest release](https://img.shields.io/github/v/release/dennismuecher/ShapeIt)](https://github.com/dennismuecher/ShapeIt/releases)
+
 This software allows extracting the gamma-ray strength function for a given nucleus, based on a 2D matrix of gamma-ray energy vs excitation energy. The matrix is assumed to be in units of keV.
 
 To run ShapeIt, change to ShapeIt1.0/Source and say "root ShapeIt.C"

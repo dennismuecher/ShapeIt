@@ -23,8 +23,10 @@
 #include "ShapeRho.h"
 #include "ShapeCollector.h"
 #include "ShapeAlpha.h"
+#include "ShapeController.h"
 //#include "ShapeDialogAlpha.h"
 #include "ShapeInfo.h"
+#include "ShapeVersion.h"
 
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
@@ -59,6 +61,7 @@
 #include <TLegend.h>
 #include <TROOT.h>
 #include <TStyle.h>
+#include <TPaveText.h>
 
 class TGWindow;
 class TGMainFrame;
@@ -126,8 +129,9 @@ private:
     TGNumberEntry       *scaling;           //scaling factor for gSF
     TGNumberEntry       *effCorr;              //efficiency factor for level 2
    
-    ShapeCollector      *gSFColl;           //collection of gSF values for the "normal" mode
-    ShapeCollector      *gSFCollMC;           //collection of gSF values for the "Monte Carlo" mode
+    ShapeCollector      *gSFColl = nullptr;           //collection of gSF values for the "normal" mode
+    ShapeCollector      *gSFCollMC = nullptr;           //collection of gSF values for the "Monte Carlo" mode
+    ShapeAlpha          *alphaFit = nullptr;           //result of the most recent alpha (slope) chi2 fit, from AlphaChi2()
 
     TPaveText           *getPaveTextShape();        //the text info in the ShapeIt gSF graph
     TGCompositeFrame *fBin;
@@ -135,6 +139,8 @@ private:
     TGCompositeFrame *f2;
     TGLayoutHints *fL1;
     TGLayoutHints *fL2;
+    TGLayoutHints *fR2;                    //promoted from a constructor-local so panel setup methods can share it
+    TGLayoutHints *fL3;                    //promoted from a constructor-local so panel setup methods can share it
     TGRadioButton* fR[6];
     TGCheckButton* OB[7];
     TGCheckButton* autoScale;
@@ -156,6 +162,13 @@ private:
     ShapeSetting *sett;                  //the settings file
     ShapeMatrix *matrix;                    //the matrix object
     void SetupMenu();
+    void SetupModeAndMatrixPanel();        //Mode radio buttons + input matrix selector combo
+    void SetupEnergyPanel();               //Level 1/2 and excitation energy entries
+    void SetupBinPanel();                  //integration bin size/count, min counts, gSF scaling, efficiency correction
+    void SetupOptionsPanel();              //the checkbox options (sewing, sliding window, background subtraction, etc.)
+    void SetupDisplayPanel();               //projection-spectrum display selector
+    void SetupShapeItButton();
+    void SetupCanvas(TGCompositeFrame *fSuper);
     TLine *l[4];
     TBox *bgBox[4];                         //boxes indicating background regions
     TMultiGraph *mg;                        //the graph showing the gSF plots
@@ -176,13 +189,15 @@ private:
 public:
     ShapeFrame(const TGWindow *p,UInt_t w,UInt_t h, const std::string path);
     virtual ~ShapeFrame();
-    ClassDef(ShapeFrame,0);
     int GetBinSelect() {return binSelect;}						//returns binSelect
 	void SetBinSelect(int tBinSelect) {binSelect = tBinSelect;}		//set binSelect
 	void DoDraw();
     void DoNumberEntry();
     void DoRadio();
     void HandleMenu(Int_t id);
+    void HandleFileMenu(Int_t id);         //handles File menu entries (was part of the old monolithic HandleMenu switch)
+    void HandleSettingsMenu(Int_t id);     //handles Settings menu entries
+    void HandleDisplayMenu(Int_t id);      //handles Display menu entries
     void CloseWindow();
     int MatrixSelector();										//updates the matrix selector and returns the index of the matrix saved in the current settings file; returns zero if no such matrix exists
     void UpdateSetting(ShapeSetting *sett_t);                   //updates a settings file
@@ -202,8 +217,6 @@ public:
 	void ShowGraph();							//displays gSF results with literature values, resonance fit etc
     void ShowGraph(double norm, double slope);   //applies literature value transformation and updates gSF graph
     
-    void Scale(Double_t scale);					//scale results of gSF and refresh display
-    double AutoScale(int mode);                //auto-scales either gSF of data to literature (mode = 0) or literature to data (mode = 1)
     //TGFileInfo fi;                              //file containing matrix
     void TransGraph();
     TMultiGraph *wgraph ;

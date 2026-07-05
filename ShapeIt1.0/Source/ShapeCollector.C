@@ -21,6 +21,25 @@ ShapeCollector::ShapeCollector(ShapeSetting* t_sett, ShapeMatrix* t_matrix):m_se
 
 }
 
+ShapeCollector::~ShapeCollector()
+{
+    ClearCollector();
+    delete litCollector;
+    delete gSFGraph;
+    delete gSFGraphSmooth;
+}
+
+//deletes every ShapeGSF* owned by gSFCollector, then empties the vector.
+//gSFCollector previously only ever got .clear()'d, which dropped the pointers
+//without freeing them -- a leak on every Collect()/mc_Collect() call, and a
+//bad one inside the MonteCarlo() loop where this can run hundreds of times.
+void ShapeCollector::ClearCollector()
+{
+    for (auto gsf : gSFCollector)
+        delete gsf;
+    gSFCollector.clear();
+}
+
 
 // runs all different iterations in Monte Carlo mode of gSF following the user input stored in the settings file m_sett
 void ShapeCollector::mc_Collect() {
@@ -28,7 +47,7 @@ void ShapeCollector::mc_Collect() {
     TRandom3 *r = new TRandom3(0);
     
     //reset gSF collector vector
-    gSFCollector.clear();
+    ClearCollector();
     
     //bin size
     m_matrix->SetESize( r->Uniform(m_sett->exi_size[0], m_sett->exi_size[1]) );
@@ -51,6 +70,7 @@ void ShapeCollector::mc_Collect() {
     //normalize gSF results to literature data
     NormCollect();
     
+    delete r;
 }
 
 // runs all different iterations of gSF following the user input stored in the settings file m_sett
@@ -66,7 +86,7 @@ void ShapeCollector::Collect() {
     m_matrix->SetESize( m_sett->exi_size[0] );
     
     //reset gSF collector vector
-    gSFCollector.clear();
+    ClearCollector();
     
     do {
         //sliding window
@@ -210,6 +230,10 @@ void ShapeCollector::Merge() {
     gSFGraph->Sort();
     if (m_sett->displayAvg)
         Smooth(0);
+
+    //mArray does not own its elements (TObjArray::SetOwner() was never called),
+    //so deleting the array container itself does not touch the graphs it holds
+    delete mArray;
 }
 
 //calcualation of a normalization factor to match T1 to T2

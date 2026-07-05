@@ -14,7 +14,18 @@
 #define SHAPETALYS_H
 
 #include <iostream>
+#include <vector>
+#include <string>
 #include "ShapeSetting.h"
+
+#include <TGraph.h>
+#include <TGraphErrors.h>
+#include <TGraphAsymmErrors.h>
+#include <TH1.h>
+#include <TH2.h>
+
+using std::vector;
+using std::string;
 
 class ShapeTalys {
     

@@ -13,6 +13,14 @@
 #include "../Include/ShapeTalys.h"
 #include "../Include/ShapeMultiGraph.h"
 
+#include <TRandom3.h>
+#include <TMultiGraph.h>
+#include <TColor.h>
+#include <TROOT.h>
+#include <TVirtualPad.h>
+#include <TCanvas.h>
+#include <TMath.h>
+
 //consstructor
 
 ShapeTalys::ShapeTalys(ShapeSetting* p_sett, TGraphAsymmErrors* p_rhoGraph, int p_levelmodelNr) {
