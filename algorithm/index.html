@@ -1,0 +1,1171 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Symmetric sewing and Monte Carlo uncertainty quantification for the Shape method">
+      
+      
+      
+      
+        <link rel="prev" href="../user-guide/monte-carlo-uncertainty/">
+      
+      
+        <link rel="next" href="../settings-files/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>The algorithm - ShapeIt</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-algorithm" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ShapeIt" class="md-header__button md-logo" aria-label="ShapeIt" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ShapeIt
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The algorithm
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dennismuecher/ShapeIt" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dennismuecher/ShapeIt
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../data-format/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Input data format
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../user-guide/loading-a-matrix/" class="md-tabs__link">
+          
+  
+  
+  User guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  The algorithm
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../settings-files/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Settings files
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ShapeIt" class="md-nav__button md-logo" aria-label="ShapeIt" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ShapeIt
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dennismuecher/ShapeIt" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dennismuecher/ShapeIt
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input data format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/loading-a-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Loading a matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/defining-levels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Defining the two levels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/mode-and-binning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Choosing mode and binning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/options-and-sewing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Options and sewing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/running-and-results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Running ShapeIt and reading results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/monte-carlo-uncertainty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. Monte Carlo uncertainty and absolute level density
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The algorithm
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#strength-ratios-from-primary-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strength ratios from primary transitions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#peak-fitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Peak fitting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#symmetric-sewing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Symmetric sewing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sliding-window-and-bin-size-scans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sliding-window and bin-size scans
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monte-carlo-uncertainty-on-the-slope-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monte Carlo uncertainty on the slope correction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../settings-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="the-algorithm">The algorithm<a class="headerlink" href="#the-algorithm" title="Permanent link">&para;</a></h1>
+<div class="admonition tip">
+<p class="admonition-title">New to the Shape method?</p>
+<p>This page assumes you're already familiar with the ratio method itself.
+If not, start with <a href="../#the-basics">The basics</a> on the home page —
+it walks through the same equation below using a simple level-scheme
+picture with every symbol labeled.</p>
+</div>
+<h2 id="strength-ratios-from-primary-transitions">Strength ratios from primary transitions<a class="headerlink" href="#strength-ratios-from-primary-transitions" title="Permanent link">&para;</a></h2>
+<p>Primary γ rays de-exciting the quasicontinuum into a low-lying final level
+<span class="arithmatex">\(L_j\)</span> appear in the (Eγ, Ex) matrix as a diagonal, since <span class="arithmatex">\(E_x = E_\gamma + E_{Lj}\)</span>
+(see <a href="../#from-decay-scheme-to-matrix">From decay scheme to matrix</a>).
+ShapeIt selects two such diagonals, <span class="arithmatex">\(L_1\)</span> and <span class="arithmatex">\(L_2\)</span> — in even–even nuclei
+conveniently the first two <span class="arithmatex">\(2^+\)</span> states. For a given excitation-energy bin,
+the number of counts integrated along each diagonal is proportional to
+<span class="arithmatex">\(f(E_\gamma)\,E_\gamma^3\)</span> times population- and spin-dependent factors that
+are common to both diagonals and cancel in the ratio</p>
+<div class="arithmatex">\[
+R = \frac{f(E_x - E_{L1})}{f(E_x - E_{L2})} =
+\frac{N_{L1}(E_x)\,(E_x - E_{L2})^3}{N_{L2}(E_x)\,(E_x - E_{L1})^3}
+\]</div>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(E_x\)</span></td>
+<td>Excitation energy of the current bin</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(E_{L1}\)</span>, <span class="arithmatex">\(E_{L2}\)</span></td>
+<td>Energies of the two chosen final levels</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(N_{L1}(E_x)\)</span>, <span class="arithmatex">\(N_{L2}(E_x)\)</span></td>
+<td>Integrated (or fitted) peak intensities at <span class="arithmatex">\(E_{L1}\)</span>, <span class="arithmatex">\(E_{L2}\)</span> for this bin</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(f(E_\gamma)\)</span></td>
+<td>The γSF at γ-ray energy <span class="arithmatex">\(E_\gamma\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>so that each excitation-energy bin yields a pair of internally normalized
+γSF data points at <span class="arithmatex">\(E_\gamma^{(1)} = E_x - E_{L1}\)</span> and
+<span class="arithmatex">\(E_\gamma^{(2)} = E_x - E_{L2}\)</span>.</p>
+<p>Rather than using the nominal γ-ray energy of each level, ShapeIt assigns to
+each point the <strong>γSF-weighted centroid</strong> of its diagonal projection, evaluated
+over the integration window:</p>
+<div class="arithmatex">\[
+\bar E_\gamma^{(j)} = \frac{\sum_{E_\gamma} E_\gamma\, f(E_\gamma)}{\sum_{E_\gamma} f(E_\gamma)}
+\]</div>
+<p>where <span class="arithmatex">\(\bar E_\gamma^{(j)}\)</span> is the plotted abscissa for level <span class="arithmatex">\(j\)</span>'s point in
+this bin, and the sums run over γ-ray energy channels within the peak's
+integration window — this keeps the plotted abscissa consistent with the
+strength actually
+contained in the projection, rather than an arbitrary bin centre.</p>
+<h2 id="peak-fitting">Peak fitting<a class="headerlink" href="#peak-fitting" title="Permanent link">&para;</a></h2>
+<p>For a given excitation-energy bin, ShapeIt projects onto the internal
+<span class="arithmatex">\((E_x-E_\gamma)\)</span> axis (see <a href="../user-guide/defining-levels/">Defining the two levels</a>)
+and locates the two peaks at <span class="arithmatex">\(E_{L1}\)</span> and <span class="arithmatex">\(E_{L2}\)</span>. In <strong>Autofit</strong> mode,
+each peak is fit with a Gaussian on a background (a quadratic form is
+available; the background parameters are first determined from the two
+flanking regions alone, then held fixed while the peak amplitude, centroid,
+and width are optimized in the peak region). A level can optionally be fit
+as a <strong>doublet</strong> — a second Gaussian is added to account for a close-lying
+contaminant, such as a first-escape peak located 511 keV away from the
+main peak (from pair-production escape). The two components share the same
+width; only the second component's amplitude and centroid are independently
+fit. Doublet windows are configured per level via the settings file
+(<code>level1_2</code> / <code>level2_2</code> — see <a href="../settings-files/">Settings files</a>) rather
+than the main control panel.</p>
+<p>A bin is discarded if either peak area falls below the <strong>Min. Counts</strong>
+threshold, protecting the ratio <span class="arithmatex">\(R\)</span> against bins where a peak is not
+statistically significant above background.</p>
+<p>The peak width can be left free, or constrained to an
+excitation-energy-dependent calibration <span class="arithmatex">\(\sigma(E_\gamma) = p_0 + p_1 E_\gamma\)</span>
+(with <span class="arithmatex">\(\sigma\)</span> the Gaussian width and <span class="arithmatex">\(p_0\)</span>, <span class="arithmatex">\(p_1\)</span> fit constants) determined
+beforehand from well-populated bins — this stabilizes fits in bins with low
+statistics while preserving the natural growth of peak width with γ-ray
+energy.</p>
+<h2 id="symmetric-sewing">Symmetric sewing<a class="headerlink" href="#symmetric-sewing" title="Permanent link">&para;</a></h2>
+<p>Equation for <span class="arithmatex">\(R\)</span> above fixes the two points of a pair <em>relative to each
+other</em>, but not the absolute scale of the pair. ShapeIt connects successive
+pairs into one continuous curve via <strong>symmetric sewing</strong>.</p>
+<p><img alt="Sewing of strength-ratio pairs" src="../images/sewing_pairs_concept.png" /></p>
+<p><em>Figure — Three strength-ratio pairs from three excitation-energy bins.
+Each pair (dashed line) is rescaled so that neighbouring pairs agree with
+each other in their region of overlap, building up the γSF shape bin by
+bin.</em></p>
+<p>Let pair <span class="arithmatex">\(i\)</span> consist of the higher-energy point <span class="arithmatex">\((E_\gamma^{(1),i}, f_1^i)\)</span>
+and the lower-energy point <span class="arithmatex">\((E_\gamma^{(2),i}, f_2^i)\)</span>, with slope</p>
+<div class="arithmatex">\[
+s_i = \frac{f_1^i - f_2^i}{E_\gamma^{(1),i} - E_\gamma^{(2),i}}
+\]</div>
+<p>When attaching pair <span class="arithmatex">\(i\)</span> to the preceding pair <span class="arithmatex">\(i-1\)</span>, both points of pair
+<span class="arithmatex">\(i\)</span> are multiplied by the common rescaling factor</p>
+<div class="arithmatex">\[
+c_i = \frac{2 f_1^{i-1} - \left(E_\gamma^{(1),i-1} - E_\gamma^{(2),i}\right) s_{i-1}}
+{2 f_2^i + \left(E_\gamma^{(1),i-1} - E_\gamma^{(2),i}\right) s_i}
+\]</div>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(E_\gamma^{(1),i}\)</span>, <span class="arithmatex">\(f_1^i\)</span></td>
+<td>γ-ray energy and γSF value of pair <span class="arithmatex">\(i\)</span>'s higher-energy point (from <span class="arithmatex">\(L_1\)</span>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(E_\gamma^{(2),i}\)</span>, <span class="arithmatex">\(f_2^i\)</span></td>
+<td>γ-ray energy and γSF value of pair <span class="arithmatex">\(i\)</span>'s lower-energy point (from <span class="arithmatex">\(L_2\)</span>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(s_i\)</span></td>
+<td>Slope of the line joining pair <span class="arithmatex">\(i\)</span>'s two points</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(c_i\)</span></td>
+<td>Rescaling factor applied to both points of pair <span class="arithmatex">\(i\)</span> when attaching it to pair <span class="arithmatex">\(i-1\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>This is exactly the condition that the linear extrapolations of pair <span class="arithmatex">\(i-1\)</span>
+and of the rescaled pair <span class="arithmatex">\(i\)</span> agree at the energy midway between their
+adjoining endpoints — the vertical offsets of the two interpolating lines to
+their crossing point are equal in magnitude, which gives the method its
+name. Because both pairs are referred to a common midpoint (rather than one
+pair being pinned to an endpoint of the other), the rescaling is
+<strong>independent of the direction of the chain</strong> — the sewn shape no longer
+depends on which bin the interpolation starts from, unlike the conventional
+sewing prescription. The procedure fixes only the <em>shape</em> of the γSF; the
+overall scale is set afterwards by a χ² comparison against the Oslo-method
+result (see <a href="../user-guide/monte-carlo-uncertainty/">Monte Carlo uncertainty</a>).</p>
+<h2 id="sliding-window-and-bin-size-scans">Sliding-window and bin-size scans<a class="headerlink" href="#sliding-window-and-bin-size-scans" title="Permanent link">&para;</a></h2>
+<p>Two deterministic scans test the sensitivity of the sewn shape to the
+excitation-energy binning:</p>
+<ul>
+<li><strong>Sliding-window scan</strong> — the excitation-energy grid is repeated with its
+  lower edge displaced towards lower energies in <span class="arithmatex">\(k_{max}-1\)</span> steps of
+  <span class="arithmatex">\(\Delta E_x/(k_{max}-1)\)</span>, with <span class="arithmatex">\(k_{max}=5\)</span>, while the upper edge stays
+  fixed. Each shifted realization is normalized to the first (unshifted)
+  one via a χ² fit.</li>
+<li><strong>Bin-size scan</strong> — the bin width <span class="arithmatex">\(\Delta E_x\)</span> is increased from a
+  user-specified minimum to a maximum in fixed steps of 50 keV, each
+  realization again normalized to the first via a χ² fit.</li>
+</ul>
+<p>The two can be combined (bin-size as the outer loop, sliding-window repeated
+for each bin size). The resulting realizations can be inspected individually
+("Show gSF single data") or pooled into a coarser grid reporting the mean
+and standard deviation per bin ("Show gSF average") — the latter is what
+feeds into the slope determination.</p>
+<h2 id="monte-carlo-uncertainty-on-the-slope-correction">Monte Carlo uncertainty on the slope correction<a class="headerlink" href="#monte-carlo-uncertainty-on-the-slope-correction" title="Permanent link">&para;</a></h2>
+<p>The scans above are qualitative, deterministic checks. To turn them into a
+quantitative uncertainty on the slope correction <span class="arithmatex">\(\alpha\)</span>, ShapeIt instead
+<strong>randomizes</strong> the bin width, the lower excitation-energy edge, the peak
+areas (resampled from a Gaussian using their fit uncertainty), and the
+comparison (literature) γSF data (resampled within their quoted
+uncertainty), then repeats the full extraction many times, recording the
+best-fit <span class="arithmatex">\(\alpha\)</span> from a χ² comparison against the (resampled) Oslo-method
+curve in each iteration. The resulting distribution of best-fit <span class="arithmatex">\(\alpha\)</span>
+values is close to Gaussian; its mean and standard deviation are taken as
+the slope correction <span class="arithmatex">\(\delta\alpha\)</span> and its 1σ uncertainty. See
+<a href="../user-guide/monte-carlo-uncertainty/">Monte Carlo uncertainty and absolute level density</a>
+for how to run this in the GUI.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<p>If you use ShapeIt in a publication, please cite:</p>
+<ul>
+<li>D. Mücher <em>et al.</em>, <em>Extracting model-independent nuclear level densities away from stability</em>, Phys. Rev. C <strong>107</strong> (2023) L011602. <a href="https://doi.org/10.1103/PhysRevC.107.L011602">doi:10.1103/PhysRevC.107.L011602</a></li>
+</ul>
+<p>The Shape method itself was introduced in:</p>
+<ul>
+<li>M. Wiedeking <em>et al.</em>, <em>Independent normalization for γ-ray strength functions: The shape method</em>, Phys. Rev. C <strong>104</strong> (2021) 014311. <a href="https://doi.org/10.1103/PhysRevC.104.014311">doi:10.1103/PhysRevC.104.014311</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
