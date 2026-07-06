@@ -61,3 +61,6 @@ ShapeIt1.0/ShapeIt1.0.xcodeproj/
 
 # End of https://www.gitignore.io/api/xcode.DS_Store
 ShapeIt1.0/Source/convert_TH2D_MeV_to_keV.C
+*.d
+*.so
+*_ACLiC_dict_rdict.pcm
