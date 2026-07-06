@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ShapeIt 2.0</title>
+<!-- do not remove next line, required for JSROOT modules map (RWebWindow injects the real import map here when serving this page) -->
+<!--jsroot_importmap-->
+<style>
+  html, body { margin: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
+  #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
+  #menubar {
+    display: flex;
+    align-items: center;
+    background: #1e2a38;
+    color: #eee;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    padding: 0 6px;
+    position: relative;
+    z-index: 20;
+  }
+  .menu { position: relative; }
+  .menu-label {
+    padding: 8px 14px;
+    font-size: 13px;
+    border: none;
+    background: transparent;
+    color: #eee;
+    cursor: pointer;
+  }
+  .menu-label:hover, .menu-label.open { background: #3a4a5c; }
+  .menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #fff;
+    color: #222;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    min-width: 220px;
+    padding: 4px 0;
+  }
+  .menu-dropdown.open { display: block; }
+  .menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 7px 14px;
+    font-size: 13px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .menu-item:hover { background: #eef2f7; }
+  .menu-item.checked::before { content: "\2713  "; }
+  .menu-divider { height: 1px; background: #e0e0e0; margin: 4px 0; }
+  #status { font-size: 12px; color: #9ab; margin-left: auto; padding: 0 10px; }
+
+  #content-row { flex: 1; display: flex; overflow: hidden; }
+  #canvas_holder { flex: 1; min-width: 0; overflow: hidden; position: relative; transform: translateZ(0); }
+
+  #sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: #f4f4f4;
+    box-sizing: border-box;
+    border-left: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #sidebar-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+    flex-shrink: 0;
+    background: #e7e9ec;
+    border-bottom: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  .tab-btn {
+    padding: 14px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: #dde1e6;
+    color: #333;
+    cursor: pointer;
+    text-align: center;
+  }
+  .tab-btn:hover { background: #ced3d9; }
+  .tab-btn.active {
+    background: #3a86ff;
+    color: #fff;
+    border-color: #1f5fd6;
+  }
+  #sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    box-sizing: border-box;
+    min-height: 0;
+  }
+  #sidebar-scroll h3 { margin-top: 0; font-size: 15px; }
+  .field-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .field-row input[type=number] { width: 70px; padding: 4px; }
+  .doublet-box {
+    margin: 0 0 14px;
+    padding: 8px 10px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  .section-label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 6px; }
+  .bg-box {
+    margin: 0 0 14px;
+    padding: 8px 10px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  .btn-run {
+    display: block;
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    background: #3a86ff;
+    color: #fff;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .btn-run:hover { background: #2f6fd6; }
+  .proj-btn {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    box-sizing: border-box;
+    text-align: left;
+  }
+  .proj-btn:hover { background: #eef2f7; }
+  .mode-radio-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+
+  #logpanel {
+    flex-shrink: 0;
+    height: 160px;
+    display: flex;
+    flex-direction: column;
+    background: #1c1c1c;
+    color: #d0d0d0;
+    border-top: 1px solid #444;
+    box-sizing: border-box;
+  }
+  #logpanel-header {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: #2a2a2a;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  #logpanel-header button {
+    background: transparent;
+    border: none;
+    color: #d0d0d0;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 8px;
+  }
+  #logpanel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  #crash-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #b02a2a;
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 14px;
+    text-align: center;
+    z-index: 2000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+<div id="crash-banner">Connection to ROOT was lost. The application may have crashed -- check your terminal.</div>
+<div id="app">
+  <div id="menubar">
+    <div class="menu">
+      <button class="menu-label" data-menu="file">File</button>
+      <div class="menu-dropdown" data-menu="file">
+        <button class="menu-item" id="btn-open">Open matrix...</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-label" data-menu="settings">Settings</button>
+      <div class="menu-dropdown" data-menu="settings">
+        <button class="menu-item" id="btn-load-settings">Open settings...</button>
+        <button class="menu-item" id="btn-save-settings">Save settings</button>
+        <button class="menu-item" id="btn-save-settings-as">Save settings as...</button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="btn-oslo">Set literature file...</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-label" data-menu="display">Display</button>
+      <div class="menu-dropdown" data-menu="display">
+        <div style="padding: 4px 14px; font-size: 12px; color: #888;">Verbose level</div>
+        <button class="menu-item verbose-item checked" data-level="0">Silent</button>
+        <button class="menu-item verbose-item" data-level="1">Level 1</button>
+        <button class="menu-item verbose-item" data-level="2">Level 2</button>
+      </div>
+    </div>
+  </div>
+  <div id="content-row">
+    <div id="canvas_holder"></div>
+
+    <div id="sidebar">
+      <div id="sidebar-tabs">
+        <button class="tab-btn active" data-tab="levels">Levels</button>
+        <button class="tab-btn" data-tab="excitation">Excitation &amp; Bins</button>
+        <button class="tab-btn" data-tab="projections">Projections</button>
+        <button class="tab-btn" data-tab="options">Options</button>
+      </div>
+
+      <div id="sidebar-scroll">
+
+        <div id="panel-levels">
+          <h3>Levels</h3>
+
+          <div class="section-label">
+            <span>Level 1</span>
+            <label style="font-size: 12px;"><input type="checkbox" id="doublet1"> Doublet</label>
+          </div>
+          <div class="field-row">
+            <input type="number" id="lvl1-lo" value="685">
+            <span>to</span>
+            <input type="number" id="lvl1-hi" value="900">
+            <span>keV</span>
+          </div>
+          <div class="doublet-box" id="doublet1-fields" style="display: none;">
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="d1-lo" value="920">
+              <span>to</span>
+              <input type="number" id="d1-hi" value="960">
+              <span>keV</span>
+            </div>
+          </div>
+
+          <div class="section-label">
+            <span>Level 2</span>
+            <label style="font-size: 12px;"><input type="checkbox" id="doublet2"> Doublet</label>
+          </div>
+          <div class="field-row">
+            <input type="number" id="lvl2-lo" value="1497">
+            <span>to</span>
+            <input type="number" id="lvl2-hi" value="1732">
+            <span>keV</span>
+          </div>
+          <div class="doublet-box" id="doublet2-fields" style="display: none;">
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="d2-lo" value="1750">
+              <span>to</span>
+              <input type="number" id="d2-hi" value="1790">
+              <span>keV</span>
+            </div>
+          </div>
+
+          <div class="section-label"><span>Background (Level 1)</span></div>
+          <div class="bg-box">
+            <div class="field-row">
+              <input type="number" id="bg1-lo1" value="260">
+              <span>to</span>
+              <input type="number" id="bg1-hi1" value="360">
+              <span>keV</span>
+            </div>
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="bg1-lo2" value="700">
+              <span>to</span>
+              <input type="number" id="bg1-hi2" value="800">
+              <span>keV</span>
+            </div>
+          </div>
+
+          <div class="section-label"><span>Background (Level 2)</span></div>
+          <div class="bg-box">
+            <div class="field-row">
+              <input type="number" id="bg2-lo1" value="850">
+              <span>to</span>
+              <input type="number" id="bg2-hi1" value="950">
+              <span>keV</span>
+            </div>
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="bg2-lo2" value="1350">
+              <span>to</span>
+              <input type="number" id="bg2-hi2" value="1450">
+              <span>keV</span>
+            </div>
+          </div>
+
+          <button class="btn-run">ShapeIt!</button>
+        </div>
+
+        <div id="panel-excitation" style="display: none;">
+          <h3>Excitation &amp; Bins</h3>
+
+          <div class="section-label"><span>Excitation</span></div>
+          <div class="field-row">
+            <input type="number" id="exc-lo" value="3500">
+            <span>to</span>
+            <input type="number" id="exc-hi" value="6700">
+            <span>keV</span>
+          </div>
+
+          <p style="font-size: 13px; color: #555; margin: 14px 0 6px;">Bin size [keV]</p>
+          <div class="field-row">
+            <input type="number" id="binsize-lo" value="400">
+            <span>to</span>
+            <input type="number" id="binsize-hi" value="400" disabled>
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 14px;">
+            <input type="checkbox" id="bin-variation"> Bin size variation
+          </label>
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Nr. of bins</p>
+          <div class="field-row">
+            <input type="number" id="nbins-lo" value="1">
+            <span>to</span>
+            <input type="number" id="nbins-hi" value="1" disabled>
+          </div>
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Min. counts</p>
+          <input type="number" id="min-counts" value="0" style="width: 100%; margin-bottom: 14px; box-sizing: border-box;">
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">gSF scaling</p>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <input type="number" id="gsf-scaling" value="1" style="width: 100px;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+              <input type="checkbox" id="auto-scale"> Auto
+            </label>
+          </div>
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Efficiency correction</p>
+          <input type="number" id="eff-corr" value="1" style="width: 100px;">
+
+          <button class="btn-run">ShapeIt!</button>
+        </div>
+
+        <div id="panel-projections" style="display: none;">
+          <h3>Projections</h3>
+
+          <button class="proj-btn" id="btn-show-matrix">Matrix</button>
+          <button class="proj-btn" id="btn-show-proj">Diagonal projection (sum)</button>
+
+          <p style="font-size: 13px; color: #555; margin: 14px 0 6px;">Bin</p>
+          <select id="bin-select" style="width: 100%; padding: 6px; box-sizing: border-box;" disabled></select>
+
+          <p style="font-size: 12px; color: #999; margin-top: 14px;">Log/Linear Y-axis scale toggle coming soon.</p>
+
+          <button class="btn-run">ShapeIt!</button>
+        </div>
+
+        <div id="panel-options" style="display: none;">
+          <h3>Options</h3>
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Matrix</p>
+          <select id="matrix-select" style="width: 100%; padding: 6px; box-sizing: border-box; margin-bottom: 16px;"></select>
+
+          <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Mode</p>
+          <label class="mode-radio-row">
+            <input type="radio" name="mode-radio" id="mode-integration" value="1" checked> Integration
+          </label>
+          <label class="mode-radio-row" style="margin-bottom: 16px;">
+            <input type="radio" name="mode-radio" id="mode-autofit" value="2"> Autofit
+          </label>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+              <input type="checkbox" id="opt-interpol" checked> Sewing interpolation
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+              <input type="checkbox" id="opt-oslo"> Display expectation
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+              <input type="checkbox" id="opt-sliding"> Sliding window variation
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+              <input type="checkbox" id="opt-background"> Background subtraction
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #999;">
+              <input type="checkbox" disabled> Use width calibration
+            </label>
+            <p style="font-size: 12px; color: #999; margin: 0;">Width calibration unlocks after a fit provides calibration data. Not wired up yet.</p>
+          </div>
+
+          <button class="btn-run">ShapeIt!</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="logpanel">
+    <div id="logpanel-header">
+      <span style="flex: 1;">Messages</span>
+      <span id="status" style="margin-right: 12px; color: #9ab;">Connecting...</span>
+      <button id="btn-close-log">Clear</button>
+    </div>
+    <div id="logpanel-content"></div>
+  </div>
+</div>
+
+<div id="filebrowser-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1000;">
+  <div style="background: #fff; width: 520px; max-height: 70vh; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box;">
+    <h3 id="fb-title" style="margin: 0 0 10px;">Select a file</h3>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+      <button id="fb-up">Up</button>
+      <input type="text" id="fb-path" style="flex: 1; padding: 5px;">
+      <button id="fb-go">Go</button>
+    </div>
+    <div id="fb-list" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 240px;"></div>
+    <div id="fb-savebar" style="display: none; margin-top: 10px; gap: 8px; align-items: center;">
+      <input type="text" id="fb-filename" placeholder="filename.txt" style="flex: 1; padding: 5px;">
+      <button id="fb-save-confirm">Save</button>
+    </div>
+    <div style="margin-top: 10px; text-align: right;">
+      <button id="fb-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { connectWebWindow } from 'jsroot/webwindow';
+  import { TCanvasPainter, settings } from 'jsroot';
+
+  // Confirmed via JSROOT's own settings reference (root.cern/js/latest/jsdoc/settings.html) --
+  // ZoomWheel is a real documented on/off toggle, not a guess. Disabling it
+  // outright since there's no sensitivity scale to tune down instead.
+  settings.ZoomWheel = false;
+
+  let conn_handle = null;
+  let currentSettingsPath = null;
+  let startDir = '';
+
+  function setStatus(msg) {
+    document.getElementById('status').innerText = msg;
+    const log = document.getElementById('logpanel-content');
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.textContent = '[' + time + '] ' + msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function embedCanvas(handle) {
+    const conn = handle.createChannel();
+    const dom = document.getElementById('canvas_holder');
+    const painter = new TCanvasPainter(dom, null);
+    painter.online_canvas = true;
+    painter.embed_canvas = true;
+    painter.use_openui = false;
+    painter.useWebsocket(conn);
+    handle.send('channel:' + conn.getChannelId());
+  }
+
+  // ---- sidebar tab switching (Levels / Excitation & Bins / Projections / Options) ----
+  const tabs = {
+    levels: { el: document.getElementById('panel-levels') },
+    excitation: { el: document.getElementById('panel-excitation') },
+    projections: { el: document.getElementById('panel-projections') },
+    options: { el: document.getElementById('panel-options') },
+  };
+  function showTab(name) {
+    Object.values(tabs).forEach(t => t.el.style.display = 'none');
+    tabs[name].el.style.display = 'block';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+  });
+
+  // ---- menu bar (File / Settings / Display dropdowns) ----
+  let menuBarActive = false;
+  function closeAllMenus() {
+    document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.menu-label').forEach(l => l.classList.remove('open'));
+    menuBarActive = false;
+  }
+  function openMenu(name) {
+    closeAllMenus();
+    const dropdown = document.querySelector('.menu-dropdown[data-menu="' + name + '"]');
+    const label = document.querySelector('.menu-label[data-menu="' + name + '"]');
+    dropdown.classList.add('open');
+    label.classList.add('open');
+    menuBarActive = true;
+  }
+  document.querySelectorAll('.menu-label').forEach(label => {
+    label.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const name = label.dataset.menu;
+      const dropdown = document.querySelector('.menu-dropdown[data-menu="' + name + '"]');
+      const wasOpen = dropdown.classList.contains('open');
+      closeAllMenus();
+      if (!wasOpen) openMenu(name);
+    });
+    // once a menu is open, hovering a different label switches to it without a click
+    label.addEventListener('mouseenter', () => {
+      if (menuBarActive) openMenu(label.dataset.menu);
+    });
+  });
+  document.addEventListener('click', closeAllMenus);
+  document.querySelectorAll('.menu-dropdown').forEach(d => {
+    d.addEventListener('click', (e) => e.stopPropagation());
+  });
+
+  // ---- verbose level ----
+  document.querySelectorAll('.verbose-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.verbose-item').forEach(i => i.classList.remove('checked'));
+      item.classList.add('checked');
+      if (conn_handle) conn_handle.send('VERBOSE:' + item.dataset.level);
+      closeAllMenus();
+    });
+  });
+
+  // ---- projection display ----
+  document.getElementById('btn-show-matrix').addEventListener('click', () => {
+    if (conn_handle) conn_handle.send('SHOWMATRIX');
+  });
+  document.getElementById('btn-show-proj').addEventListener('click', () => {
+    if (conn_handle) conn_handle.send('SHOWPROJ');
+  });
+  document.getElementById('bin-select').addEventListener('change', (e) => {
+    if (conn_handle) conn_handle.send('SHOWBINPROJ:' + e.target.value);
+  });
+
+  // ---- file browser ----
+  let fbMode = null; // 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings'
+  let fbCurrentPath = '';
+
+  function openFileBrowser(mode, title) {
+    fbMode = mode;
+    fbCurrentPath = startDir;
+    document.getElementById('fb-title').textContent = title;
+    document.getElementById('fb-savebar').style.display = (mode === 'save-settings') ? 'flex' : 'none';
+    document.getElementById('fb-list').innerHTML = '<div style="padding: 8px; color: #888;">Loading...</div>';
+    document.getElementById('filebrowser-overlay').style.display = 'flex';
+    if (conn_handle) conn_handle.send('LISTDIR:' + fbCurrentPath);
+  }
+  function closeFileBrowser() {
+    document.getElementById('filebrowser-overlay').style.display = 'none';
+  }
+
+  function renderDirListing(path, lines) {
+    fbCurrentPath = path;
+    document.getElementById('fb-path').value = path;
+    const list = document.getElementById('fb-list');
+    list.innerHTML = '';
+    lines.forEach(line => {
+      if (!line) return;
+      const isDir = line[0] === 'D';
+      const name = line.slice(2);
+      const row = document.createElement('div');
+      row.textContent = (isDir ? '\u{1F4C1} ' : '\u{1F4C4} ') + name;
+      row.style.padding = '4px 6px';
+      row.style.cursor = 'pointer';
+      row.style.borderRadius = '3px';
+      row.addEventListener('mouseenter', () => row.style.background = '#eef');
+      row.addEventListener('mouseleave', () => row.style.background = '');
+      row.addEventListener('click', () => {
+        const fullPath = path.replace(/\/$/, '') + '/' + name;
+        if (isDir) {
+          conn_handle.send('LISTDIR:' + fullPath);
+        } else if (fbMode === 'save-settings') {
+          document.getElementById('fb-filename').value = name;
+        } else {
+          confirmSelection(fullPath);
+        }
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function confirmSelection(fullPath) {
+    if (fbMode === 'open-matrix') conn_handle.send('OPEN:' + fullPath);
+    else if (fbMode === 'open-oslo') conn_handle.send('OSLO:' + fullPath);
+    else if (fbMode === 'open-settings') {
+      conn_handle.send('LOAD_SETTINGS:' + fullPath);
+      currentSettingsPath = fullPath;
+    }
+    closeFileBrowser();
+  }
+
+  document.getElementById('fb-up').addEventListener('click', () => {
+    const parent = fbCurrentPath.replace(/\/[^/]*$/, '') || '/';
+    conn_handle.send('LISTDIR:' + parent);
+  });
+  document.getElementById('fb-go').addEventListener('click', () => {
+    conn_handle.send('LISTDIR:' + document.getElementById('fb-path').value.trim());
+  });
+  document.getElementById('fb-cancel').addEventListener('click', closeFileBrowser);
+  document.getElementById('fb-save-confirm').addEventListener('click', () => {
+    const filename = document.getElementById('fb-filename').value.trim();
+    if (!filename) return;
+    const fullPath = fbCurrentPath.replace(/\/$/, '') + '/' + filename;
+    conn_handle.send('SAVE_SETTINGS:' + fullPath);
+    currentSettingsPath = fullPath;
+    closeFileBrowser();
+  });
+
+  connectWebWindow({
+    receiver: {
+      onWebsocketOpened(handle) {
+        conn_handle = handle;
+        setStatus('Connected.');
+        embedCanvas(handle);
+      },
+      onWebsocketMsg(handle, msg) {
+        if (typeof msg !== 'string') return;
+        if (msg.startsWith('DIRLIST:')) {
+          const body = msg.slice(8);
+          const lines = body.split('\n');
+          const path = lines.shift();
+          renderDirListing(path, lines);
+        } else if (msg.startsWith('DIRERROR:')) {
+          setStatus(msg.slice(9));
+        } else if (msg.startsWith('MATRIXLIST:')) {
+          const lines = msg.slice(11).split('\n');
+          const selectIndex = parseInt(lines.shift(), 10);
+          const sel = document.getElementById('matrix-select');
+          sel.innerHTML = '';
+          lines.forEach((name, i) => {
+            if (!name) return;
+            const opt = document.createElement('option');
+            opt.value = i + 1;
+            opt.textContent = name;
+            if (i + 1 === selectIndex) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        } else if (msg.startsWith('SETTINGS_SYNC:')) {
+          const v = msg.slice(14).split('|').map(Number);
+          document.getElementById('lvl1-lo').value = v[0];
+          document.getElementById('lvl1-hi').value = v[1];
+          document.getElementById('lvl2-lo').value = v[2];
+          document.getElementById('lvl2-hi').value = v[3];
+          document.getElementById('exc-lo').value = v[4];
+          document.getElementById('exc-hi').value = v[5];
+          const hasDoublet1 = v[6] !== 0 || v[7] !== 0;
+          document.getElementById('doublet1').checked = hasDoublet1;
+          document.getElementById('doublet1-fields').style.display = hasDoublet1 ? 'block' : 'none';
+          if (hasDoublet1) { document.getElementById('d1-lo').value = v[6]; document.getElementById('d1-hi').value = v[7]; }
+          const hasDoublet2 = v[8] !== 0 || v[9] !== 0;
+          document.getElementById('doublet2').checked = hasDoublet2;
+          document.getElementById('doublet2-fields').style.display = hasDoublet2 ? 'block' : 'none';
+          if (hasDoublet2) { document.getElementById('d2-lo').value = v[8]; document.getElementById('d2-hi').value = v[9]; }
+          document.getElementById('opt-interpol').checked = v[10] !== 0;
+          document.getElementById('opt-oslo').checked = v[11] !== 0;
+          document.getElementById('opt-sliding').checked = v[12] !== 0;
+          document.getElementById('opt-background').checked = v[13] !== 0;
+          document.getElementById('min-counts').value = v[14];
+          document.getElementById('gsf-scaling').value = v[15];
+          document.getElementById('auto-scale').checked = v[16] !== 0;
+          document.getElementById('eff-corr').value = v[17];
+          const mode = v[18];
+          document.getElementById('mode-integration').checked = (mode !== 2);
+          document.getElementById('mode-autofit').checked = (mode === 2);
+          document.getElementById('bg1-lo1').value = v[19];
+          document.getElementById('bg1-hi1').value = v[20];
+          document.getElementById('bg1-lo2').value = v[21];
+          document.getElementById('bg1-hi2').value = v[22];
+          document.getElementById('bg2-lo1').value = v[23];
+          document.getElementById('bg2-hi1').value = v[24];
+          document.getElementById('bg2-lo2').value = v[25];
+          document.getElementById('bg2-hi2').value = v[26];
+        } else if (msg.startsWith('STARTDIR:')) {
+          startDir = msg.slice(9);
+        } else if (msg.startsWith('NBINS:')) {
+          const parts = msg.slice(6).split('|').map(Number);
+          const [sizeLo, sizeHi, nLo, nHi] = parts;
+          document.getElementById('binsize-lo').value = sizeLo;
+          document.getElementById('binsize-hi').value = sizeHi;
+          document.getElementById('nbins-lo').value = nLo;
+          document.getElementById('nbins-hi').value = nHi;
+          const sel = document.getElementById('bin-select');
+          sel.innerHTML = '';
+          for (let i = 1; i <= nLo; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = 'bin ' + i;
+            sel.appendChild(opt);
+          }
+          sel.disabled = (nLo < 1);
+        } else {
+          setStatus(msg);
+        }
+      },
+      onWebsocketClosed() {
+        conn_handle = null;
+        setStatus('Disconnected.');
+        document.getElementById('crash-banner').style.display = 'block';
+      },
+    },
+  });
+
+  document.getElementById('btn-close-log').addEventListener('click', () => {
+    document.getElementById('logpanel-content').innerHTML = '';
+  });
+
+  document.getElementById('doublet1').addEventListener('change', (e) => {
+    document.getElementById('doublet1-fields').style.display = e.target.checked ? 'block' : 'none';
+  });
+  document.getElementById('doublet2').addEventListener('change', (e) => {
+    document.getElementById('doublet2-fields').style.display = e.target.checked ? 'block' : 'none';
+  });
+
+  function sendExcitationUpdate() {
+    const lo = document.getElementById('exc-lo').value;
+    const hi = document.getElementById('exc-hi').value;
+    if (conn_handle) conn_handle.send('EXCITATION:' + lo + '|' + hi);
+  }
+  document.getElementById('exc-lo').addEventListener('change', sendExcitationUpdate);
+  document.getElementById('exc-hi').addEventListener('change', sendExcitationUpdate);
+
+  function sendBgEnergies() {
+    const v = id => document.getElementById(id).value;
+    const msg = [
+      v('bg1-lo1'), v('bg1-hi1'), v('bg1-lo2'), v('bg1-hi2'),
+      v('bg2-lo1'), v('bg2-hi1'), v('bg2-lo2'), v('bg2-hi2'),
+    ].join('|');
+    if (conn_handle) conn_handle.send('BGENERGIES:' + msg);
+  }
+  ['bg1-lo1', 'bg1-hi1', 'bg1-lo2', 'bg1-hi2', 'bg2-lo1', 'bg2-hi1', 'bg2-lo2', 'bg2-hi2'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendBgEnergies);
+  });
+
+  document.getElementById('btn-open').addEventListener('click', () => {
+    openFileBrowser('open-matrix', 'Open matrix (.root file)');
+    closeAllMenus();
+  });
+  document.getElementById('matrix-select').addEventListener('change', (e) => {
+    if (conn_handle) conn_handle.send('SELECTMATRIX:' + e.target.value);
+  });
+  document.querySelectorAll('input[name="mode-radio"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (conn_handle) conn_handle.send('MODE:' + e.target.value);
+    });
+  });
+  document.getElementById('btn-oslo').addEventListener('click', () => {
+    openFileBrowser('open-oslo', 'Set literature file');
+    closeAllMenus();
+  });
+  document.getElementById('btn-load-settings').addEventListener('click', () => {
+    openFileBrowser('open-settings', 'Open settings file');
+    closeAllMenus();
+  });
+  document.getElementById('btn-save-settings').addEventListener('click', () => {
+    if (currentSettingsPath) {
+      conn_handle.send('SAVE_SETTINGS:' + currentSettingsPath);
+    } else {
+      openFileBrowser('save-settings', 'Save settings as...');
+    }
+    closeAllMenus();
+  });
+  document.getElementById('btn-save-settings-as').addEventListener('click', () => {
+    openFileBrowser('save-settings', 'Save settings as...');
+    closeAllMenus();
+  });
+
+  // ---- Options panel: send immediately on change, matching the native app's
+  // immediate-apply-on-click behavior (no separate Apply button) ----
+  function sendOptions() {
+    const v = id => document.getElementById(id).checked ? 1 : 0;
+    const msg = [
+      v('opt-interpol'), v('opt-oslo'), v('opt-sliding'), v('opt-background'),
+    ].join('|');
+    if (conn_handle) conn_handle.send('OPTIONS:' + msg);
+  }
+  ['opt-interpol', 'opt-oslo', 'opt-sliding', 'opt-background'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendOptions);
+  });
+
+  // ---- Excitation & Bins panel ----
+  function sendBinSize() {
+    const lo = document.getElementById('binsize-lo').value;
+    const hi = document.getElementById('binsize-hi').value;
+    const isVar = document.getElementById('bin-variation').checked ? 1 : 0;
+    if (conn_handle) conn_handle.send('BINSIZE:' + lo + '|' + hi + '|' + isVar);
+  }
+  document.getElementById('bin-variation').addEventListener('change', (e) => {
+    document.getElementById('binsize-hi').disabled = !e.target.checked;
+    document.getElementById('nbins-hi').disabled = !e.target.checked;
+    sendBinSize();
+  });
+  document.getElementById('binsize-lo').addEventListener('change', sendBinSize);
+  document.getElementById('binsize-hi').addEventListener('change', sendBinSize);
+
+  document.getElementById('nbins-lo').addEventListener('change', (e) => {
+    if (conn_handle) conn_handle.send('NBINSLO:' + e.target.value);
+  });
+  document.getElementById('nbins-hi').addEventListener('change', (e) => {
+    if (conn_handle) conn_handle.send('NBINSHI:' + e.target.value);
+  });
+
+  function sendIntParams() {
+    const minCounts = document.getElementById('min-counts').value;
+    const scaling = document.getElementById('gsf-scaling').value;
+    const autoScale = document.getElementById('auto-scale').checked ? 1 : 0;
+    const effCorr = document.getElementById('eff-corr').value;
+    if (conn_handle) conn_handle.send('INTPARAMS:' + minCounts + '|' + scaling + '|' + autoScale + '|' + effCorr);
+  }
+  ['min-counts', 'gsf-scaling', 'auto-scale', 'eff-corr'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendIntParams);
+  });
+
+  // ---- ShapeIt! button -- one instance per tab panel, all doing the same thing ----
+  document.querySelectorAll('.btn-run').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!conn_handle) return;
+      const val = id => document.getElementById(id).value;
+      const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
+      const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+      const msg = [
+        val('lvl1-lo'), val('lvl1-hi'),
+        val('lvl2-lo'), val('lvl2-hi'),
+        val('exc-lo'), val('exc-hi'),
+        isDoublet1, val('d1-lo'), val('d1-hi'),
+        isDoublet2, val('d2-lo'), val('d2-hi'),
+      ].join('|');
+      conn_handle.send('RUN:' + msg);
+      setStatus('Running...');
+    });
+  });
+</script>
+</body>
+</html>
