@@ -92,7 +92,7 @@ TH1D* ShapeMatrix::GetDiagEx(int bbin, std::string title) {
 		//create projection of diagEx
         hist = new TH1D(name,title,xbins,eMin_diag, eMax_y);
         hist = diagEx->ProjectionX(name,bbin,bbin,"o");
-        hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+        hist->GetXaxis()->SetTitle("E_{x} - E_{#gamma} (keV)");
         hist->GetYaxis()->SetTitle("counts");
         if (sett->mode == 2) {
             FitGauss(hist, bbin, 0);
@@ -495,6 +495,8 @@ void ShapeMatrix::Diag(){
     
 	//creating histograms;
     diag  = new TH1F("diag","Diagonal Projection",xbins, eMin_diag, eMax_y);
+    diag->GetXaxis()->SetTitle("E_{x} - E_{#gamma} (keV)");
+    diag->GetYaxis()->SetTitle("counts");
     diagEx= new TH2F("diag_ex","Diagonal Projection vs excitation energy",xbins,eMin_diag, eMax_y, ybins, ene0, ene1_diag);
     
     

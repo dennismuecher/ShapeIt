@@ -190,7 +190,7 @@ TMultiGraph* ShapeCollector::getMultGraph() {
     TMultiGraph* multGraph = new TMultiGraph();
     multGraph->SetTitle("Gamma Ray Strength Function from Shape Method; E_{#gamma} (keV); f(E_{#gamma} (MeV^{-3})" );
     
-    //add literature values
+    //add literature values first (bottom layer)
     
     if (m_sett->doMC) {
         Transform(m_sett->lit_norm, m_sett->lit_alpha);
@@ -201,6 +201,7 @@ TMultiGraph* ShapeCollector::getMultGraph() {
         multGraph->Add(litCollector->GetLevGraph(),"3");
     }
     
+    //add individual data points (middle layer)
     if (m_sett->displaySingle) {
         //add all the gSF data stored in the collector to the MultiGraph
         for (int i = 0; i < gSFCollector.size(); i++) {
@@ -209,9 +210,11 @@ TMultiGraph* ShapeCollector::getMultGraph() {
         }
     }
     
-    //add smoothed graph, if requested
+    //add smoothed average graph last (top layer), styled in black
     if (m_sett->displayAvg) {
         Smooth(0);
+        gSFGraphSmooth->SetMarkerColor(1);  // black
+        gSFGraphSmooth->SetLineColor(1);    // black
         multGraph->Add(gSFGraphSmooth,"P");
     }
     return ( multGraph );

@@ -60,6 +60,7 @@ public:
     int                             GetNSmooth() {return gSFGraphSmooth->GetN();}
     TMultiGraph*                    getMultGraph();
     TGraphErrors*                   getLitGraph(){return litCollector->GetLevGraph();}
+    TGraphAsymmErrors*              getAvgGraph(){return gSFGraphSmooth;}
 
 };
 #endif

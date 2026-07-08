@@ -208,7 +208,10 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->bgEne[0][0]) + "|" + std::to_string(sett->bgEne[0][1]) + "|";
     msg += std::to_string(sett->bgEne[0][2]) + "|" + std::to_string(sett->bgEne[0][3]) + "|";
     msg += std::to_string(sett->bgEne[1][0]) + "|" + std::to_string(sett->bgEne[1][1]) + "|";
-    msg += std::to_string(sett->bgEne[1][2]) + "|" + std::to_string(sett->bgEne[1][3]);
+    msg += std::to_string(sett->bgEne[1][2]) + "|" + std::to_string(sett->bgEne[1][3]) + "|";
+    msg += std::to_string(sett->displaySingle ? 1 : 0) + "|";
+    msg += std::to_string(sett->displayAvg ? 1 : 0) + "|";
+    msg += std::to_string(sett->colour ? 1 : 0);
     window->Send(connid, msg);
 }
 
@@ -295,6 +298,70 @@ void DrawMarkers(bool usePadRange = false)
 double gLastUxmin = 0, gLastUxmax = 0, gLastUymin = 0, gLastUymax = 0;
 bool gHaveLastRange = false;
 
+// Track last marker positions to detect when they're dragged
+double gLastLevEne[4] = {0, 0, 0, 0};
+double gLastBgEne[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+bool gHaveLastMarkers = false;
+
+// Forward declaration
+void RunShapeIt(unsigned connid);
+
+// Clean up autofit display: remove intermediate cyan fits and add clean background lines
+void CleanupAutofitDisplay()
+{
+    if (sett->mode != 2 || !gCurrentHist)
+        return;
+    
+    TList *funcs = gCurrentHist->GetListOfFunctions();
+    if (!funcs)
+        return;
+    
+    // Remove all cyan intermediate fits (color 426)
+    std::vector<TF1*> toRemove;
+    TIter next1(funcs);
+    TObject *obj1;
+    while ((obj1 = next1())) {
+        TF1 *f = dynamic_cast<TF1*>(obj1);
+        if (f && f->GetLineColor() == 426) {
+            toRemove.push_back(f);
+        }
+    }
+    for (TF1 *f : toRemove) {
+        funcs->Remove(f);
+    }
+    
+    // Extract background parameters from final fits and draw background lines
+    TIter next2(funcs);
+    TObject *obj2;
+    while ((obj2 = next2())) {
+        TF1 *f = dynamic_cast<TF1*>(obj2);
+        if (f && f->GetLineColor() == 6) { // Only process the final fit (magenta)
+            std::string fname = f->GetName();
+            int level = -1;
+            if (fname.find("level1") != std::string::npos) level = 0;
+            else if (fname.find("level2") != std::string::npos) level = 1;
+            
+            if (level >= 0 && level <= 1) {
+                // Extract background parameters: par[1]*x + par[2]
+                double slope = f->GetParameter(1);
+                double intercept = f->GetParameter(2);
+                
+                // Create a simple linear function for just the background
+                std::string bgName = "bg_line_level" + std::to_string(level+1) + "_bin" + std::to_string(gCurrentBin);
+                TF1 *bgLine = new TF1(bgName.c_str(), "[0]*x + [1]", 
+                                      sett->bgEne[level][0], sett->bgEne[level][3]);
+                bgLine->SetParameter(0, slope);
+                bgLine->SetParameter(1, intercept);
+                bgLine->SetLineColor(kCyan-6);
+                bgLine->SetLineWidth(2);
+                bgLine->SetLineStyle(2); // Dashed line
+                bgLine->SetNpx(500);
+                bgLine->Draw("SAME");
+            }
+        }
+    }
+}
+
 // Checks whether the pad's visible axis range has changed since last checked,
 // and redraws markers to match if so. Used both by HandleCanvasEvent (cheap,
 // but confirmed NOT to fire for zoom/pan on a web canvas -- only for actual
@@ -315,6 +382,100 @@ void CheckRangeChanged()
         gLastUymin = uymin; gLastUymax = uymax;
         gHaveLastRange = true;
         DrawMarkers(true);
+    }
+}
+
+// Checks if markers have been dragged and updates settings if so
+void CheckMarkersChanged()
+{
+    if (!matrix || (gDisplayMode != 4 && gDisplayMode != 5))
+        return;
+    
+    if (!gMarkerLine[0] || !gBgBox[0])
+        return;
+    
+    // Read current marker positions
+    double levEne[4];
+    double bgEne[2][4];
+    
+    for (int i = 0; i < 4; i++)
+        levEne[i] = gMarkerLine[i]->GetX1();
+    
+    bgEne[0][0] = gBgBox[0]->GetX1(); bgEne[0][1] = gBgBox[0]->GetX2();
+    bgEne[0][2] = gBgBox[1]->GetX1(); bgEne[0][3] = gBgBox[1]->GetX2();
+    bgEne[1][0] = gBgBox[2]->GetX1(); bgEne[1][1] = gBgBox[2]->GetX2();
+    bgEne[1][2] = gBgBox[3]->GetX1(); bgEne[1][3] = gBgBox[3]->GetX2();
+    
+    // Check if anything changed
+    bool changed = false;
+    if (gHaveLastMarkers) {
+        for (int i = 0; i < 4; i++) {
+            if (std::abs(levEne[i] - gLastLevEne[i]) > 0.01) {
+                changed = true;
+                break;
+            }
+        }
+        if (!changed) {
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (std::abs(bgEne[i][j] - gLastBgEne[i][j]) > 0.01) {
+                        changed = true;
+                        break;
+                    }
+                }
+                if (changed) break;
+            }
+        }
+    }
+    
+    // Update stored values
+    for (int i = 0; i < 4; i++)
+        gLastLevEne[i] = levEne[i];
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 4; j++)
+            gLastBgEne[i][j] = bgEne[i][j];
+    gHaveLastMarkers = true;
+    
+    // If changed, update settings and UI
+    if (changed) {
+        std::cout << "Marker position changed, updating settings..." << std::endl;
+        
+        for (int i = 0; i < 4; i++)
+            sett->levEne[i] = levEne[i];
+        
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 4; j++)
+                sett->bgEne[i][j] = bgEne[i][j];
+        
+        SendSettingsSync(0);
+        
+        // If in Autofit mode (mode 2), re-fit and redraw the current projection
+        // This updates the Gaussian fits on the histogram without recalculating all gSF
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Autofit mode: updating fits for bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        }
     }
 }
 
@@ -351,7 +512,7 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
         sett->bgEne[1][2] = gBgBox[3]->GetX1(); sett->bgEne[1][3] = gBgBox[3]->GetX2();
 
         DrawMarkers();
-        SendSettingsSync(0); // connid 0 broadcasts to all connections
+        SendSettingsSync(0);
     }
 }
 
@@ -387,6 +548,7 @@ void RunShapeIt(unsigned connid)
     struct FreshGraph {
         TGraph *graph;
         bool isLiterature;
+        bool isAverage;
     };
     std::vector<FreshGraph> freshGraphs;
     
@@ -396,6 +558,9 @@ void RunShapeIt(unsigned connid)
     if ((sett->doOslo || sett->doMC) && !sett->osloFileName.empty()) {
         litGraph = gSFColl->getLitGraph();
     }
+    
+    // Get the average/smoothed graph pointer to identify it
+    TGraph *avgGraph = sett->displayAvg ? gSFColl->getAvgGraph() : nullptr;
 
     if (graphList) {
         TIter next(graphList);
@@ -411,6 +576,7 @@ void RunShapeIt(unsigned connid)
             // This is reliable because it checks if this graph IS the literature data
             // loaded from osloFileName, rather than guessing based on name
             bool isLit = (litGraph != nullptr && g == litGraph);
+            bool isAvg = (avgGraph != nullptr && g == avgGraph);
 
             if (auto *ge = dynamic_cast<TGraphAsymmErrors *>(g)) {
                 std::vector<double> x, y, exl, exh, eyl, eyh;
@@ -425,7 +591,7 @@ void RunShapeIt(unsigned connid)
                 auto *fresh = new TGraphAsymmErrors((int)x.size(), x.data(), y.data(),
                                                      exl.data(), exh.data(), eyl.data(), eyh.data());
                 fresh->Sort();
-                freshGraphs.push_back({fresh, isLit});
+                freshGraphs.push_back({fresh, isLit, isAvg});
             }
             else if (auto *ge2 = dynamic_cast<TGraphErrors *>(g)) {
                 std::vector<double> x, y, ex, ey;
@@ -438,7 +604,7 @@ void RunShapeIt(unsigned connid)
                 }
                 auto *fresh = new TGraphErrors((int)x.size(), x.data(), y.data(), ex.data(), ey.data());
                 fresh->Sort();
-                freshGraphs.push_back({fresh, isLit});
+                freshGraphs.push_back({fresh, isLit, isAvg});
             }
             else {
                 for (int i = 0; i < g->GetN(); i++) {
@@ -458,8 +624,12 @@ void RunShapeIt(unsigned connid)
     for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
 
     bool firstDrawn = false;
+    TGraph *firstGraph = nullptr;  // Track the first graph drawn with "A" option
     int colorIdx = 0;
-    int colors[] = { kBlue, kRed, kGreen + 2, kMagenta, kOrange + 7, kCyan + 2 };
+    // Use colors matching ShapeGSF.C: color 6 (magenta) for Level 1, color 7 (cyan) for Level 2
+    // When colour=false, both use color 6
+    int color1 = 6;  // kMagenta
+    int color2 = sett->colour ? 7 : 6;  // kCyan if colour enabled, otherwise same as Level 1
     for (auto &fg : freshGraphs) {
         TGraph *g = fg.graph;
 
@@ -472,27 +642,80 @@ void RunShapeIt(unsigned connid)
             g->SetFillStyle(3013);
             g->SetLineColor(kBlue);
             g->SetLineWidth(2);
-            g->SetTitle("Literature gSF (error band)");
             g->Draw(firstDrawn ? "L3 SAME" : "AL3");
-        } else {
-            g->SetMarkerStyle(20);
-            g->SetMarkerColor(colors[colorIdx % 6]);
-            g->SetLineColor(colors[colorIdx % 6]);
-            g->SetTitle("gSF values (fresh error-bar graphs, no TMultiGraph)");
+            if (!firstDrawn) firstGraph = g;
+        } else if (fg.isAverage) {
+            // Average/smoothed graph in black
+            g->SetMarkerStyle(22);
+            g->SetMarkerSize(2);
+            g->SetMarkerColor(1);  // black
+            g->SetLineColor(1);    // black
             g->Draw(firstDrawn ? "P SAME" : "AP");
+            if (!firstDrawn) firstGraph = g;
+        } else {
+            g->SetMarkerStyle(22);
+            g->SetMarkerSize(2);
+            // Alternate between Level 1 (color1) and Level 2 (color2) colors
+            int color = (colorIdx % 2 == 0) ? color1 : color2;
+            g->SetMarkerColor(color);
+            g->SetLineColor(color);
+            g->Draw(firstDrawn ? "P SAME" : "AP");
+            if (!firstDrawn) firstGraph = g;
             colorIdx++;
         }
+        
         firstDrawn = true;
+    }
+    
+    // After all graphs are drawn, set the axis labels and plot title.
+    // When a graph is drawn with the "A" option, it owns the histogram that
+    // draws the axes. We can access that histogram via GetHistogram().
+    if (firstGraph) {
+        TH1F *hist = firstGraph->GetHistogram();
+        if (hist) {
+            std::cout << "Found graph histogram, setting title and axis labels..." << std::endl;
+            // Set title with semicolons to separate title;xlabel;ylabel (ROOT convention)
+            hist->SetTitle("Gamma Ray Strength Function from Shape Method;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
+            // Also set axis labels explicitly
+            hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+            hist->GetYaxis()->SetTitle("f(E_{#gamma}) (MeV^{-3})");
+            // Force axis titles to be displayed
+            hist->GetXaxis()->SetTitleSize(0.04);
+            hist->GetYaxis()->SetTitleSize(0.04);
+            hist->GetXaxis()->SetTitleOffset(1.0);
+            hist->GetYaxis()->SetTitleOffset(1.2);
+            // Also set the graph's own title as a fallback
+            firstGraph->SetTitle("Gamma Ray Strength Function from Shape Method");
+            gPad->Modified();  // Mark pad as modified after changing labels
+        } else {
+            std::cout << "Warning: graph histogram not found, cannot set axis labels" << std::endl;
+        }
     }
     // Fallback: if no error-bar graphs were found (e.g. nothing matched
     // TGraphErrors/TGraphAsymmErrors), fall back to the plain-TGraph test
     // from before, so this still shows something.
-    if (!firstDrawn && !allX.empty()) {
+    if (!firstGraph && !allX.empty()) {
         TGraph *simpleGraph = new TGraph((int)allX.size(), allX.data(), allY.data());
         simpleGraph->SetMarkerStyle(20);
         simpleGraph->SetMarkerColor(kBlue);
-        simpleGraph->SetTitle("gSF values (bare TGraph test plot, no error-bar graphs found)");
+        simpleGraph->SetTitle("Gamma Ray Strength Function from Shape Method");
         simpleGraph->Draw("AP");
+        
+        // Set axis labels and title for the fallback graph too
+        TH1F *hist = simpleGraph->GetHistogram();
+        if (hist) {
+            std::cout << "Found graph histogram (fallback), setting title and axis labels..." << std::endl;
+            hist->SetTitle("Gamma Ray Strength Function from Shape Method;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
+            hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+            hist->GetYaxis()->SetTitle("f(E_{#gamma}) (MeV^{-3})");
+            hist->GetXaxis()->SetTitleSize(0.04);
+            hist->GetYaxis()->SetTitleSize(0.04);
+            hist->GetXaxis()->SetTitleOffset(1.0);
+            hist->GetYaxis()->SetTitleOffset(1.2);
+            gPad->Modified();
+        } else {
+            std::cout << "Warning: graph histogram not found (fallback)" << std::endl;
+        }
     }
 
     // canvas->Clear() just deleted any marker TLine/TBox objects left over
@@ -572,6 +795,21 @@ void ProcessData(unsigned connid, const std::string &arg)
             web_imp->ForceUpdate();
         }
         window->Send(connid, "STARTDIR:" + gStartDir);
+        
+        // If matrix was auto-loaded at startup, sync it to the UI
+        if (matrix) {
+            auto names = matrix->GetMatrixName();
+            int idx = 0;
+            for (size_t i = 0; i < names.size(); i++)
+                if (names[i] == sett->matrixName) idx = (int)i + 1;
+            if (idx > 0) {
+                SendMatrixListAndSelect(connid, currentMatrixPath, idx);
+                SendNBins(connid);
+            }
+        }
+        
+        // Sync settings to UI
+        SendSettingsSync(connid);
     }
     else if (arg.compare(0, 5, "OPEN:") == 0) {
         std::string path = arg.substr(5);
@@ -690,6 +928,18 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->doSlidingWindow = v[2] != 0.0;
         sett->doBackground    = v[3] != 0.0;
         window->Send(connid, "Options updated.");
+    }
+    else if (arg.compare(0, 16, "DISPLAY_OPTIONS:") == 0) {
+        // order: displaySingle|displayAvg|colour
+        auto v = ParsePipeDoubles(arg.substr(16));
+        if (v.size() != 3) {
+            window->Send(connid, "Malformed DISPLAY_OPTIONS message.");
+            return;
+        }
+        sett->displaySingle = v[0] != 0.0;
+        sett->displayAvg    = v[1] != 0.0;
+        sett->colour        = v[2] != 0.0;
+        window->Send(connid, "Display options updated.");
     }
     else if (arg.compare(0, 8, "BINSIZE:") == 0) {
         // order: lo|hi|isVariation
@@ -812,6 +1062,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
         gCurrentHist->Draw();
+        CleanupAutofitDisplay();
         gHaveLastRange = false;
         DrawMarkers();
     }
@@ -822,6 +1073,28 @@ void ProcessData(unsigned connid, const std::string &arg)
             sett->exiEne[1] = v[1];
             SendNBins(connid);
         }
+    }
+    else if (arg.compare(0, 14, "LEVELENERGIES:") == 0) {
+        std::cout << "*** LEVELENERGIES HANDLER CALLED ***" << std::endl;
+        auto v = ParsePipeDoubles(arg.substr(14));
+        std::cout << "*** Parsed " << v.size() << " values ***" << std::endl;
+        if (v.size() != 10) {
+            std::cout << "*** ERROR: Expected 10 values, got " << v.size() << " ***" << std::endl;
+            return;
+        }
+        std::cout << "*** Setting levEne[0-3] to: " << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << " ***" << std::endl;
+        sett->levEne[0] = v[0]; 
+        sett->levEne[1] = v[1];
+        sett->levEne[2] = v[2]; 
+        sett->levEne[3] = v[3];
+        bool isDoublet1 = v[4] != 0.0;
+        sett->levEne_2[0] = isDoublet1 ? v[5] : 0.0;
+        sett->levEne_2[1] = isDoublet1 ? v[6] : 0.0;
+        bool isDoublet2 = v[7] != 0.0;
+        sett->levEne_2[2] = isDoublet2 ? v[8] : 0.0;
+        sett->levEne_2[3] = isDoublet2 ? v[9] : 0.0;
+        std::cout << "*** Level energies updated successfully ***" << std::endl;
+        window->Send(connid, "Level energies updated.");
     }
     else if (arg.compare(0, 4, "RUN:") == 0) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|
@@ -853,6 +1126,10 @@ void WebShapeIt()
     gEnv->SetValue("WebGui.ConnCredits", "100");
     gStartDir = gSystem->WorkingDirectory();
 
+    // Configure stat box size (default is ~0.3x0.2 NDC units, reduce by factor of 2)
+    gStyle->SetStatW(0.15);  // width: 0.3 -> 0.15
+    gStyle->SetStatH(0.10);  // height: 0.2 -> 0.10
+
     sett = new ShapeSetting();
     // Hardcoded placeholder until the Integration Bin panel is wired up.
     sett->exi_size[0] = 400;
@@ -874,6 +1151,31 @@ void WebShapeIt()
     sett->setBgEne1(bg1);
     sett->setBgEne2(bg2);
 
+    // Auto-load default settings file for development convenience
+    std::string defaultSettingsPath = gStartDir + "/../Analysis/88Kr/88Kr.dat";
+    std::ifstream testFile(defaultSettingsPath.c_str());
+    if (testFile.good()) {
+        testFile.close();
+        sett->settFileName = defaultSettingsPath;
+        sett->ReadSettings();
+        
+        // Resolve relative paths in settings file
+        std::string settDir = DirName(defaultSettingsPath);
+        sett->dataFileName = ResolveRelativeTo(settDir, sett->dataFileName);
+        sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
+        
+        std::cout << "Auto-loaded settings: " << defaultSettingsPath << std::endl;
+        
+        // Auto-load the matrix file referenced in settings
+        if (!sett->dataFileName.empty() && !gSystem->AccessPathName(sett->dataFileName.c_str())) {
+            currentMatrixPath = sett->dataFileName;
+            matrix = new ShapeMatrix(sett);
+            std::cout << "Auto-loaded matrix: " << sett->dataFileName << std::endl;
+        }
+    } else {
+        std::cout << "Default settings file not found: " << defaultSettingsPath << std::endl;
+    }
+
     canvas = TWebCanvas::CreateWebCanvas("webshapeit_canvas", "ShapeIt 2.0");
 
     // Connects to a plain global function (no custom dictionary-registered
@@ -883,19 +1185,13 @@ void WebShapeIt()
     canvas->Connect("ProcessedEvent(Int_t,Int_t,Int_t,TObject*)", 0, 0,
                      "HandleCanvasEvent(Int_t,Int_t,Int_t,TObject*)");
 
-    // Polls the pad's axis range directly every 100ms and redraws markers if
-    // it changed -- this is the actual mechanism for zoom-adaptive markers.
-    // Confirmed by testing that zoom/pan on a web canvas doesn't fire
-    // ProcessedEvent at all (unlike dragging an object, which does), so
-    // there's no event to hook for this -- polling sidesteps that entirely
-    // by just directly checking the pad's current state instead of waiting
-    // for something to tell us it changed. CheckRangeChanged() only reads
-    // gPad's state and calls the non-blocking PushCanvasUpdate() -- it never
-    // calls the blocking canvas->Update(), so this doesn't reintroduce the
-    // freeze bug fixed earlier.
-    static TTimer *zoomPollTimer = new TTimer();
-    zoomPollTimer->Connect("Timeout()", 0, 0, "CheckRangeChanged()");
-    zoomPollTimer->Start(100, kFALSE);
+    // Polls the pad's axis range and marker positions every 200ms
+    // - CheckRangeChanged() redraws markers when zoom/pan changes
+    // - CheckMarkersChanged() updates settings when markers are dragged
+    static TTimer *pollTimer = new TTimer();
+    pollTimer->Connect("Timeout()", 0, 0, "CheckRangeChanged()");
+    pollTimer->Connect("Timeout()", 0, 0, "CheckMarkersChanged()");
+    pollTimer->Start(200, kFALSE);
 
     window = ROOT::RWebWindow::Create();
     std::string fname = __FILE__;

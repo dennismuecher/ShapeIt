@@ -57,7 +57,26 @@
   .menu-item:hover { background: #eef2f7; }
   .menu-item.checked::before { content: "\2713  "; }
   .menu-divider { height: 1px; background: #e0e0e0; margin: 4px 0; }
-  #status { font-size: 12px; color: #9ab; margin-left: auto; padding: 0 10px; }
+  #settings-info {
+    font-size: 12px;
+    color: #fff;
+    margin-left: auto;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #settings-path {
+    color: #cce;
+  }
+  #settings-status {
+    color: #9ab;
+    font-style: italic;
+  }
+  #settings-status.modified {
+    color: #fb8;
+  }
+  #status { font-size: 12px; color: #9ab; padding: 0 10px; }
 
   #content-row { flex: 1; display: flex; overflow: hidden; }
   #canvas_holder { flex: 1; min-width: 0; overflow: hidden; position: relative; transform: translateZ(0); }
@@ -212,6 +231,8 @@
       <button class="menu-label" data-menu="file">File</button>
       <div class="menu-dropdown" data-menu="file">
         <button class="menu-item" id="btn-open">Open matrix...</button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="btn-exit">Exit</button>
       </div>
     </div>
     <div class="menu">
@@ -233,6 +254,11 @@
         <button class="menu-item verbose-item" data-level="2">Level 2</button>
       </div>
     </div>
+    <div id="settings-info">
+      <span id="settings-path">No settings file</span>
+      <span id="settings-status"></span>
+    </div>
+    <span id="status">Connecting...</span>
   </div>
   <div id="content-row">
     <div id="canvas_holder"></div>
@@ -415,6 +441,27 @@
             <p style="font-size: 12px; color: #999; margin: 0;">Width calibration unlocks after a fit provides calibration data. Not wired up yet.</p>
           </div>
 
+          <div style="margin: 20px 0 16px; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f8fbff;">
+            <p style="font-size: 14px; font-weight: 600; color: #2c3e50; margin: 0 0 12px; border-bottom: 1px solid #4a90e2; padding-bottom: 6px;">Display Options</p>
+            
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px;">
+              <input type="checkbox" id="opt-display-single" checked> Show individual data points
+            </label>
+            <p style="font-size: 11px; color: #666; margin: 0 0 12px 26px; line-height: 1.3;">Display individual gSF data points from each peak</p>
+            
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px;">
+              <input type="checkbox" id="opt-display-avg"> Show average values
+            </label>
+            <p style="font-size: 11px; color: #666; margin: 0 0 12px 26px; line-height: 1.3;">Display smoothed/averaged gSF data</p>
+            
+            <div style="padding-top: 8px; border-top: 1px solid #d0d0d0;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px;">
+                <input type="checkbox" id="opt-colour" checked> Different colors for peaks
+              </label>
+              <p style="font-size: 11px; color: #666; margin: 0 0 0 26px; line-height: 1.3;">Plot Peak 1 and Peak 2 in different colors (individual points only)</p>
+            </div>
+          </div>
+
           <button class="btn-run">ShapeIt!</button>
         </div>
 
@@ -451,6 +498,19 @@
   </div>
 </div>
 
+<div id="exit-dialog-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1001;">
+  <div style="background: #fff; width: 440px; border-radius: 8px; padding: 20px; box-sizing: border-box;">
+    <h3 style="margin: 0 0 12px; font-size: 16px;">Unsaved Changes</h3>
+    <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.5;">You have unsaved changes to your settings. What would you like to do?</p>
+    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button id="exit-discard" style="padding: 8px 16px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer;">Discard Changes</button>
+      <button id="exit-save-current" style="padding: 8px 16px; font-size: 13px; border: 1px solid #3a86ff; border-radius: 4px; background: #fff; color: #3a86ff; cursor: pointer; display: none;">Save</button>
+      <button id="exit-save-as" style="padding: 8px 16px; font-size: 13px; border: 1px solid #3a86ff; border-radius: 4px; background: #fff; color: #3a86ff; cursor: pointer;">Save As...</button>
+      <button id="exit-cancel" style="padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; background: #3a86ff; color: #fff; cursor: pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { connectWebWindow } from 'jsroot/webwindow';
   import { TCanvasPainter, settings } from 'jsroot';
@@ -463,6 +523,43 @@
   let conn_handle = null;
   let currentSettingsPath = null;
   let startDir = '';
+  let settingsDirty = false;  // Track if settings have been modified since last save
+
+  // Mark settings as dirty whenever any setting changes
+  function markSettingsDirty() {
+    settingsDirty = true;
+    updateSettingsDisplay();
+  }
+
+  // Mark settings as clean (just saved or just loaded)
+  function markSettingsClean() {
+    settingsDirty = false;
+    updateSettingsDisplay();
+  }
+
+  // Update the settings file display in the menubar
+  function updateSettingsDisplay() {
+    const pathEl = document.getElementById('settings-path');
+    const statusEl = document.getElementById('settings-status');
+    
+    if (currentSettingsPath) {
+      // Show just the filename, not the full path (or you can show full path if preferred)
+      const filename = currentSettingsPath.split('/').pop();
+      pathEl.textContent = filename;
+      
+      if (settingsDirty) {
+        statusEl.textContent = '(modified)';
+        statusEl.className = 'modified';
+      } else {
+        statusEl.textContent = '(saved)';
+        statusEl.className = '';
+      }
+    } else {
+      pathEl.textContent = 'No settings file';
+      statusEl.textContent = '';
+      statusEl.className = '';
+    }
+  }
 
   function setStatus(msg) {
     document.getElementById('status').innerText = msg;
@@ -552,8 +649,11 @@
   document.getElementById('btn-show-proj').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWPROJ');
   });
-  document.getElementById('bin-select').addEventListener('change', (e) => {
-    if (conn_handle) conn_handle.send('SHOWBINPROJ:' + e.target.value);
+  // Use 'click' event so clicking the already-selected option still triggers display
+  document.getElementById('bin-select').addEventListener('click', (e) => {
+    if (conn_handle && e.target.value) {
+      conn_handle.send('SHOWBINPROJ:' + e.target.value);
+    }
   });
 
   // ---- file browser ----
@@ -609,6 +709,8 @@
     else if (fbMode === 'open-settings') {
       conn_handle.send('LOAD_SETTINGS:' + fullPath);
       currentSettingsPath = fullPath;
+      markSettingsClean();  // Loading settings marks them as clean
+      updateSettingsDisplay();
     }
     closeFileBrowser();
   }
@@ -627,7 +729,14 @@
     const fullPath = fbCurrentPath.replace(/\/$/, '') + '/' + filename;
     conn_handle.send('SAVE_SETTINGS:' + fullPath);
     currentSettingsPath = fullPath;
+    markSettingsClean();  // Saving marks settings as clean
+    updateSettingsDisplay();
     closeFileBrowser();
+    
+    // If we were saving before exit, now exit
+    if (fbMode === 'save-settings-and-exit') {
+      setTimeout(doExit, 100);  // Brief delay to let save complete
+    }
   });
 
   connectWebWindow({
@@ -636,6 +745,7 @@
         conn_handle = handle;
         setStatus('Connected.');
         embedCanvas(handle);
+        updateSettingsDisplay();
       },
       onWebsocketMsg(handle, msg) {
         if (typeof msg !== 'string') return;
@@ -694,6 +804,12 @@
           document.getElementById('bg2-hi1').value = v[24];
           document.getElementById('bg2-lo2').value = v[25];
           document.getElementById('bg2-hi2').value = v[26];
+          // Display options (indices 27, 28, 29)
+          if (v.length >= 30) {
+            document.getElementById('opt-display-single').checked = v[27] !== 0;
+            document.getElementById('opt-display-avg').checked = v[28] !== 0;
+            document.getElementById('opt-colour').checked = v[29] !== 0;
+          }
         } else if (msg.startsWith('STARTDIR:')) {
           startDir = msg.slice(9);
         } else if (msg.startsWith('NBINS:')) {
@@ -730,15 +846,37 @@
 
   document.getElementById('doublet1').addEventListener('change', (e) => {
     document.getElementById('doublet1-fields').style.display = e.target.checked ? 'block' : 'none';
+    sendLevelEnergies();
   });
   document.getElementById('doublet2').addEventListener('change', (e) => {
     document.getElementById('doublet2-fields').style.display = e.target.checked ? 'block' : 'none';
+    sendLevelEnergies();
+  });
+
+  // Send level energies to server when changed (so they're saved correctly)
+  function sendLevelEnergies() {
+    const val = id => document.getElementById(id).value;
+    const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
+    const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+    const msg = [
+      val('lvl1-lo'), val('lvl1-hi'),
+      val('lvl2-lo'), val('lvl2-hi'),
+      isDoublet1, val('d1-lo'), val('d1-hi'),
+      isDoublet2, val('d2-lo'), val('d2-hi'),
+    ].join('|');
+    if (conn_handle) conn_handle.send('LEVELENERGIES:' + msg);
+    markSettingsDirty();
+  }
+  
+  ['lvl1-lo', 'lvl1-hi', 'lvl2-lo', 'lvl2-hi', 'd1-lo', 'd1-hi', 'd2-lo', 'd2-hi'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendLevelEnergies);
   });
 
   function sendExcitationUpdate() {
     const lo = document.getElementById('exc-lo').value;
     const hi = document.getElementById('exc-hi').value;
     if (conn_handle) conn_handle.send('EXCITATION:' + lo + '|' + hi);
+    markSettingsDirty();
   }
   document.getElementById('exc-lo').addEventListener('change', sendExcitationUpdate);
   document.getElementById('exc-hi').addEventListener('change', sendExcitationUpdate);
@@ -750,6 +888,7 @@
       v('bg2-lo1'), v('bg2-hi1'), v('bg2-lo2'), v('bg2-hi2'),
     ].join('|');
     if (conn_handle) conn_handle.send('BGENERGIES:' + msg);
+    markSettingsDirty();
   }
   ['bg1-lo1', 'bg1-hi1', 'bg1-lo2', 'bg1-hi2', 'bg2-lo1', 'bg2-hi1', 'bg2-lo2', 'bg2-hi2'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendBgEnergies);
@@ -761,10 +900,12 @@
   });
   document.getElementById('matrix-select').addEventListener('change', (e) => {
     if (conn_handle) conn_handle.send('SELECTMATRIX:' + e.target.value);
+    markSettingsDirty();
   });
   document.querySelectorAll('input[name="mode-radio"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
       if (conn_handle) conn_handle.send('MODE:' + e.target.value);
+      markSettingsDirty();
     });
   });
   document.getElementById('btn-oslo').addEventListener('click', () => {
@@ -778,6 +919,8 @@
   document.getElementById('btn-save-settings').addEventListener('click', () => {
     if (currentSettingsPath) {
       conn_handle.send('SAVE_SETTINGS:' + currentSettingsPath);
+      markSettingsClean();  // Saving marks as clean
+      updateSettingsDisplay();
     } else {
       openFileBrowser('save-settings', 'Save settings as...');
     }
@@ -788,6 +931,66 @@
     closeAllMenus();
   });
 
+  // ---- Exit handling ----
+  function showExitDialog() {
+    const overlay = document.getElementById('exit-dialog-overlay');
+    const saveCurrent = document.getElementById('exit-save-current');
+    // Show "Save" button only if we have a current settings path
+    saveCurrent.style.display = currentSettingsPath ? 'inline-block' : 'none';
+    overlay.style.display = 'flex';
+  }
+
+  function hideExitDialog() {
+    document.getElementById('exit-dialog-overlay').style.display = 'none';
+  }
+
+  function doExit() {
+    // Send EXIT command to server so it can clean up gracefully
+    if (conn_handle) conn_handle.send('EXIT');
+    // Close the window (may not work in all browsers due to security)
+    window.close();
+    // If window.close() didn't work, at least disconnect
+    setStatus('Exiting... (you can close this tab now)');
+  }
+
+  document.getElementById('btn-exit').addEventListener('click', () => {
+    closeAllMenus();
+    if (settingsDirty) {
+      showExitDialog();
+    } else {
+      doExit();
+    }
+  });
+
+  document.getElementById('exit-cancel').addEventListener('click', hideExitDialog);
+  
+  document.getElementById('exit-discard').addEventListener('click', () => {
+    hideExitDialog();
+    doExit();
+  });
+
+  document.getElementById('exit-save-current').addEventListener('click', () => {
+    if (currentSettingsPath && conn_handle) {
+      conn_handle.send('SAVE_SETTINGS:' + currentSettingsPath);
+      markSettingsClean();
+      updateSettingsDisplay();
+    }
+    hideExitDialog();
+    doExit();
+  });
+
+  document.getElementById('exit-save-as').addEventListener('click', () => {
+    hideExitDialog();
+    // Open file browser with a special mode that exits after saving
+    fbMode = 'save-settings-and-exit';
+    fbCurrentPath = startDir;
+    document.getElementById('fb-title').textContent = 'Save settings before exit';
+    document.getElementById('fb-savebar').style.display = 'flex';
+    document.getElementById('fb-list').innerHTML = '<div style="padding: 8px; color: #888;">Loading...</div>';
+    document.getElementById('filebrowser-overlay').style.display = 'flex';
+    if (conn_handle) conn_handle.send('LISTDIR:' + fbCurrentPath);
+  });
+
   // ---- Options panel: send immediately on change, matching the native app's
   // immediate-apply-on-click behavior (no separate Apply button) ----
   function sendOptions() {
@@ -796,9 +999,23 @@
       v('opt-interpol'), v('opt-oslo'), v('opt-sliding'), v('opt-background'),
     ].join('|');
     if (conn_handle) conn_handle.send('OPTIONS:' + msg);
+    markSettingsDirty();
   }
   ['opt-interpol', 'opt-oslo', 'opt-sliding', 'opt-background'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendOptions);
+  });
+
+  // ---- Display Options: control individual/average display and color ----
+  function sendDisplayOptions() {
+    const displaySingle = document.getElementById('opt-display-single').checked ? 1 : 0;
+    const displayAvg = document.getElementById('opt-display-avg').checked ? 1 : 0;
+    const colour = document.getElementById('opt-colour').checked ? 1 : 0;
+    const msg = displaySingle + '|' + displayAvg + '|' + colour;
+    if (conn_handle) conn_handle.send('DISPLAY_OPTIONS:' + msg);
+    markSettingsDirty();
+  }
+  ['opt-display-single', 'opt-display-avg', 'opt-colour'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendDisplayOptions);
   });
 
   // ---- Excitation & Bins panel ----
@@ -807,6 +1024,7 @@
     const hi = document.getElementById('binsize-hi').value;
     const isVar = document.getElementById('bin-variation').checked ? 1 : 0;
     if (conn_handle) conn_handle.send('BINSIZE:' + lo + '|' + hi + '|' + isVar);
+    markSettingsDirty();
   }
   document.getElementById('bin-variation').addEventListener('change', (e) => {
     document.getElementById('binsize-hi').disabled = !e.target.checked;
@@ -818,9 +1036,11 @@
 
   document.getElementById('nbins-lo').addEventListener('change', (e) => {
     if (conn_handle) conn_handle.send('NBINSLO:' + e.target.value);
+    markSettingsDirty();
   });
   document.getElementById('nbins-hi').addEventListener('change', (e) => {
     if (conn_handle) conn_handle.send('NBINSHI:' + e.target.value);
+    markSettingsDirty();
   });
 
   function sendIntParams() {
@@ -829,6 +1049,7 @@
     const autoScale = document.getElementById('auto-scale').checked ? 1 : 0;
     const effCorr = document.getElementById('eff-corr').value;
     if (conn_handle) conn_handle.send('INTPARAMS:' + minCounts + '|' + scaling + '|' + autoScale + '|' + effCorr);
+    markSettingsDirty();
   }
   ['min-counts', 'gsf-scaling', 'auto-scale', 'eff-corr'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendIntParams);
