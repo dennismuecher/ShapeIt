@@ -5,236 +5,8 @@
 <title>ShapeIt 2.0</title>
 <!-- do not remove next line, required for JSROOT modules map (RWebWindow injects the real import map here when serving this page) -->
 <!--jsroot_importmap-->
-<style>
-  html, body { margin: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
-  #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
-  #menubar {
-    display: flex;
-    align-items: center;
-    background: #1e2a38;
-    color: #eee;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    padding: 0 6px;
-    position: relative;
-    z-index: 20;
-  }
-  .menu { position: relative; }
-  .menu-label {
-    padding: 8px 14px;
-    font-size: 13px;
-    border: none;
-    background: transparent;
-    color: #eee;
-    cursor: pointer;
-  }
-  .menu-label:hover, .menu-label.open { background: #3a4a5c; }
-  .menu-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: #fff;
-    color: #222;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    min-width: 220px;
-    padding: 4px 0;
-  }
-  .menu-dropdown.open { display: block; }
-  .menu-item {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 7px 14px;
-    font-size: 13px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    box-sizing: border-box;
-  }
-  .menu-item:hover { background: #eef2f7; }
-  .menu-item.checked::before { content: "\2713  "; }
-  .menu-divider { height: 1px; background: #e0e0e0; margin: 4px 0; }
-  #settings-info {
-    font-size: 12px;
-    color: #fff;
-    margin-left: auto;
-    padding: 0 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  #settings-path {
-    color: #cce;
-  }
-  #settings-status {
-    color: #9ab;
-    font-style: italic;
-  }
-  #settings-status.modified {
-    color: #fb8;
-  }
-  #status { font-size: 12px; color: #9ab; padding: 0 10px; }
-
-  #content-row { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-  #canvas_holder { flex: 1; min-width: 0; overflow: hidden; position: relative; transform: translateZ(0); }
-  
-  #resize-handle {
-    height: 6px;
-    background: #3a4a5c;
-    cursor: ns-resize;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 10;
-  }
-  #resize-handle:hover {
-    background: #4a90e2;
-  }
-
-  #sidebar {
-    width: 320px;
-    flex-shrink: 0;
-    background: #f4f4f4;
-    box-sizing: border-box;
-    border-left: 1px solid #ccc;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #sidebar-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 10px;
-    flex-shrink: 0;
-    background: #e7e9ec;
-    border-bottom: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  .tab-btn {
-    padding: 14px 8px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    background: #dde1e6;
-    color: #333;
-    cursor: pointer;
-    text-align: center;
-  }
-  .tab-btn:hover { background: #ced3d9; }
-  .tab-btn.active {
-    background: #3a86ff;
-    color: #fff;
-    border-color: #1f5fd6;
-  }
-  #sidebar-scroll {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    box-sizing: border-box;
-    min-height: 0;
-  }
-  #sidebar-scroll h3 { margin-top: 0; font-size: 15px; }
-  .field-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-  .field-row input[type=number] { width: 70px; padding: 4px; }
-  .doublet-box {
-    margin: 0 0 14px;
-    padding: 8px 10px;
-    background: #fff;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-  }
-  .section-label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 6px; }
-  .bg-box {
-    margin: 0 0 14px;
-    padding: 8px 10px;
-    background: #fff;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-  }
-  .btn-run {
-    display: block;
-    width: 100%;
-    margin-top: 18px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    border-radius: 6px;
-    background: #3a86ff;
-    color: #fff;
-    cursor: pointer;
-    box-sizing: border-box;
-  }
-  .btn-run:hover { background: #2f6fd6; }
-  .proj-btn {
-    display: block;
-    width: 100%;
-    margin-bottom: 8px;
-    padding: 10px;
-    font-size: 13px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background: #fff;
-    color: #333;
-    cursor: pointer;
-    box-sizing: border-box;
-    text-align: left;
-  }
-  .proj-btn:hover { background: #eef2f7; }
-  .mode-radio-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
-
-  #logpanel {
-    flex-shrink: 0;
-    height: 160px;
-    min-height: 60px;
-    max-height: 600px;
-    display: flex;
-    flex-direction: column;
-    background: #1c1c1c;
-    color: #d0d0d0;
-    box-sizing: border-box;
-  }
-  #logpanel-header {
-    display: flex;
-    align-items: center;
-    padding: 4px 10px;
-    background: #2a2a2a;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-  #logpanel-header button {
-    background: transparent;
-    border: none;
-    color: #d0d0d0;
-    cursor: pointer;
-    font-size: 13px;
-    padding: 2px 8px;
-  }
-  #logpanel-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px 10px;
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
-    line-height: 1.5;
-  }
-  #crash-banner {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    background: #b02a2a;
-    color: #fff;
-    padding: 10px 16px;
-    font-size: 14px;
-    text-align: center;
-    z-index: 2000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-</style>
+<!-- External stylesheet -->
+<link rel="stylesheet" href="webshapeit-styles.css">
 </head>
 <body>
 <div id="crash-banner">Connection to ROOT was lost. The application may have crashed -- check your terminal.</div>
@@ -527,23 +299,164 @@
 </div>
 
 <script type="module">
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // IMPORTS - External libraries from JSROOT
+  // ═══════════════════════════════════════════════════════════════════════════════
   import { connectWebWindow } from 'jsroot/webwindow';
   import { TCanvasPainter, settings } from 'jsroot';
 
-  // Confirmed via JSROOT's own settings reference (root.cern/js/latest/jsdoc/settings.html) --
-  // ZoomWheel is a real documented on/off toggle, not a guess. Disabling it
-  // outright since there's no sensitivity scale to tune down instead.
+  // Disable zoom wheel in JSROOT canvas (prevents accidental zooming)
+  // Confirmed via JSROOT's settings reference (root.cern/js/latest/jsdoc/settings.html)
   settings.ZoomWheel = false;
 
-  // ---- Resizable log panel ----
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // GLOBAL STATE - Application-wide variables
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * WebSocket connection handle to communicate with C++ backend
+   * @type {object|null}
+   */
+  let conn_handle = null;
+  
+  /**
+   * Full path to the currently loaded settings file
+   * @type {string|null}
+   */
+  let currentSettingsPath = null;
+  
+  /**
+   * Initial directory path received from server (used as starting point for file browser)
+   * @type {string}
+   */
+  let startDir = '';
+  
+  /**
+   * Tracks whether settings have been modified since last save
+   * @type {boolean}
+   */
+  let settingsDirty = false;
+
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SETTINGS STATE MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Mark settings as modified (unsaved changes exist)
+   * Updates the UI to show "(modified)" indicator
+   */
+  function markSettingsDirty() {
+    settingsDirty = true;
+    updateSettingsDisplay();
+  }
+
+  /**
+   * Mark settings as clean (just saved or loaded)
+   * Updates the UI to show "(saved)" indicator or clear status
+   */
+  function markSettingsClean() {
+    settingsDirty = false;
+    updateSettingsDisplay();
+  }
+
+  /**
+   * Update the settings file display in the menubar
+   * Shows current filename, full path, and saved/modified status
+   */
+  function updateSettingsDisplay() {
+    const pathEl = document.getElementById('settings-path');
+    const statusEl = document.getElementById('settings-status');
+    
+    if (currentSettingsPath) {
+      // Extract just the filename from the full path for display
+      const filename = currentSettingsPath.split('/').pop();
+      pathEl.textContent = filename;
+      
+      // Show modification status
+      if (settingsDirty) {
+        statusEl.textContent = '(modified)';
+        statusEl.className = 'modified';  // Yellow/orange color
+      } else {
+        statusEl.textContent = '(saved)';
+        statusEl.className = '';  // Default color
+      }
+    } else {
+      // No settings file loaded
+      pathEl.textContent = 'No settings file';
+      statusEl.textContent = '';
+      statusEl.className = '';
+    }
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // LOGGING & STATUS DISPLAY
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Display a status message in both the status bar and log panel
+   * @param {string} msg - Message to display
+   */
+  function setStatus(msg) {
+    // Update status bar
+    document.getElementById('status').innerText = msg;
+    
+    // Add timestamped entry to log panel
+    const log = document.getElementById('logpanel-content');
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.textContent = '[' + time + '] ' + msg;
+    log.appendChild(line);
+    
+    // Auto-scroll to bottom
+    log.scrollTop = log.scrollHeight;
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CANVAS SETUP - JSROOT canvas for displaying ROOT histograms/plots
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Initialize and embed the JSROOT canvas for displaying plots
+   * Creates a WebSocket channel for real-time updates from C++ backend
+   * @param {object} handle - WebSocket connection handle
+   */
+  function embedCanvas(handle) {
+    const conn = handle.createChannel();
+    const dom = document.getElementById('canvas_holder');
+    const painter = new TCanvasPainter(dom, null);
+    
+    // Configure canvas for online (live) mode
+    painter.online_canvas = true;
+    painter.embed_canvas = true;
+    painter.use_openui = false;
+    
+    // Connect canvas to WebSocket channel
+    painter.useWebsocket(conn);
+    
+    // Tell server which channel ID to use for canvas updates
+    handle.send('channel:' + conn.getChannelId());
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI - LOG PANEL RESIZING
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   const resizeHandle = document.getElementById('resize-handle');
   const logPanel = document.getElementById('logpanel');
-  const contentRow = document.getElementById('content-row');
   
   let isResizing = false;
   let startY = 0;
   let startHeight = 0;
   
+  /**
+   * Handle for dragging the log panel resize handle
+   * User can click and drag to make log panel taller/shorter
+   */
   resizeHandle.addEventListener('mousedown', (e) => {
     isResizing = true;
     startY = e.clientY;
@@ -554,9 +467,9 @@
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     
-    // Calculate new height (subtract because moving up increases height)
+    // Calculate new height (dragging up increases height, dragging down decreases)
     const deltaY = startY - e.clientY;
-    const newHeight = Math.max(60, Math.min(600, startHeight + deltaY));
+    const newHeight = Math.max(60, Math.min(600, startHeight + deltaY));  // Clamp between 60-600px
     logPanel.style.height = newHeight + 'px';
   });
   
@@ -564,91 +477,68 @@
     isResizing = false;
   });
 
-  let conn_handle = null;
-  let currentSettingsPath = null;
-  let startDir = '';
-  let settingsDirty = false;  // Track if settings have been modified since last save
 
-  // Mark settings as dirty whenever any setting changes
-  function markSettingsDirty() {
-    settingsDirty = true;
-    updateSettingsDisplay();
-  }
-
-  // Mark settings as clean (just saved or just loaded)
-  function markSettingsClean() {
-    settingsDirty = false;
-    updateSettingsDisplay();
-  }
-
-  // Update the settings file display in the menubar
-  function updateSettingsDisplay() {
-    const pathEl = document.getElementById('settings-path');
-    const statusEl = document.getElementById('settings-status');
-    
-    if (currentSettingsPath) {
-      // Show just the filename, not the full path (or you can show full path if preferred)
-      const filename = currentSettingsPath.split('/').pop();
-      pathEl.textContent = filename;
-      
-      if (settingsDirty) {
-        statusEl.textContent = '(modified)';
-        statusEl.className = 'modified';
-      } else {
-        statusEl.textContent = '(saved)';
-        statusEl.className = '';
-      }
-    } else {
-      pathEl.textContent = 'No settings file';
-      statusEl.textContent = '';
-      statusEl.className = '';
-    }
-  }
-
-  function setStatus(msg) {
-    document.getElementById('status').innerText = msg;
-    const log = document.getElementById('logpanel-content');
-    const time = new Date().toLocaleTimeString();
-    const line = document.createElement('div');
-    line.textContent = '[' + time + '] ' + msg;
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function embedCanvas(handle) {
-    const conn = handle.createChannel();
-    const dom = document.getElementById('canvas_holder');
-    const painter = new TCanvasPainter(dom, null);
-    painter.online_canvas = true;
-    painter.embed_canvas = true;
-    painter.use_openui = false;
-    painter.useWebsocket(conn);
-    handle.send('channel:' + conn.getChannelId());
-  }
-
-  // ---- sidebar tab switching (Levels / Excitation & Bins / Projections / Options) ----
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI - SIDEBAR TAB SWITCHING
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Sidebar has 4 tabs: Levels, Excitation & Bins, Projections, Options
+   * This manages switching between them
+   */
   const tabs = {
     levels: { el: document.getElementById('panel-levels') },
     excitation: { el: document.getElementById('panel-excitation') },
     projections: { el: document.getElementById('panel-projections') },
     options: { el: document.getElementById('panel-options') },
   };
+  
+  /**
+   * Show a specific sidebar panel and hide all others
+   * @param {string} name - Tab name ('levels', 'excitation', 'projections', or 'options')
+   */
   function showTab(name) {
+    // Hide all panels
     Object.values(tabs).forEach(t => t.el.style.display = 'none');
+    
+    // Show selected panel
     tabs[name].el.style.display = 'block';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    
+    // Update tab button active state
+    document.querySelectorAll('.tab-btn').forEach(b => 
+      b.classList.toggle('active', b.dataset.tab === name)
+    );
   }
+  
+  // Attach click handlers to all tab buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 
-  // ---- menu bar (File / Settings / Display dropdowns) ----
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI - MENUBAR DROPDOWN MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Tracks whether any menu is currently open (for hover behavior)
+   * @type {boolean}
+   */
   let menuBarActive = false;
+  
+  /**
+   * Close all open dropdown menus
+   */
   function closeAllMenus() {
     document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('open'));
     document.querySelectorAll('.menu-label').forEach(l => l.classList.remove('open'));
     menuBarActive = false;
   }
+  
+  /**
+   * Open a specific dropdown menu
+   * @param {string} name - Menu name ('file', 'settings', or 'display')
+   */
   function openMenu(name) {
     closeAllMenus();
     const dropdown = document.querySelector('.menu-dropdown[data-menu="' + name + '"]');
@@ -657,7 +547,10 @@
     label.classList.add('open');
     menuBarActive = true;
   }
+  
+  // Setup click handlers for menu labels
   document.querySelectorAll('.menu-label').forEach(label => {
+    // Click to toggle menu
     label.addEventListener('click', (e) => {
       e.stopPropagation();
       const name = label.dataset.menu;
@@ -666,73 +559,124 @@
       closeAllMenus();
       if (!wasOpen) openMenu(name);
     });
-    // once a menu is open, hovering a different label switches to it without a click
+    
+    // Once a menu is open, hovering other labels switches to them (like native menubar)
     label.addEventListener('mouseenter', () => {
       if (menuBarActive) openMenu(label.dataset.menu);
     });
   });
+  
+  // Click anywhere else closes menus
   document.addEventListener('click', closeAllMenus);
+  
+  // Prevent clicks inside dropdowns from closing them
   document.querySelectorAll('.menu-dropdown').forEach(d => {
     d.addEventListener('click', (e) => e.stopPropagation());
   });
 
-  // ---- verbose level ----
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI - VERBOSE LEVEL SELECTION (Display Menu)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Controls how much logging output the C++ backend produces
+   * Level 0 = Silent, Level 1 = Basic info, Level 2 = Detailed debug
+   */
   document.querySelectorAll('.verbose-item').forEach(item => {
     item.addEventListener('click', () => {
+      // Update UI checkmark
       document.querySelectorAll('.verbose-item').forEach(i => i.classList.remove('checked'));
       item.classList.add('checked');
+      
+      // Send to server
       if (conn_handle) conn_handle.send('VERBOSE:' + item.dataset.level);
       closeAllMenus();
     });
   });
 
-  // ---- projection display ----
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI - PROJECTION/VISUALIZATION CONTROLS (Projections Tab)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Show the full 2D matrix visualization
+   */
   document.getElementById('btn-show-matrix').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWMATRIX');
   });
+  
+  /**
+   * Show diagonal projection (summed data along the diagonal)
+   */
   document.getElementById('btn-show-proj').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWPROJ');
   });
-  // Use 'change' event - this fires when a different option is selected
-  document.getElementById('bin-select').addEventListener('change', (e) => {
+  
+  /**
+   * Show projection for a specific excitation energy bin
+   * This dropdown is populated after running ShapeIt with bin data
+   */
+  const binSelect = document.getElementById('bin-select');
+  let dropdownOpened = false;  // Track if dropdown was actually opened
+  
+  binSelect.addEventListener('change', (e) => {
     if (conn_handle && e.target.value) {
       conn_handle.send('SHOWBINPROJ:' + e.target.value);
     }
   });
   
-  // Track whether the dropdown was opened
-  let dropdownOpened = false;
-  
-  // When you click to open the dropdown
-  document.getElementById('bin-select').addEventListener('mousedown', () => {
+  // Track when dropdown is opened
+  binSelect.addEventListener('mousedown', () => {
     dropdownOpened = true;
   });
   
-  // When the dropdown closes (loses focus)
-  document.getElementById('bin-select').addEventListener('blur', () => {
-    const sel = document.getElementById('bin-select');
-    // If dropdown was opened and we have a value, show it
-    // This handles: clicking on pre-selected bin 1, or re-clicking same bin
-    if (dropdownOpened && conn_handle && sel.value) {
-      // Small delay to ensure the value is finalized
+  // When dropdown closes, show the selected bin projection
+  // This handles the case where user re-selects the already-selected option
+  binSelect.addEventListener('blur', () => {
+    if (dropdownOpened && conn_handle && binSelect.value) {
       setTimeout(() => {
-        conn_handle.send('SHOWBINPROJ:' + sel.value);
+        conn_handle.send('SHOWBINPROJ:' + binSelect.value);
       }, 10);
     }
     dropdownOpened = false;
   });
 
-  // ---- file browser ----
-  let fbMode = null; // 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings'
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // FILE BROWSER - Modal dialog for opening/saving files
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Current mode of file browser
+   * @type {string|null} 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings' | 'save-settings-and-exit'
+   */
+  let fbMode = null;
+  
+  /**
+   * Current directory path being displayed in file browser
+   * @type {string}
+   */
   let fbCurrentPath = '';
 
+  /**
+   * Open the file browser modal dialog
+   * @param {string} mode - Browser mode (determines what happens when file is selected)
+   * @param {string} title - Title to display in dialog
+   */
   function openFileBrowser(mode, title) {
     fbMode = mode;
     fbCurrentPath = startDir;
     document.getElementById('fb-title').textContent = title;
-    document.getElementById('fb-savebar').style.display = (mode === 'save-settings') ? 'flex' : 'none';
+    
+    // Show filename input only for save modes
+    document.getElementById('fb-savebar').style.display = (mode === 'save-settings' || mode === 'save-settings-and-exit') ? 'flex' : 'none';
+    
     document.getElementById('fb-list').innerHTML = '<div style="padding: 8px; color: #888;">Loading...</div>';
     document.getElementById('filebrowser-overlay').style.display = 'flex';
+    
+    // Request directory listing from server
     if (conn_handle) conn_handle.send('LISTDIR:' + fbCurrentPath);
   }
   function closeFileBrowser() {
