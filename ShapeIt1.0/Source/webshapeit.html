@@ -78,8 +78,20 @@
   }
   #status { font-size: 12px; color: #9ab; padding: 0 10px; }
 
-  #content-row { flex: 1; display: flex; overflow: hidden; }
+  #content-row { flex: 1; display: flex; overflow: hidden; min-height: 0; }
   #canvas_holder { flex: 1; min-width: 0; overflow: hidden; position: relative; transform: translateZ(0); }
+  
+  #resize-handle {
+    height: 6px;
+    background: #3a4a5c;
+    cursor: ns-resize;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  #resize-handle:hover {
+    background: #4a90e2;
+  }
 
   #sidebar {
     width: 320px;
@@ -178,11 +190,12 @@
   #logpanel {
     flex-shrink: 0;
     height: 160px;
+    min-height: 60px;
+    max-height: 600px;
     display: flex;
     flex-direction: column;
     background: #1c1c1c;
     color: #d0d0d0;
-    border-top: 1px solid #444;
     box-sizing: border-box;
   }
   #logpanel-header {
@@ -469,6 +482,8 @@
     </div>
   </div>
 
+  <div id="resize-handle"></div>
+
   <div id="logpanel">
     <div id="logpanel-header">
       <span style="flex: 1;">Messages</span>
@@ -519,6 +534,35 @@
   // ZoomWheel is a real documented on/off toggle, not a guess. Disabling it
   // outright since there's no sensitivity scale to tune down instead.
   settings.ZoomWheel = false;
+
+  // ---- Resizable log panel ----
+  const resizeHandle = document.getElementById('resize-handle');
+  const logPanel = document.getElementById('logpanel');
+  const contentRow = document.getElementById('content-row');
+  
+  let isResizing = false;
+  let startY = 0;
+  let startHeight = 0;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startY = e.clientY;
+    startHeight = logPanel.offsetHeight;
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    
+    // Calculate new height (subtract because moving up increases height)
+    const deltaY = startY - e.clientY;
+    const newHeight = Math.max(60, Math.min(600, startHeight + deltaY));
+    logPanel.style.height = newHeight + 'px';
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isResizing = false;
+  });
 
   let conn_handle = null;
   let currentSettingsPath = null;
@@ -649,11 +693,33 @@
   document.getElementById('btn-show-proj').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWPROJ');
   });
-  // Use 'click' event so clicking the already-selected option still triggers display
-  document.getElementById('bin-select').addEventListener('click', (e) => {
+  // Use 'change' event - this fires when a different option is selected
+  document.getElementById('bin-select').addEventListener('change', (e) => {
     if (conn_handle && e.target.value) {
       conn_handle.send('SHOWBINPROJ:' + e.target.value);
     }
+  });
+  
+  // Track whether the dropdown was opened
+  let dropdownOpened = false;
+  
+  // When you click to open the dropdown
+  document.getElementById('bin-select').addEventListener('mousedown', () => {
+    dropdownOpened = true;
+  });
+  
+  // When the dropdown closes (loses focus)
+  document.getElementById('bin-select').addEventListener('blur', () => {
+    const sel = document.getElementById('bin-select');
+    // If dropdown was opened and we have a value, show it
+    // This handles: clicking on pre-selected bin 1, or re-clicking same bin
+    if (dropdownOpened && conn_handle && sel.value) {
+      // Small delay to ensure the value is finalized
+      setTimeout(() => {
+        conn_handle.send('SHOWBINPROJ:' + sel.value);
+      }, 10);
+    }
+    dropdownOpened = false;
   });
 
   // ---- file browser ----
@@ -825,9 +891,31 @@
             const opt = document.createElement('option');
             opt.value = i;
             opt.textContent = 'bin ' + i;
+            if (i === 1) opt.selected = true;  // Auto-select bin 1
             sel.appendChild(opt);
           }
           sel.disabled = (nLo < 1);
+        } else if (msg.startsWith('LOG:')) {
+          // Direct log output from C++ to message window (no timestamp, already has context)
+          const log = document.getElementById('logpanel-content');
+          const line = document.createElement('div');
+          line.textContent = msg.slice(4);
+          log.appendChild(line);
+          log.scrollTop = log.scrollHeight;
+        } else if (msg.startsWith('LOGBATCH:')) {
+          // Batched log output - split by newlines and append all at once
+          const log = document.getElementById('logpanel-content');
+          const lines = msg.slice(9).split('\n');
+          const fragment = document.createDocumentFragment();
+          for (const text of lines) {
+            if (text) {
+              const line = document.createElement('div');
+              line.textContent = text;
+              fragment.appendChild(line);
+            }
+          }
+          log.appendChild(fragment);
+          log.scrollTop = log.scrollHeight;
         } else {
           setStatus(msg);
         }

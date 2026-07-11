@@ -785,6 +785,10 @@ void SendDirListing(unsigned connid, std::string path)
 
 void ProcessData(unsigned connid, const std::string &arg)
 {
+    // Buffer stdout and send in batch to avoid queue overflow
+    std::ostringstream logBuffer;
+    std::streambuf* oldBuf = std::cout.rdbuf(logBuffer.rdbuf());
+    
     std::cout << "Got message from browser: " << arg << std::endl;
 
     if (arg.compare(0, 8, "channel:") == 0) {
@@ -815,12 +819,22 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::string path = arg.substr(5);
 
         if (gSystem->AccessPathName(path.c_str())) {
-            // AccessPathName returns non-zero (true) when the path does NOT exist --
-            // this used to go straight into ShapeMatrix's constructor with no check
-            // at all, crashing hard on any typo'd or invalid path.
+            // AccessPathName returns non-zero (true) when the path does NOT exist
             window->Send(connid, "File not found: " + path);
             return;
         }
+
+        // Check if this is actually a ROOT file before attempting to open it
+        // TFile::Open() will print errors to stdout but won't throw exceptions
+        TFile *testFile = TFile::Open(path.c_str(), "READ");
+        if (!testFile || testFile->IsZombie()) {
+            if (testFile) delete testFile;
+            window->Send(connid, "ERROR: Not a valid ROOT file or file is corrupted: " + path);
+            std::cout << "User attempted to open non-ROOT file as matrix: " << path << std::endl;
+            return;
+        }
+        testFile->Close();
+        delete testFile;
 
         sett->SetFileName(path);
         currentMatrixPath = path;
@@ -1032,9 +1046,45 @@ void ProcessData(unsigned connid, const std::string &arg)
         gDisplayMode = 1;
         canvas->cd();
         canvas->Clear();
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; } // Clear() just deleted these -- see RunShapeIt for the full explanation
-        matrix->GetInputMatrix(BaseName(currentMatrixPath))->Draw("colz");
-        DrawMarkers(); // no-op in mode 1 (removes any leftover markers), matches native
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        
+        // Set pad margins to accommodate the manually-positioned color palette
+        gPad->SetRightMargin(0.15);  // 15% right margin provides space for palette
+        gPad->SetLeftMargin(0.12);   // 12% left margin for y-axis label
+        gPad->SetTopMargin(0.08);
+        gPad->SetBottomMargin(0.10);
+        
+        TH2* hist = matrix->GetInputMatrix(BaseName(currentMatrixPath));
+        hist->SetStats(0);  // Disable statistics box
+        
+        // Set axis titles with LaTeX formatting
+        hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+        hist->GetYaxis()->SetTitle("E_{x} (keV)");
+        hist->GetXaxis()->SetTitleSize(0.045);
+        hist->GetYaxis()->SetTitleSize(0.045);
+        hist->GetXaxis()->SetTitleOffset(1.0);
+        hist->GetYaxis()->SetTitleOffset(1.1);
+        
+        // Draw histogram without automatic palette (use "col" not "colz")
+        hist->Draw("col");
+        
+        // Manually create and position the color palette using NDC coordinates
+        // First create it with histogram coordinates (required by constructor)
+        double xmin = hist->GetXaxis()->GetXmin();
+        double xmax = hist->GetXaxis()->GetXmax();
+        double ymin = hist->GetYaxis()->GetXmin();
+        double ymax = hist->GetYaxis()->GetXmax();
+        TPaletteAxis *palette = new TPaletteAxis(xmax, ymin, xmax + (xmax-xmin)*0.05, ymax, hist);
+        
+        // Override with NDC coordinates to position it within the right margin
+        palette->SetX1NDC(0.86);  // Left edge at 86% of canvas width
+        palette->SetX2NDC(0.89);  // Right edge at 89% of canvas width
+        palette->SetY1NDC(0.10);  // Bottom aligned with pad margin
+        palette->SetY2NDC(0.90);  // Top aligned with pad margin
+        palette->Draw();
+        
+        DrawMarkers();
+        PushCanvasUpdate();
     }
     else if (arg == "SHOWPROJ") {
         if (!matrix) {
@@ -1055,6 +1105,13 @@ void ProcessData(unsigned connid, const std::string &arg)
             window->Send(connid, "No matrix loaded yet -- open one first.");
             return;
         }
+        
+        // Save only X-axis zoom state before switching bins
+        // Let Y-axis auto-scale for each new bin (different bins have different count ranges)
+        bool hadRange = gHaveLastRange;
+        double savedXmin = gLastUxmin;
+        double savedXmax = gLastUxmax;
+        
         gCurrentBin = std::stoi(arg.substr(12));
         gDisplayMode = 5;
         canvas->cd();
@@ -1062,9 +1119,25 @@ void ProcessData(unsigned connid, const std::string &arg)
         for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
         gCurrentHist->Draw();
+        
+        // Restore X-axis zoom only after drawing new histogram
+        if (hadRange && gPad) {
+            gCurrentHist->GetXaxis()->SetRangeUser(savedXmin, savedXmax);
+            // Y-axis is left at its auto-scaled default
+            gPad->Modified();
+            
+            // Update tracking variables with current state
+            gLastUxmin = savedXmin;
+            gLastUxmax = savedXmax;
+            gLastUymin = gPad->GetUymin();
+            gLastUymax = gPad->GetUymax();
+            gHaveLastRange = true;
+        } else {
+            gHaveLastRange = false;
+        }
+        
         CleanupAutofitDisplay();
-        gHaveLastRange = false;
-        DrawMarkers();
+        DrawMarkers(hadRange);
     }
     else if (arg.compare(0, 11, "EXCITATION:") == 0) {
         auto v = ParsePipeDoubles(arg.substr(11));
@@ -1118,6 +1191,13 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->levEne_2[3] = isDoublet2 ? v[11] : 0.0;
 
         RunShapeIt(connid);
+    }
+    
+    // Restore stdout and send batched log
+    std::cout.rdbuf(oldBuf);
+    std::string logs = logBuffer.str();
+    if (!logs.empty() && window) {
+        window->Send(connid, "LOGBATCH:" + logs);
     }
 }
 
@@ -1177,6 +1257,14 @@ void WebShapeIt()
     }
 
     canvas = TWebCanvas::CreateWebCanvas("webshapeit_canvas", "ShapeIt 2.0");
+    
+    // Enable crosshair and coordinate display - shows x,y values as mouse moves
+    // kCrosshair = 1: both vertical and horizontal lines
+    canvas->SetCrosshair(1);
+    
+    // Force the status bar to be shown (displays coordinates)
+    canvas->ToggleEventStatus();
+    canvas->SetBit(TCanvas::kShowEventStatus);
 
     // Connects to a plain global function (no custom dictionary-registered
     // class needed) -- this is what lets DrawMarkers()/HandleCanvasEvent() know
@@ -1194,6 +1282,7 @@ void WebShapeIt()
     pollTimer->Start(200, kFALSE);
 
     window = ROOT::RWebWindow::Create();
+    window->SetMaxQueueLength(100);  // Increase from default 10 to handle verbose output
     std::string fname = __FILE__;
     auto pos = fname.find("WebShapeIt.cxx");
     std::string dir = (pos != std::string::npos) ? fname.substr(0, pos) : std::string("./");
