@@ -24,6 +24,7 @@
 #include "Buttons.h"
 #include "TTimer.h"
 #include "TGraph.h"
+#include "TGraphErrors.h"
 #include "TMultiGraph.h"
 #include "TList.h"
 #include <iostream>
@@ -1568,6 +1569,114 @@ void ProcessData(unsigned connid, const std::string &arg)
         
         std::string content = buffer.str();
         window->Send(connid, "SETTINGS_FILE_CONTENT:" + content);
+    }
+    else if (arg == "SHOW_LEVEL_DENSITY") {
+        if (sett->settFileName.empty()) {
+            window->Send(connid, "No settings file loaded.");
+            return;
+        }
+        
+        // Check if level density file exists in settings
+        if (sett->rhoFileName.empty()) {
+            window->Send(connid, "No level density file specified in settings.");
+            return;
+        }
+        
+        // Resolve relative path against settings file directory
+        std::string settDir = DirName(sett->settFileName);
+        std::string rhoPath = ResolveRelativeTo(settDir, sett->rhoFileName);
+        
+        // Check if file exists
+        if (gSystem->AccessPathName(rhoPath.c_str())) {
+            window->Send(connid, "Level density file not found: " + rhoPath);
+            return;
+        }
+        
+        // Read level density data from file (format: Ex rho rho_error)
+        TGraphErrors *grLevelDensity = new TGraphErrors(rhoPath.c_str(), "%lg %lg %lg");
+        
+        if (grLevelDensity->GetN() == 0) {
+            delete grLevelDensity;
+            window->Send(connid, "No level density data in file: " + rhoPath);
+            return;
+        }
+        
+        // Apply scaling factor if set
+        if (sett->rhoScale != 1.0) {
+            for (int i = 0; i < grLevelDensity->GetN(); i++) {
+                grLevelDensity->SetPoint(i, grLevelDensity->GetX()[i], 
+                                         sett->rhoScale * grLevelDensity->GetY()[i]);
+            }
+        }
+        
+        grLevelDensity->SetMarkerStyle(20);
+        grLevelDensity->SetMarkerSize(0.8);
+        grLevelDensity->SetMarkerColor(kBlue);
+        grLevelDensity->SetLineColor(kBlue);
+        grLevelDensity->SetTitle("Level Density");
+        
+        gDisplayMode = 0; // Not a mode with markers
+        canvas->cd();
+        canvas->Clear();
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+        gCurrentHist = nullptr;
+        
+        // Draw level density graph first
+        grLevelDensity->Draw("APE");
+        grLevelDensity->GetXaxis()->SetTitle("Excitation Energy (keV)");
+        grLevelDensity->GetYaxis()->SetTitle("Level Density (1/keV)");
+        
+        // Read and overlay discrete levels histogram if available
+        TH1F *discreteLevel = nullptr;
+        if (!sett->discreteLevelFile.empty()) {
+            std::string discPath = ResolveRelativeTo(settDir, sett->discreteLevelFile);
+            
+            if (!gSystem->AccessPathName(discPath.c_str())) {
+                std::ifstream discFile(discPath.c_str());
+                if (discFile.good()) {
+                    std::vector<double> ene, discLev;
+                    double e, disc;
+                    
+                    // Read discrete level data (format: energy level_density)
+                    while (discFile >> e >> disc) {
+                        ene.push_back(e);
+                        discLev.push_back(disc);
+                    }
+                    discFile.close();
+                    
+                    if (!ene.empty()) {
+                        // Find maximum energy
+                        double discreteMax = *std::max_element(ene.begin(), ene.end());
+                        
+                        // Create histogram with bin size from settings
+                        int nBins = (int)((1000.0 * discreteMax) / sett->discreteBins);
+                        discreteLevel = new TH1F("discreteLevel", "discrete levels", nBins, 0, discreteMax);
+                        
+                        // Fill histogram
+                        for (size_t i = 0; i < ene.size(); i++) {
+                            discreteLevel->Fill(ene[i], discLev[i]);
+                        }
+                        
+                        // Style to match ShapeRhoCollector
+                        discreteLevel->SetFillColorAlpha(kAzure-9, 0.4);
+                        discreteLevel->SetFillStyle(3002);
+                        discreteLevel->SetLineColorAlpha(kBlack, 0.6);
+                        
+                        // Draw on same canvas
+                        discreteLevel->Draw("same hist");
+                        
+                        window->Send(connid, "Displaying level density (" + std::to_string(grLevelDensity->GetN()) + 
+                                     " points) with discrete levels (" + std::to_string(ene.size()) + " levels)");
+                    }
+                }
+            }
+        }
+        
+        if (!discreteLevel) {
+            window->Send(connid, "Displaying level density: " + std::to_string(grLevelDensity->GetN()) + " points");
+        }
+        
+        PushCanvasUpdate();
     }
     else if (arg.compare(0, 12, "SHOWBINPROJ:") == 0) {
         if (!matrix) {

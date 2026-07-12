@@ -90,6 +90,7 @@ COMMUNICATION PROTOCOL:
         </label>
         <div class="menu-divider"></div>
         <button class="menu-item" id="btn-show-width-calib">Show width calibration...</button>
+        <button class="menu-item" id="btn-show-level-density">Show level density...</button>
         <button class="menu-item" id="btn-show-settings-file">Show settings file...</button>
       </div>
     </div>
@@ -671,6 +672,18 @@ COMMUNICATION PROTOCOL:
     if (conn_handle) {
       conn_handle.send('SHOW_WIDTH_CALIB');
       showTab('width-calib');  // Switch to width calibration panel
+    }
+    closeAllMenus();
+  });
+
+  // Show level density plot
+  document.getElementById('btn-show-level-density').addEventListener('click', () => {
+    if (conn_handle) {
+      if (currentSettingsPath) {
+        conn_handle.send('SHOW_LEVEL_DENSITY');
+      } else {
+        setStatus('No settings file loaded');
+      }
     }
     closeAllMenus();
   });
