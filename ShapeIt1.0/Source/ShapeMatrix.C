@@ -278,7 +278,9 @@ void ShapeMatrix::FitIntegral(){
 //performs a gauss fit to histo of bin "bin" for level 1 (level =0) or level 2 (level =1)
 void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     char name[50];
-    bool is_doublet = true;
+    // Use explicit doublet flag instead of zero-detection
+    bool is_doublet = sett->doDoublet[level];
+    
     //background regions
     double bgRange[4];
     for (int i =0; i <4; i++)
@@ -286,9 +288,6 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     
     //peak region
     double peakRange[2];
-    
-	if ( sett->levEne_2[2*level] == 0 && sett->levEne_2[2*level+1] == 0 ) 
-		is_doublet = false;
 	
 	//no doublet for this level
 	if (!is_doublet)
@@ -316,7 +315,7 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //free the previous fit's functor and TF1 before overwriting fit_result[level]/fit_func[level] --
     //this used to just overwrite the pointers, leaking both every single call (i.e. every bin, every level, every iteration)
     delete fit_func[level];
-	ShapeFitFunction *fitfunc = new ShapeFitFunction(is_doublet);
+	ShapeFitFunction *fitfunc = new ShapeFitFunction(is_doublet, sett->fixDoubletWidth[level]);
     fit_func[level] = fitfunc;
     fitfunc->SetPeakRanges(peakRange);
     fitfunc->SetBgRanges(bgRange);
@@ -324,8 +323,12 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //TF1 object for the fit
     snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     delete fit_result[level];
-    if (is_doublet)
-		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 8 );
+    if (is_doublet) {
+        // If doublet width is free parameter, need 9 params (bg:0-2, main:3-5, doublet:6-8)
+        // If doublet width is fixed to main peak, need 8 params (bg:0-2, main:3-5, doublet:6-7)
+        int nParams = sett->fixDoubletWidth[level] ? 8 : 9;
+		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, nParams );
+    }
 	else
 		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
 	
@@ -368,6 +371,10 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 	if (is_doublet) {
 		fit_result[level]->SetParameter(6, amplitude_init_2);
 		fit_result[level]->SetParameter(7, p_2);
+		if (!sett->fixDoubletWidth[level]) {
+			// Set initial value for doublet width (parameter 8) when it's a free parameter
+			fit_result[level]->SetParameter(8, dp_2);
+		}
 	}
 	
     //set fit boundaries
@@ -379,6 +386,10 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 	if (is_doublet) {
 		fit_result[level]->SetParLimits(6,0.01*amplitude_init_2, 100*amplitude_init_2);
 		fit_result[level]->SetParLimits(7, sett->levEne_2[2*level], sett->levEne_2[2*level+1]);
+		if (!sett->fixDoubletWidth[level]) {
+			// Set limits for doublet width (parameter 8) when it's a free parameter
+			fit_result[level]->SetParLimits(8, 0.5*dp_2, 2*dp_2);
+		}
 	}
 
     //if doFitWidth is set, fix width according to calibration

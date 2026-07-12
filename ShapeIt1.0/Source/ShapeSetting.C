@@ -170,10 +170,14 @@ void ShapeSetting::SaveSettings() {
     outfile << "lit_alpha_error " << lit_alpha_error[0] <<" "<<lit_alpha_error[1] <<"\n";
     outfile << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
     outfile << "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
+    outfile << "doDoublet1 " << doDoublet[0] <<"\n";
+    outfile << "fixDoubletWidth1 " << fixDoubletWidth[0] <<"\n";
     outfile << "bg_level1 " << bgEne[0][0] <<" "<< bgEne[0][1] <<" "<< bgEne[0][2] <<" "<< bgEne[0][3] <<"\n";
     outfile << "bg_level2 " << bgEne[1][0] <<" "<< bgEne[1][1] <<" "<< bgEne[1][2] <<" "<< bgEne[1][3] <<"\n";
     outfile << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
     outfile << "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
+    outfile << "doDoublet2 " << doDoublet[1] <<"\n";
+    outfile << "fixDoubletWidth2 " << fixDoubletWidth[1] <<"\n";
 	outfile << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     outfile << "excitationMCLimits " << exiEneMC[0] <<" "<<exiEneMC[1] <<"\n";
     outfile << "excitation_bin_1 " << exi_size[0] <<"\n";
@@ -274,8 +278,12 @@ void ShapeSetting::ReadSettings() {
             if (word == "lit_alpha_error" ) { isstr >> lit_alpha_error[0]; isstr >> lit_alpha_error[1];}
             if (word == "level1" ) { isstr >> levEne[0]; isstr >>levEne[1];}
 			if (word == "level1_2" ) { isstr >> levEne_2[0]; isstr >>levEne_2[1];}
+            if (word == "doDoublet1" ) isstr >> doDoublet[0];
+            if (word == "fixDoubletWidth1" ) isstr >> fixDoubletWidth[0];
             if (word == "level2" ) { isstr >> levEne[2]; isstr >>levEne[3];}
 			if (word == "level2_2" ) { isstr >> levEne_2[2]; isstr >>levEne_2[3];}
+            if (word == "doDoublet2" ) isstr >> doDoublet[1];
+            if (word == "fixDoubletWidth2" ) isstr >> fixDoubletWidth[1];
             if (word == "bg_level1" ){ isstr >> bgEne[0][0]; isstr >> bgEne[0][1]; isstr >> bgEne[0][2]; isstr >> bgEne[0][3];}
             if (word == "bg_level2" ){ isstr >> bgEne[1][0]; isstr >> bgEne[1][1]; isstr >> bgEne[1][2]; isstr >> bgEne[1][3];}
             if (word == "excitation" ) { isstr >> exiEne[0]; isstr >>exiEne[1];}
@@ -361,12 +369,16 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "lit alpha_error " << lit_alpha_error[0] << " "<<lit_alpha_error[1] <<"\n";
     std::cout  << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
 	std::cout  <<  "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
+    std::cout  <<  "doDoublet1 " << doDoublet[0] <<"\n";
+    std::cout  <<  "fixDoubletWidth1 " << fixDoubletWidth[0] <<"\n";
     std::cout  << "left background level1 " << bgEne[0][0] <<"-" << bgEne[0][1] <<"\n";
     std::cout  << "right background level1 " << bgEne[0][2] <<"-" << bgEne[0][3] <<"\n";
     std::cout  << "left background level2 " << bgEne[1][0] <<"-" << bgEne[1][1] <<"\n";
     std::cout  << "right background level2 " << bgEne[1][2] <<"-" << bgEne[1][3] <<"\n";
     std::cout  << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
 	std::cout  <<  "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
+    std::cout  <<  "doDoublet2 " << doDoublet[1] <<"\n";
+    std::cout  <<  "fixDoubletWidth2 " << fixDoubletWidth[1] <<"\n";
     std::cout  << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     std::cout  << "excitation range for lower energies in MC " << exiEneMC[0] <<" "<<exiEneMC[1] <<"\n";
     std::cout  << "excitation_bin_1 " << exi_size[0] <<"\n";

@@ -90,6 +90,7 @@ COMMUNICATION PROTOCOL:
         </label>
         <div class="menu-divider"></div>
         <button class="menu-item" id="btn-show-width-calib">Show width calibration...</button>
+        <button class="menu-item" id="btn-show-settings-file">Show settings file...</button>
       </div>
     </div>
     <div id="settings-info">
@@ -140,6 +141,10 @@ COMMUNICATION PROTOCOL:
               <input type="number" id="d1-hi" value="960">
               <span>keV</span>
             </div>
+            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
+              <input type="checkbox" id="fixDoubletWidth1" checked style="margin-right: 8px;">
+              <span>Fix doublet width to main peak</span>
+            </label>
           </div>
 
           <div class="section-label">
@@ -159,6 +164,10 @@ COMMUNICATION PROTOCOL:
               <input type="number" id="d2-hi" value="1790">
               <span>keV</span>
             </div>
+            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
+              <input type="checkbox" id="fixDoubletWidth2" checked style="margin-right: 8px;">
+              <span>Fix doublet width to main peak</span>
+            </label>
           </div>
 
           <div class="section-label"><span>Background (Level 1)</span></div>
@@ -339,13 +348,7 @@ COMMUNICATION PROTOCOL:
             </div>
           </div>
 
-          <button id="btn-save-width-calib" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
-            Save Calibration to Settings File
-          </button>
 
-          <p style="font-size: 11px; color: #666; margin: 0; line-height: 1.3;">
-            Note: Parameters are only saved to the settings file when you click the button above. Otherwise previous values are retained.
-          </p>
         </div>
 
       </div>
@@ -420,6 +423,19 @@ COMMUNICATION PROTOCOL:
         <button id="version-keep-old" style="padding: 8px 16px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer;">Keep 1.0 Format</button>
         <button id="version-upgrade" style="padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; background: #3a86ff; color: #fff; cursor: pointer;">Upgrade to 2.0</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SETTINGS FILE VIEWER - Display settings file content
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="settings-viewer-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1003;">
+  <div style="background: #fff; width: 600px; max-height: 80vh; border-radius: 8px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column;">
+    <h3 id="settings-viewer-title" style="margin: 0 0 12px; font-size: 16px;">Settings File</h3>
+    <pre id="settings-viewer-content" style="flex: 1; overflow-y: auto; margin: 0 0 16px; padding: 12px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 12px; line-height: 1.4; white-space: pre-wrap;"></pre>
+    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button id="settings-viewer-close" style="padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; background: #3a86ff; color: #fff; cursor: pointer;">Close</button>
     </div>
   </div>
 </div>
@@ -659,6 +675,18 @@ COMMUNICATION PROTOCOL:
     closeAllMenus();
   });
 
+  // Show settings file content
+  document.getElementById('btn-show-settings-file').addEventListener('click', () => {
+    if (conn_handle) {
+      if (currentSettingsPath) {
+        conn_handle.send('SHOW_SETTINGS_FILE');
+      } else {
+        setStatus('No settings file loaded');
+      }
+    }
+    closeAllMenus();
+  });
+
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // PROJECTIONS - Buttons to show matrix, diagonal projection, or specific bins
@@ -805,7 +833,7 @@ COMMUNICATION PROTOCOL:
         conn_handle = handle;
         setStatus('Connected.');
         embedCanvas(handle);
-        updateSettingsDisplay();
+        // Don't call updateSettingsDisplay() here - wait for backend to send settings info
         updateWidthCalibState();  // Initialize width calibration state
       },
       
@@ -852,79 +880,83 @@ COMMUNICATION PROTOCOL:
           document.getElementById('exc-lo').value = v[4];
           document.getElementById('exc-hi').value = v[5];
           
-          const hasDoublet1 = v[6] !== 0 || v[7] !== 0;
+          // v[6-7] are doublet 1 energies, v[8-9] are doublet 2 energies
+          // v[10] is doDoublet[0] flag, v[11] is doDoublet[1] flag
+          // v[12] is fixDoubletWidth[0], v[13] is fixDoubletWidth[1]
+          document.getElementById('d1-lo').value = v[6];
+          document.getElementById('d1-hi').value = v[7];
+          document.getElementById('d2-lo').value = v[8];
+          document.getElementById('d2-hi').value = v[9];
+          
+          const hasDoublet1 = v[10] !== 0;
           document.getElementById('doublet1').checked = hasDoublet1;
           document.getElementById('doublet1-fields').style.display = hasDoublet1 ? 'block' : 'none';
-          if (hasDoublet1) {
-            document.getElementById('d1-lo').value = v[6];
-            document.getElementById('d1-hi').value = v[7];
-          }
           
-          const hasDoublet2 = v[8] !== 0 || v[9] !== 0;
+          const hasDoublet2 = v[11] !== 0;
           document.getElementById('doublet2').checked = hasDoublet2;
           document.getElementById('doublet2-fields').style.display = hasDoublet2 ? 'block' : 'none';
-          if (hasDoublet2) {
-            document.getElementById('d2-lo').value = v[8];
-            document.getElementById('d2-hi').value = v[9];
-          }
           
-          document.getElementById('opt-interpol').checked = v[10] !== 0;
-          document.getElementById('opt-oslo').checked = v[11] !== 0;
-          document.getElementById('opt-sliding').checked = v[12] !== 0;
-          document.getElementById('opt-background').checked = v[13] !== 0;
-          document.getElementById('min-counts').value = v[14];
-          document.getElementById('gsf-scaling').value = v[15];
-          document.getElementById('auto-scale').checked = v[16] !== 0;
-          document.getElementById('eff-corr').value = v[17];
+          // Set doublet width fix toggles
+          document.getElementById('fixDoubletWidth1').checked = v[12] !== 0;
+          document.getElementById('fixDoubletWidth2').checked = v[13] !== 0;
           
-          const mode = v[18];
+          document.getElementById('opt-interpol').checked = v[14] !== 0;
+          document.getElementById('opt-oslo').checked = v[15] !== 0;
+          document.getElementById('opt-sliding').checked = v[16] !== 0;
+          document.getElementById('opt-background').checked = v[17] !== 0;
+          document.getElementById('min-counts').value = v[18];
+          document.getElementById('gsf-scaling').value = v[19];
+          document.getElementById('auto-scale').checked = v[20] !== 0;
+          document.getElementById('eff-corr').value = v[21];
+          
+          const mode = v[22];
           document.getElementById('mode-integration').checked = (mode !== 2);
           document.getElementById('mode-autofit').checked = (mode === 2);
           
-          document.getElementById('bg1-lo1').value = v[19];
-          document.getElementById('bg1-hi1').value = v[20];
-          document.getElementById('bg1-lo2').value = v[21];
-          document.getElementById('bg1-hi2').value = v[22];
-          document.getElementById('bg2-lo1').value = v[23];
-          document.getElementById('bg2-hi1').value = v[24];
-          document.getElementById('bg2-lo2').value = v[25];
-          document.getElementById('bg2-hi2').value = v[26];
+          document.getElementById('bg1-lo1').value = v[23];
+          document.getElementById('bg1-hi1').value = v[24];
+          document.getElementById('bg1-lo2').value = v[25];
+          document.getElementById('bg1-hi2').value = v[26];
+          document.getElementById('bg2-lo1').value = v[27];
+          document.getElementById('bg2-hi1').value = v[28];
+          document.getElementById('bg2-lo2').value = v[29];
+          document.getElementById('bg2-hi2').value = v[30];
           
           // Display options
-          if (v.length >= 30) {
-            document.getElementById('opt-display-single').checked = v[27] !== 0;
-            document.getElementById('opt-display-avg').checked = v[28] !== 0;
-            document.getElementById('opt-colour').checked = v[29] !== 0;
-          }
-          
-          // Width calibration (index 30, if present)
-          if (v.length >= 31) {
-            document.getElementById('opt-width-calib').checked = v[30] !== 0;
-          }
-          
-          // Bin size variation and bin sizes (indices 31-33, if present)
           if (v.length >= 34) {
-            const doBinVariation = v[31] !== 0;
+            document.getElementById('opt-display-single').checked = v[31] !== 0;
+            document.getElementById('opt-display-avg').checked = v[32] !== 0;
+            document.getElementById('opt-colour').checked = v[33] !== 0;
+          }
+          
+          // Width calibration (index 34, if present)
+          if (v.length >= 35) {
+            document.getElementById('opt-width-calib').checked = v[34] !== 0;
+          }
+          
+          // Bin size variation and bin sizes (indices 35-37, if present)
+          if (v.length >= 38) {
+            const doBinVariation = v[35] !== 0;
             document.getElementById('bin-variation').checked = doBinVariation;
-            document.getElementById('binsize-lo').value = v[32];
-            document.getElementById('binsize-hi').value = v[33];
+            document.getElementById('binsize-lo').value = v[36];
+            document.getElementById('binsize-hi').value = v[37];
             // Enable/disable the high bin size field based on variation setting
             document.getElementById('binsize-hi').disabled = !doBinVariation;
             document.getElementById('nbins-hi').disabled = !doBinVariation;
           }
           
-          // Verbose level (index 34, if present)
-          if (v.length >= 35) {
-            const verboseLevel = v[34];
+          // Verbose level (index 38, if present)
+          if (v.length >= 39) {
+            const verboseLevel = v[38];
             document.getElementById('verbose-toggle').checked = (verboseLevel !== 0);
           }
           
-          // Width calibration parameters (indices 35-38, if present)
-          if (v.length >= 39) {
-            document.getElementById('wc-l1-offset').value = v[35];
-            document.getElementById('wc-l1-slope').value = v[36];
-            document.getElementById('wc-l2-offset').value = v[37];
-            document.getElementById('wc-l2-slope').value = v[38];
+          // Width calibration parameters (indices 39-42, if present)
+          if (v.length >= 43) {
+            document.getElementById('wc-l1-offset').value = v[39];
+            document.getElementById('wc-l1-slope').value = v[40];
+            document.getElementById('wc-l2-offset').value = v[41];
+            document.getElementById('wc-l2-slope').value = v[42];
           }
         }
         
@@ -933,10 +965,51 @@ COMMUNICATION PROTOCOL:
           startDir = msg.slice(9);
         }
         
+        // Settings file path from backend (sent on startup)
+        else if (msg.startsWith('SETTINGS_PATH:')) {
+          const path = msg.slice(14);
+          if (path && path !== '') {
+            currentSettingsPath = path;
+            markSettingsClean();
+          }
+          updateSettingsDisplay();
+        }
+        
         // Width calibration availability status
         else if (msg.startsWith('WIDTH_CALIB_AVAILABLE:')) {
           widthCalibAvailable = (msg.slice(22) === '1');
           updateWidthCalibState();
+        }
+        
+        // Marker position update (sent when markers are dragged)
+        // Format: levEne0|levEne1|levEne2|levEne3|levEne_2_0|levEne_2_1|levEne_2_2|levEne_2_3|bg...
+        // Only updates position fields, NOT checkbox states
+        else if (msg.startsWith('MARKER_UPDATE:')) {
+          const v = msg.slice(14).split('|').map(Number);
+          document.getElementById('lvl1-lo').value = v[0];
+          document.getElementById('lvl1-hi').value = v[1];
+          document.getElementById('lvl2-lo').value = v[2];
+          document.getElementById('lvl2-hi').value = v[3];
+          
+          // Update doublet positions if they exist (checkbox states are NOT changed)
+          if (document.getElementById('doublet1').checked) {
+            document.getElementById('d1-lo').value = v[4];
+            document.getElementById('d1-hi').value = v[5];
+          }
+          if (document.getElementById('doublet2').checked) {
+            document.getElementById('d2-lo').value = v[6];
+            document.getElementById('d2-hi').value = v[7];
+          }
+          
+          // Update background regions
+          document.getElementById('bg1-lo1').value = v[8];
+          document.getElementById('bg1-hi1').value = v[9];
+          document.getElementById('bg1-lo2').value = v[10];
+          document.getElementById('bg1-hi2').value = v[11];
+          document.getElementById('bg2-lo1').value = v[12];
+          document.getElementById('bg2-hi1').value = v[13];
+          document.getElementById('bg2-lo2').value = v[14];
+          document.getElementById('bg2-hi2').value = v[15];
         }
         
         // Bin count update (after running ShapeIt)
@@ -991,6 +1064,23 @@ COMMUNICATION PROTOCOL:
           showVersionDialog(path);
         }
         
+        // Settings file content
+        else if (msg.startsWith('SETTINGS_FILE_CONTENT:')) {
+          const content = msg.slice(22);
+          showSettingsViewer(content);
+        }
+        
+        // Width calibration parameters (silent update - no status display)
+        else if (msg.startsWith('WIDTH_CALIB_PARAMS:')) {
+          const v = msg.slice(19).split('|').map(Number);
+          if (v.length === 4) {
+            document.getElementById('wc-l1-offset').value = v[0];
+            document.getElementById('wc-l1-slope').value = v[1];
+            document.getElementById('wc-l2-offset').value = v[2];
+            document.getElementById('wc-l2-slope').value = v[3];
+          }
+        }
+        
         // Generic status message
         else {
           setStatus(msg);
@@ -1025,16 +1115,23 @@ COMMUNICATION PROTOCOL:
     sendLevelEnergies();
   });
 
+  // Width fix toggles trigger re-send of level energies
+  document.getElementById('fixDoubletWidth1').addEventListener('change', sendLevelEnergies);
+  document.getElementById('fixDoubletWidth2').addEventListener('change', sendLevelEnergies);
+
   // Send level energies to server
   function sendLevelEnergies() {
     const val = id => document.getElementById(id).value;
     const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
     const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+    const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
+    const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
     const msg = [
       val('lvl1-lo'), val('lvl1-hi'),
       val('lvl2-lo'), val('lvl2-hi'),
       isDoublet1, val('d1-lo'), val('d1-hi'),
       isDoublet2, val('d2-lo'), val('d2-hi'),
+      fixWidth1, fixWidth2,
     ].join('|');
     if (conn_handle) {
       conn_handle.send('LEVELENERGIES:' + msg);
@@ -1212,6 +1309,23 @@ COMMUNICATION PROTOCOL:
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════
+  // SETTINGS FILE VIEWER - Display settings file content in modal
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function showSettingsViewer(content) {
+    const filename = currentSettingsPath ? currentSettingsPath.split('/').pop() : 'Settings File';
+    document.getElementById('settings-viewer-title').textContent = filename;
+    document.getElementById('settings-viewer-content').textContent = content;
+    document.getElementById('settings-viewer-overlay').style.display = 'flex';
+  }
+
+  function hideSettingsViewer() {
+    document.getElementById('settings-viewer-overlay').style.display = 'none';
+  }
+
+  document.getElementById('settings-viewer-close').addEventListener('click', hideSettingsViewer);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
   // OPTIONS PANEL - Checkboxes for interpolation, oslo, sliding, background, width calib
   // ═══════════════════════════════════════════════════════════════════════════════
   
@@ -1299,20 +1413,11 @@ COMMUNICATION PROTOCOL:
     if (conn_handle) {
       conn_handle.send('UPDATE_WIDTH_CALIB_LINES:' + msg);
     }
+    markSettingsDirty();
   }
   
   ['wc-l1-offset', 'wc-l1-slope', 'wc-l2-offset', 'wc-l2-slope'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendWidthCalibParams);
-  });
-  
-  document.getElementById('btn-save-width-calib').addEventListener('click', () => {
-    if (currentSettingsPath && conn_handle) {
-      sendWidthCalibParams();
-      conn_handle.send('SAVE_WIDTH_CALIB:' + currentSettingsPath);
-      setStatus('Width calibration saved to settings file.');
-    } else {
-      setStatus('Error: No settings file loaded. Please load or save settings first.');
-    }
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -1324,12 +1429,15 @@ COMMUNICATION PROTOCOL:
       const val = id => document.getElementById(id).value;
       const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
       const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+      const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
+      const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
       const msg = [
         val('lvl1-lo'), val('lvl1-hi'),
         val('lvl2-lo'), val('lvl2-hi'),
         val('exc-lo'), val('exc-hi'),
         isDoublet1, val('d1-lo'), val('d1-hi'),
         isDoublet2, val('d2-lo'), val('d2-hi'),
+        fixWidth1, fixWidth2,
       ].join('|');
       conn_handle.send('RUN:' + msg);
       setStatus('Running...');

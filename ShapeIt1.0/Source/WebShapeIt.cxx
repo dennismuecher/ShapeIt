@@ -27,6 +27,7 @@
 #include "TMultiGraph.h"
 #include "TList.h"
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <vector>
 #include <string>
@@ -56,6 +57,7 @@ std::string gStartDir;
 int gDisplayMode = 0;
 int gCurrentBin = 1;
 TLine *gMarkerLine[4] = { nullptr, nullptr, nullptr, nullptr };
+TLine *gDoubletLine[4] = { nullptr, nullptr, nullptr, nullptr }; // Doublet markers
 TBox  *gBgBox[4]      = { nullptr, nullptr, nullptr, nullptr };
 TH1   *gCurrentHist   = nullptr; // whatever's currently drawn in modes 4/5, used to size markers
 
@@ -82,6 +84,44 @@ std::string DirName(const std::string &path)
 {
     auto pos = path.find_last_of("/\\");
     return (pos == std::string::npos) ? std::string(".") : path.substr(0, pos);
+}
+
+// Parse command-line arguments passed to ROOT
+// Also checks environment variable SHAPEIT_SETTINGS as fallback
+std::string GetCmdLineArg(const std::string &flag)
+{
+    TApplication *app = gApplication;
+    if (!app) {
+        // If no gApplication, check environment variable
+        if (flag == "--settings") {
+            const char* env = gSystem->Getenv("SHAPEIT_SETTINGS");
+            return env ? std::string(env) : "";
+        }
+        return "";
+    }
+    
+    Int_t argc = app->Argc();
+    char **argv = app->Argv();
+    
+    for (Int_t i = 1; i < argc; i++) {
+        std::string arg(argv[i]);
+        
+        // Support both --settings=path and --settings path formats
+        if (arg.find(flag + "=") == 0) {
+            return arg.substr(flag.length() + 1);
+        }
+        else if (arg == flag && i + 1 < argc) {
+            return std::string(argv[i + 1]);
+        }
+    }
+    
+    // Fallback: check environment variable
+    if (flag == "--settings") {
+        const char* env = gSystem->Getenv("SHAPEIT_SETTINGS");
+        return env ? std::string(env) : "";
+    }
+    
+    return "";
 }
 
 // canvas->Update() on a TWebCanvas blocks the entire ROOT process waiting for
@@ -178,7 +218,36 @@ void SendMatrixListAndSelect(unsigned connid, const std::string &matrixPath, int
     window->Send(connid, msg);
 
     matrix->SetMatrix(selectIndex);
-    matrix->GetInputMatrix(BaseName(matrixPath))->Draw("colz");
+    
+    // Set pad margins before drawing
+    canvas->cd();
+    gPad->SetRightMargin(0.15);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetTopMargin(0.08);
+    gPad->SetBottomMargin(0.10);
+    
+    TH2* hist = matrix->GetInputMatrix(BaseName(matrixPath));
+    hist->SetStats(0);
+    hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+    hist->GetYaxis()->SetTitle("E_{x} (keV)");
+    hist->GetXaxis()->SetTitleSize(0.045);
+    hist->GetYaxis()->SetTitleSize(0.045);
+    hist->GetXaxis()->SetTitleOffset(1.0);
+    hist->GetYaxis()->SetTitleOffset(1.1);
+    hist->Draw("col");
+    
+    // Manually create and position the color palette
+    double xmin = hist->GetXaxis()->GetXmin();
+    double xmax = hist->GetXaxis()->GetXmax();
+    double ymin = hist->GetYaxis()->GetXmin();
+    double ymax = hist->GetYaxis()->GetXmax();
+    TPaletteAxis *palette = new TPaletteAxis(xmax, ymin, xmax + (xmax-xmin)*0.05, ymax, hist);
+    palette->SetX1NDC(0.86);
+    palette->SetX2NDC(0.89);
+    palette->SetY1NDC(0.10);
+    palette->SetY2NDC(0.90);
+    palette->Draw();
+    
     matrix->Diag();
     canvas->cd();
     PushCanvasUpdate();
@@ -196,6 +265,10 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->exiEne[0]) + "|" + std::to_string(sett->exiEne[1]) + "|";
     msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
     msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
+    msg += std::to_string(sett->doDoublet[0] ? 1 : 0) + "|";  // Add doublet checkbox states
+    msg += std::to_string(sett->doDoublet[1] ? 1 : 0) + "|";
+    msg += std::to_string(sett->fixDoubletWidth[0] ? 1 : 0) + "|";  // Add doublet width fix toggles
+    msg += std::to_string(sett->fixDoubletWidth[1] ? 1 : 0) + "|";
     msg += std::to_string(sett->doInterpol ? 1 : 0) + "|";
     msg += std::to_string(sett->doOslo ? 1 : 0) + "|";
     msg += std::to_string(sett->doSlidingWindow ? 1 : 0) + "|";
@@ -237,6 +310,7 @@ void DrawMarkers(bool usePadRange = false)
 {
     for (int i = 0; i < 4; i++) {
         if (gMarkerLine[i]) canvas->GetListOfPrimitives()->Remove(gMarkerLine[i]);
+        if (gDoubletLine[i]) canvas->GetListOfPrimitives()->Remove(gDoubletLine[i]);
         if (gBgBox[i]) canvas->GetListOfPrimitives()->Remove(gBgBox[i]);
     }
 
@@ -268,12 +342,37 @@ void DrawMarkers(bool usePadRange = false)
         y2 = gCurrentHist ? gCurrentHist->GetMaximum() * 1.05 : 100;
     }
 
+    // Draw main peak markers (red)
     for (int i = 0; i < 4; i++) {
         gMarkerLine[i] = new TLine(sett->levEne[i], y1, sett->levEne[i], y2);
         gMarkerLine[i]->SetLineColor(kRed);
         gMarkerLine[i]->SetLineWidth(2);
         if (sett->levEne[i] >= xmin && sett->levEne[i] <= xmax)
             gMarkerLine[i]->Draw();
+    }
+
+    // Draw doublet markers (orange) if enabled via checkbox
+    // levEne_2[0-1] are for level 1 doublet, levEne_2[2-3] are for level 2 doublet
+    // Use doDoublet flag, not zero-detection of energy values
+    
+    if (sett->doDoublet[0]) {
+        for (int i = 0; i < 2; i++) {
+            gDoubletLine[i] = new TLine(sett->levEne_2[i], y1, sett->levEne_2[i], y2);
+            gDoubletLine[i]->SetLineColor(kOrange);
+            gDoubletLine[i]->SetLineWidth(2);
+            if (sett->levEne_2[i] >= xmin && sett->levEne_2[i] <= xmax)
+                gDoubletLine[i]->Draw();
+        }
+    }
+    
+    if (sett->doDoublet[1]) {
+        for (int i = 2; i < 4; i++) {
+            gDoubletLine[i] = new TLine(sett->levEne_2[i], y1, sett->levEne_2[i], y2);
+            gDoubletLine[i]->SetLineColor(kOrange);
+            gDoubletLine[i]->SetLineWidth(2);
+            if (sett->levEne_2[i] >= xmin && sett->levEne_2[i] <= xmax)
+                gDoubletLine[i]->Draw();
+        }
     }
 
     gBgBox[0] = new TBox(sett->bgEne[0][0], y1, sett->bgEne[0][1], y2);
@@ -306,6 +405,7 @@ bool gHaveLastRange = false;
 
 // Track last marker positions to detect when they're dragged
 double gLastLevEne[4] = {0, 0, 0, 0};
+double gLastLevEne_2[4] = {0, 0, 0, 0}; // Doublet positions
 double gLastBgEne[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 bool gHaveLastMarkers = false;
 
@@ -463,10 +563,20 @@ void CheckMarkersChanged()
     
     // Read current marker positions
     double levEne[4];
+    double levEne_2[4];
     double bgEne[2][4];
     
     for (int i = 0; i < 4; i++)
         levEne[i] = gMarkerLine[i]->GetX1();
+    
+    // Read doublet positions ONLY if they were actually drawn (checkbox is ON)
+    // If checkbox is OFF (lines not drawn), preserve existing stored values unchanged
+    for (int i = 0; i < 4; i++) {
+        if (gDoubletLine[i])
+            levEne_2[i] = gDoubletLine[i]->GetX1();  // User dragged it, use new position
+        else
+            levEne_2[i] = sett->levEne_2[i];  // Checkbox off, preserve stored value (don't modify)
+    }
     
     bgEne[0][0] = gBgBox[0]->GetX1(); bgEne[0][1] = gBgBox[0]->GetX2();
     bgEne[0][2] = gBgBox[1]->GetX1(); bgEne[0][3] = gBgBox[1]->GetX2();
@@ -478,6 +588,10 @@ void CheckMarkersChanged()
     if (gHaveLastMarkers) {
         for (int i = 0; i < 4; i++) {
             if (std::abs(levEne[i] - gLastLevEne[i]) > 0.01) {
+                changed = true;
+                break;
+            }
+            if (std::abs(levEne_2[i] - gLastLevEne_2[i]) > 0.01) {
                 changed = true;
                 break;
             }
@@ -496,8 +610,10 @@ void CheckMarkersChanged()
     }
     
     // Update stored values
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
         gLastLevEne[i] = levEne[i];
+        gLastLevEne_2[i] = levEne_2[i];
+    }
     for (int i = 0; i < 2; i++)
         for (int j = 0; j < 4; j++)
             gLastBgEne[i][j] = bgEne[i][j];
@@ -507,14 +623,28 @@ void CheckMarkersChanged()
     if (changed) {
         std::cout << "Marker position changed, updating settings..." << std::endl;
         
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 4; i++) {
             sett->levEne[i] = levEne[i];
+            sett->levEne_2[i] = levEne_2[i];  // This now preserves the stored value when doublet is off
+        }
         
         for (int i = 0; i < 2; i++)
             for (int j = 0; j < 4; j++)
                 sett->bgEne[i][j] = bgEne[i][j];
         
-        SendSettingsSync(0);
+        // Send only marker positions to UI, not full settings sync
+        // This avoids overwriting checkbox states that may have changed in the UI
+        // but not yet been sent back to C++
+        std::string msg = "MARKER_UPDATE:";
+        msg += std::to_string(sett->levEne[0]) + "|" + std::to_string(sett->levEne[1]) + "|";
+        msg += std::to_string(sett->levEne[2]) + "|" + std::to_string(sett->levEne[3]) + "|";
+        msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
+        msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
+        msg += std::to_string(sett->bgEne[0][0]) + "|" + std::to_string(sett->bgEne[0][1]) + "|";
+        msg += std::to_string(sett->bgEne[0][2]) + "|" + std::to_string(sett->bgEne[0][3]) + "|";
+        msg += std::to_string(sett->bgEne[1][0]) + "|" + std::to_string(sett->bgEne[1][1]) + "|";
+        msg += std::to_string(sett->bgEne[1][2]) + "|" + std::to_string(sett->bgEne[1][3]);
+        window->Send(0, msg);
         
         // If in Autofit mode (mode 2), re-fit and redraw the current projection
         // This updates the Gaussian fits on the histogram without recalculating all gSF
@@ -573,13 +703,33 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
         for (int i = 0; i < 4; i++)
             sett->levEne[i] = gMarkerLine[i]->GetX1();
 
+        // Update doublet positions if they exist (only if doublet lines were drawn)
+        for (int i = 0; i < 4; i++) {
+            if (gDoubletLine[i])
+                sett->levEne_2[i] = gDoubletLine[i]->GetX1();
+            // else: preserve existing sett->levEne_2[i] value unchanged
+        }
+
         sett->bgEne[0][0] = gBgBox[0]->GetX1(); sett->bgEne[0][1] = gBgBox[0]->GetX2();
         sett->bgEne[0][2] = gBgBox[1]->GetX1(); sett->bgEne[0][3] = gBgBox[1]->GetX2();
         sett->bgEne[1][0] = gBgBox[2]->GetX1(); sett->bgEne[1][1] = gBgBox[2]->GetX2();
         sett->bgEne[1][2] = gBgBox[3]->GetX1(); sett->bgEne[1][3] = gBgBox[3]->GetX2();
 
         DrawMarkers();
-        SendSettingsSync(0);
+        
+        // Send only marker positions to UI, not full settings sync
+        // This avoids overwriting checkbox states that may have changed in the UI
+        // but not yet been sent back to C++
+        std::string msg = "MARKER_UPDATE:";
+        msg += std::to_string(sett->levEne[0]) + "|" + std::to_string(sett->levEne[1]) + "|";
+        msg += std::to_string(sett->levEne[2]) + "|" + std::to_string(sett->levEne[3]) + "|";
+        msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
+        msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
+        msg += std::to_string(sett->bgEne[0][0]) + "|" + std::to_string(sett->bgEne[0][1]) + "|";
+        msg += std::to_string(sett->bgEne[0][2]) + "|" + std::to_string(sett->bgEne[0][3]) + "|";
+        msg += std::to_string(sett->bgEne[1][0]) + "|" + std::to_string(sett->bgEne[1][1]) + "|";
+        msg += std::to_string(sett->bgEne[1][2]) + "|" + std::to_string(sett->bgEne[1][3]);
+        window->Send(0, msg);
     }
 }
 
@@ -722,7 +872,7 @@ void RunShapeIt(unsigned connid)
     }
     
     std::cout << "Canvas cleared, nulling marker pointers..." << std::endl;
-    for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+    for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
     std::cout << "Marker pointers nulled." << std::endl;
 
     bool firstDrawn = false;
@@ -899,8 +1049,8 @@ void ProcessData(unsigned connid, const std::string &arg)
     std::ostringstream logBuffer;
     std::streambuf* oldBuf = std::cout.rdbuf(logBuffer.rdbuf());
     
-    // Suppress noisy width calibration update messages
-    if (arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") != 0) {
+    // Suppress noisy debug messages for channel setup and width calibration updates
+    if (arg.compare(0, 8, "channel:") != 0 && arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") != 0) {
         std::cout << "Got message from browser: " << arg << std::endl;
     }
 
@@ -913,13 +1063,20 @@ void ProcessData(unsigned connid, const std::string &arg)
         }
         window->Send(connid, "STARTDIR:" + gStartDir);
         
-        // If matrix was auto-loaded at startup, sync it to the UI
+        // Send settings file path to frontend (must come before SETTINGS_SYNC)
+        if (!sett->settFileName.empty()) {
+            window->Send(connid, "SETTINGS_PATH:" + sett->settFileName);
+        }
+        
+        // If matrix was auto-loaded at startup (via environment variable or otherwise),
+        // sync it to the UI exactly as LOAD_SETTINGS does
         if (matrix) {
             auto names = matrix->GetMatrixName();
             int idx = 0;
             for (size_t i = 0; i < names.size(); i++)
                 if (names[i] == sett->matrixName) idx = (int)i + 1;
             if (idx > 0) {
+                gDisplayMode = 1;
                 SendMatrixListAndSelect(connid, currentMatrixPath, idx);
                 SendNBins(connid);
                 // Enable width calibration since matrix is loaded
@@ -927,8 +1084,14 @@ void ProcessData(unsigned connid, const std::string &arg)
             }
         }
         
-        // Sync settings to UI
+        // Sync all settings to UI (this updates all form fields to match loaded settings)
         SendSettingsSync(connid);
+        
+        // Send status message AFTER everything else is synced (same as LOAD_SETTINGS does)
+        // Only send if we actually loaded settings from a file
+        if (!sett->settFileName.empty()) {
+            window->Send(connid, "Settings loaded: " + sett->settFileName);
+        }
     }
     else if (arg.compare(0, 5, "OPEN:") == 0) {
         std::string path = arg.substr(5);
@@ -972,7 +1135,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         SendNBins(connid);
         // Enable width calibration since we have a matrix
         window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
-        window->Send(connid, "Matrix selected.");
     }
     else if (arg.compare(0, 5, "OSLO:") == 0) {
         std::string path = arg.substr(5);
@@ -1062,7 +1224,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->doSlidingWindow = v[2] != 0.0;
         sett->doBackground    = v[3] != 0.0;
         sett->doWidthCal      = v[4] != 0.0;
-        window->Send(connid, "Options updated.");
     }
     else if (arg.compare(0, 16, "DISPLAY_OPTIONS:") == 0) {
         // order: displaySingle|displayAvg|colour
@@ -1074,7 +1235,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->displaySingle = v[0] != 0.0;
         sett->displayAvg    = v[1] != 0.0;
         sett->colour        = v[2] != 0.0;
-        window->Send(connid, "Display options updated.");
     }
     else if (arg.compare(0, 8, "BINSIZE:") == 0) {
         // order: lo|hi|isVariation
@@ -1090,7 +1250,6 @@ void ProcessData(unsigned connid, const std::string &arg)
             hi = sett->exi_size[0] + 50; // mirrors DoNumberEntry's id==11 clamp
         sett->exi_size[1] = sett->doBinVariation ? hi : sett->exi_size[0];
         SendNBins(connid);
-        window->Send(connid, "Bin size updated.");
     }
     else if (arg.compare(0, 8, "NBINSLO:") == 0) {
         // mirrors DoNumberEntry's id==8 case: editing "Nr. of bins" (low)
@@ -1105,7 +1264,6 @@ void ProcessData(unsigned connid, const std::string &arg)
             sett->exi_size[1] = sett->exi_size[0];
         int nHigh = sett->doBinVariation ? sett->SizeToBin(sett->exi_size[1]) : sett->nOfBins;
         SendBinSyncValues(connid, sett->nOfBins, nHigh);
-        window->Send(connid, "Bin size updated.");
     }
     else if (arg.compare(0, 8, "NBINSHI:") == 0) {
         // mirrors DoNumberEntry's id==12 case exactly, including its two
@@ -1124,7 +1282,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         }
         sett->exi_size[1] = size;
         SendBinSyncValues(connid, sett->nOfBins, nHigh);
-        window->Send(connid, "Bin size updated.");
     }
     else if (arg.compare(0, 10, "INTPARAMS:") == 0) {
         // order: minCounts|scaling|autoScale|effCorr
@@ -1137,15 +1294,12 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->gSF_norm    = v[1];
         sett->doAutoScale = v[2] != 0.0;
         sett->eff_corr    = v[3];
-        window->Send(connid, "Integration bin parameters updated.");
     }
     else if (arg.compare(0, 8, "VERBOSE:") == 0) {
         sett->verbose = std::stoi(arg.substr(8));
-        window->Send(connid, "Verbose level set to " + std::to_string(sett->verbose) + ".");
     }
     else if (arg.compare(0, 5, "MODE:") == 0) {
         sett->mode = std::stoi(arg.substr(5)); // 1 = Integration, 2 = Autofit
-        window->Send(connid, sett->mode == 2 ? "Mode: Autofit" : "Mode: Integration");
     }
     else if (arg.compare(0, 11, "BGENERGIES:") == 0) {
         // order: bgEne[0][0..3] | bgEne[1][0..3]  (8 values)
@@ -1157,7 +1311,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         for (int i = 0; i < 4; i++) sett->bgEne[0][i] = v[i];
         for (int i = 0; i < 4; i++) sett->bgEne[1][i] = v[4 + i];
         DrawMarkers(); // refreshes the draggable boxes to match, if a projection is shown
-        window->Send(connid, "Background regions updated.");
     }
     else if (arg == "UPDATE_MARKERS") {
         // Redraw markers with current settings (triggered by energy changes in UI)
@@ -1177,7 +1330,7 @@ void ProcessData(unsigned connid, const std::string &arg)
             gDisplayMode = 5;
             canvas->cd();
             canvas->Clear();
-            for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+            for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
             gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
             gCurrentHist->Draw();
             gHaveLastRange = false;
@@ -1186,7 +1339,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         } else {
             std::cout << "Levels panel opened - already in projection mode " << gDisplayMode << ", keeping current view" << std::endl;
         }
-        window->Send(connid, "Levels panel shown.");
     }
     else if (arg == "SHOWMATRIX") {
         if (!matrix) {
@@ -1196,7 +1348,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         gDisplayMode = 1;
         canvas->cd();
         canvas->Clear();
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         
         // Set pad margins to accommodate the manually-positioned color palette
         gPad->SetRightMargin(0.15);  // 15% right margin provides space for palette
@@ -1244,7 +1396,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         gDisplayMode = 4;
         canvas->cd();
         canvas->Clear();
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = matrix->GetDiag(BaseName(currentMatrixPath));
         gCurrentHist->Draw("hist");
         gHaveLastRange = false;
@@ -1285,7 +1437,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         canvas->cd();
         canvas->Clear();
         // Null out marker pointers since Clear() deleted them
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         gDisplayMode = 7;  // Width calibration display mode
         
         // Create fit functions using parameters from sett->widthCal
@@ -1398,6 +1550,25 @@ void ProcessData(unsigned connid, const std::string &arg)
         
         PushCanvasUpdate();
     }
+    else if (arg == "SHOW_SETTINGS_FILE") {
+        if (sett->settFileName.empty()) {
+            window->Send(connid, "No settings file loaded.");
+            return;
+        }
+        
+        std::ifstream file(sett->settFileName.c_str());
+        if (!file.good()) {
+            window->Send(connid, "Could not read settings file: " + sett->settFileName);
+            return;
+        }
+        
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+        
+        std::string content = buffer.str();
+        window->Send(connid, "SETTINGS_FILE_CONTENT:" + content);
+    }
     else if (arg.compare(0, 12, "SHOWBINPROJ:") == 0) {
         if (!matrix) {
             window->Send(connid, "No matrix loaded yet -- open one first.");
@@ -1414,7 +1585,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         gDisplayMode = 5;
         canvas->cd();
         canvas->Clear();
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
         gCurrentHist->Draw();
         
@@ -1449,23 +1620,79 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** LEVELENERGIES HANDLER CALLED ***" << std::endl;
         auto v = ParsePipeDoubles(arg.substr(14));
         std::cout << "*** Parsed " << v.size() << " values ***" << std::endl;
-        if (v.size() != 10) {
-            std::cout << "*** ERROR: Expected 10 values, got " << v.size() << " ***" << std::endl;
+        if (v.size() != 12) {
+            std::cout << "*** ERROR: Expected 12 values, got " << v.size() << " ***" << std::endl;
             return;
         }
         std::cout << "*** Setting levEne[0-3] to: " << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << " ***" << std::endl;
+        
+        // Store previous doublet checkbox states to detect changes
+        bool hadDoublet1 = sett->doDoublet[0];
+        bool hadDoublet2 = sett->doDoublet[1];
+        bool hadFixWidth1 = sett->fixDoubletWidth[0];
+        bool hadFixWidth2 = sett->fixDoubletWidth[1];
+        
+        // Update main peak energies
         sett->levEne[0] = v[0]; 
         sett->levEne[1] = v[1];
         sett->levEne[2] = v[2]; 
         sett->levEne[3] = v[3];
-        bool isDoublet1 = v[4] != 0.0;
-        sett->levEne_2[0] = isDoublet1 ? v[5] : 0.0;
-        sett->levEne_2[1] = isDoublet1 ? v[6] : 0.0;
-        bool isDoublet2 = v[7] != 0.0;
-        sett->levEne_2[2] = isDoublet2 ? v[8] : 0.0;
-        sett->levEne_2[3] = isDoublet2 ? v[9] : 0.0;
+        
+        // Update doublet checkbox states
+        sett->doDoublet[0] = v[4] != 0.0;
+        sett->doDoublet[1] = v[7] != 0.0;
+        
+        // Update doublet width fix toggles
+        sett->fixDoubletWidth[0] = v[10] != 0.0;
+        sett->fixDoubletWidth[1] = v[11] != 0.0;
+        
+        // ALWAYS update doublet energy values regardless of checkbox state
+        sett->levEne_2[0] = v[5];
+        sett->levEne_2[1] = v[6];
+        sett->levEne_2[2] = v[8];
+        sett->levEne_2[3] = v[9];
+        
         std::cout << "*** Level energies updated successfully ***" << std::endl;
-        window->Send(connid, "Level energies updated.");
+        std::cout << "*** Doublet 1: " << (sett->doDoublet[0] ? "ENABLED" : "DISABLED") 
+                  << ", values: " << sett->levEne_2[0] << ", " << sett->levEne_2[1] 
+                  << ", fix width: " << (sett->fixDoubletWidth[0] ? "YES" : "NO") << " ***" << std::endl;
+        std::cout << "*** Doublet 2: " << (sett->doDoublet[1] ? "ENABLED" : "DISABLED") 
+                  << ", values: " << sett->levEne_2[2] << ", " << sett->levEne_2[3] 
+                  << ", fix width: " << (sett->fixDoubletWidth[1] ? "YES" : "NO") << " ***" << std::endl;
+        
+        // Detect if doublet state or width fix state changed
+        bool doubletStateChanged = (hadDoublet1 != sett->doDoublet[0]) || (hadDoublet2 != sett->doDoublet[1]);
+        bool widthFixChanged = (hadFixWidth1 != sett->fixDoubletWidth[0]) || (hadFixWidth2 != sett->fixDoubletWidth[1]);
+        
+        // If in Autofit mode and viewing a bin projection, re-fit when doublet checkbox or width fix changes
+        if ((doubletStateChanged || widthFixChanged) && sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Doublet settings changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            // Just redraw markers (handles Integration mode or when not viewing projection)
+            DrawMarkers(true);
+        }
     }
     else if (arg.compare(0, 19, "WIDTH_CALIB_PARAMS:") == 0) {
         // order: l1_offset|l1_slope|l2_offset|l2_slope
@@ -1478,9 +1705,6 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->widthCal[0][1] = v[1];  // Level 1 slope
         sett->widthCal[1][0] = v[2];  // Level 2 offset
         sett->widthCal[1][1] = v[3];  // Level 2 slope
-        
-        // Parameters updated - the frontend will trigger SHOW_WIDTH_CALIB to redraw
-        window->Send(connid, "Width calibration parameters updated.");
     }
     else if (arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") == 0) {
         // Just update the fit line parameters without re-running analysis
@@ -1570,9 +1794,9 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (arg.compare(0, 4, "RUN:") == 0) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|
-        //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi
+        //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi|fix_width1|fix_width2
         auto v = ParsePipeDoubles(arg.substr(4));
-        if (v.size() != 12) {
+        if (v.size() != 14) {
             window->Send(connid, "Malformed RUN message.");
             return;
         }
@@ -1581,13 +1805,19 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->levEne[2] = v[2]; sett->levEne[3] = v[3];
         sett->exiEne[0] = v[4]; sett->exiEne[1] = v[5];
 
-        bool isDoublet1 = v[6] != 0.0;
-        sett->levEne_2[0] = isDoublet1 ? v[7] : 0.0;
-        sett->levEne_2[1] = isDoublet1 ? v[8] : 0.0;
-
-        bool isDoublet2 = v[9] != 0.0;
-        sett->levEne_2[2] = isDoublet2 ? v[10] : 0.0;
-        sett->levEne_2[3] = isDoublet2 ? v[11] : 0.0;
+        // Set doublet checkbox states
+        sett->doDoublet[0] = v[6] != 0.0;
+        sett->doDoublet[1] = v[9] != 0.0;
+        
+        // ALWAYS store doublet energy values regardless of checkbox state
+        sett->levEne_2[0] = v[7];
+        sett->levEne_2[1] = v[8];
+        sett->levEne_2[2] = v[10];
+        sett->levEne_2[3] = v[11];
+        
+        // Set doublet width fix toggles
+        sett->fixDoubletWidth[0] = v[12] != 0.0;
+        sett->fixDoubletWidth[1] = v[13] != 0.0;
 
         // Keep stdout redirected to logBuffer so verbose output is captured
         std::cout << "*** About to call RunShapeIt() ***" << std::endl;
@@ -1617,6 +1847,23 @@ void ProcessData(unsigned connid, const std::string &arg)
 
 void WebShapeIt()
 {
+    // Check for help flag first
+    if (GetCmdLineArg("--help") == "--help" || GetCmdLineArg("-h") == "-h") {
+        std::cout << "\nWebShapeIt 2.0 - Usage:\n"
+                  << "  root -l WebShapeIt.cxx\n"
+                  << "  SHAPEIT_SETTINGS=<path> root -l WebShapeIt.cxx\n\n"
+                  << "Options:\n"
+                  << "  SHAPEIT_SETTINGS   Environment variable to load settings file at startup\n"
+                  << "  --help, -h         Show this help message\n\n"
+                  << "Examples:\n"
+                  << "  # Load specific settings file:\n"
+                  << "  SHAPEIT_SETTINGS=../Analysis/88Kr/test.dat root -l WebShapeIt.cxx\n\n"
+                  << "  # Start with empty settings:\n"
+                  << "  root -l WebShapeIt.cxx\n"
+                  << std::endl;
+        return;  // Exit without starting the GUI
+    }
+    
     gEnv->SetValue("WebGui.ConnCredits", "100");
     gStartDir = gSystem->WorkingDirectory();
 
@@ -1645,29 +1892,57 @@ void WebShapeIt()
     sett->setBgEne1(bg1);
     sett->setBgEne2(bg2);
 
-    // Auto-load default settings file for development convenience
-    std::string defaultSettingsPath = gStartDir + "/../Analysis/88Kr/test.dat";
-    std::ifstream testFile(defaultSettingsPath.c_str());
-    if (testFile.good()) {
-        testFile.close();
-        sett->settFileName = defaultSettingsPath;
-        sett->ReadSettings();
-        
-        // Resolve relative paths in settings file
-        std::string settDir = DirName(defaultSettingsPath);
-        sett->dataFileName = ResolveRelativeTo(settDir, sett->dataFileName);
-        sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
-        
-        std::cout << "Auto-loaded settings: " << defaultSettingsPath << std::endl;
-        
-        // Auto-load the matrix file referenced in settings
-        if (!sett->dataFileName.empty() && !gSystem->AccessPathName(sett->dataFileName.c_str())) {
-            currentMatrixPath = sett->dataFileName;
-            matrix = new ShapeMatrix(sett);
-            std::cout << "Auto-loaded matrix: " << sett->dataFileName << std::endl;
+    // Check for command-line --settings argument (via environment variable)
+    std::string cmdLineSettings = GetCmdLineArg("--settings");
+    
+    if (!cmdLineSettings.empty()) {
+        std::ifstream testFile(cmdLineSettings.c_str());
+        if (testFile.good()) {
+            testFile.close();
+            
+            // Suppress verbose ReadSettings() output
+            std::ostringstream devnull;
+            std::streambuf* oldBuf = std::cout.rdbuf(devnull.rdbuf());
+            
+            sett->settFileName = cmdLineSettings;
+            sett->ReadSettings();
+            
+            // Restore stdout
+            std::cout.rdbuf(oldBuf);
+            
+            // Resolve relative paths in settings file
+            std::string settDir = DirName(cmdLineSettings);
+            sett->dataFileName = ResolveRelativeTo(settDir, sett->dataFileName);
+            sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
+            
+            std::cout << "Loaded settings from: " << cmdLineSettings << std::endl;
+            
+            // Auto-load the matrix file referenced in settings (same as LOAD_SETTINGS handler)
+            if (!sett->dataFileName.empty() && !gSystem->AccessPathName(sett->dataFileName.c_str())) {
+                currentMatrixPath = sett->dataFileName;
+                matrix = new ShapeMatrix(sett);
+                
+                // Find the correct matrix by name (same as LOAD_SETTINGS handler)
+                auto names = matrix->GetMatrixName();
+                int idx = 0;
+                for (size_t i = 0; i < names.size(); i++)
+                    if (names[i] == sett->matrixName) idx = (int)i + 1;
+                
+                if (idx > 0) {
+                    // Set the matrix (this will be drawn when UI connects)
+                    matrix->SetMatrix(idx);
+                } else {
+                    std::cout << "Warning: matrix '" << sett->matrixName 
+                              << "' not found in " << sett->dataFileName << std::endl;
+                }
+            } else if (!sett->dataFileName.empty()) {
+                std::cout << "Warning: matrix file not found: " << sett->dataFileName << std::endl;
+            }
+        } else {
+            std::cout << "Warning: settings file not found: " << cmdLineSettings << std::endl;
         }
     } else {
-        std::cout << "Default settings file not found: " << defaultSettingsPath << std::endl;
+        // No environment variable set - start with empty settings (no output needed)
     }
 
     canvas = TWebCanvas::CreateWebCanvas("webshapeit_canvas", "ShapeIt 2.0");

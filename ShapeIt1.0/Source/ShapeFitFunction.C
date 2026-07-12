@@ -43,7 +43,7 @@ public:
     
     //Constructor
     
-    ShapeFitFunction (bool is_doublet ) {
+    ShapeFitFunction (bool is_doublet, bool fix_doublet_width = true ) {
 		if ( is_doublet) 
 			multip = 1;
 		else
@@ -56,7 +56,7 @@ public:
         gauss = 0;
         peakRanges[0] = 0; peakRanges[1] = 0;
         do_reject = true;
-        fix_width = true;
+        fix_width = fix_doublet_width;
     }
     
     void SetReject (bool ddo_reject) {do_reject = ddo_reject;}
