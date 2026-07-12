@@ -141,6 +141,9 @@ double ShapeSetting::getEffCor(double ene, int level) {
 void ShapeSetting::SaveSettings() {
     std::ofstream outfile;
     outfile.open (settFileName.c_str());
+    if (isVersion2Format) {
+        outfile << "# ShapeIt 2.0 settings file\n";
+    }
     outfile << dataFileName << "\n";
     outfile << osloFileName << "\n";
 	outfile << effiFileName << "\n";
@@ -208,7 +211,25 @@ void ShapeSetting::ReadSettings() {
         std::string word, line;
         //get the root matrix filename; this goes extra because of issues wih absolute paths containing white spaces
         getline(inp,line);
-        dataFileName = line;
+        
+        // Detect file format version
+        if (line.length() > 0 && line[0] == '#') {
+            // Version 2.0 format detected
+            isVersion2Format = true;
+            // Skip all comment lines and read the actual data filename
+            while (line.length() > 0 && line[0] == '#') {
+                getline(inp,line);
+            }
+            dataFileName = line;
+        } else {
+            // Old format (ShapeIt 1.0)
+            isVersion2Format = false;
+            dataFileName = line;
+        }
+        
+        if (verbose) {
+            std::cout << "Settings file format: " << (isVersion2Format ? "ShapeIt 2.0" : "ShapeIt 1.0") << std::endl;
+        }
         //get the literature data filename; this goes extra because of issues wih absolute paths containing white spaces
         getline(inp,line);
         osloFileName = line;

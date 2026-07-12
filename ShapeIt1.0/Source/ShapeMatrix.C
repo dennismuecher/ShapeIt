@@ -136,25 +136,22 @@ void ShapeMatrix::IntegrateBg() {
         a2 =diagEx->Integral(integBin[2],integBin[3], i+1, i+1);
         integral2Bg.push_back((a1+a2)/2);
         if (sett->verbose)
-            std::cout <<"Background Integral of bin " <<i+1 <<" are: " <<integral1Bg[i] << " " <<integral2Bg[i] <<std::endl;
+            std::cout <<"Background Integral of bin " <<i+1 <<": Level 1 = " <<integral1Bg[i] << ", Level 2 = " <<integral2Bg[i] <<std::endl;
         
     }
 }
-
 void ShapeMatrix::Integrate() {
     integral1.clear();
     integral2.clear();
     int integBin[4];
     for (int i =0; i < 4; i++) {
         integBin[i] = energyToBinX(sett->levEne[i]);
-        if (sett->verbose)
-            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
     for (int i = 0; i < ybins; i++) {
         integral1.push_back(diagEx->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2.push_back(diagEx->Integral(integBin[2],integBin[3], i+1, i+1) );
         if (sett->verbose)
-            std::cout <<"Integral of bin " <<i+1 <<" is: " <<integral1[i] << " " <<integral2[i] <<std::endl;
+            std::cout <<"Integral of bin " <<i+1 <<": Level 1 = " <<integral1[i] << ", Level 2 = " <<integral2[i] <<std::endl;
     }
 }
 
@@ -164,14 +161,10 @@ void ShapeMatrix::IntegrateSquare() {
     int integBin[4];
     for (int i =0; i < 4; i++) {
         integBin[i] = energyToBinX(sett->levEne[i]);
-        if (sett->verbose)
-            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
     for (int i = 0; i < ybins; i++) {
         integral1Square.push_back(diagExSquare->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2Square.push_back(diagExSquare->Integral(integBin[2],integBin[3], i+1, i+1) );
-        if (sett->verbose)
-            std::cout <<"Square Integral of bin " <<i+1 <<" is: " <<integral1Square[i] << " " <<integral2Square[i] <<std::endl;
     }
 }
 void ShapeMatrix::IntegrateCube() {
@@ -180,14 +173,10 @@ void ShapeMatrix::IntegrateCube() {
     int integBin[4];
     for (int i =0; i < 4; i++) {
         integBin[i] = energyToBinX(sett->levEne[i]);
-        if (sett->verbose)
-            std::cout <<"Bins are " <<integBin[i]  <<std::endl;
     }
     for (int i = 0; i < ybins; i++) {
         integral1Cube.push_back(diagExCube->Integral(integBin[0],integBin[1], i+1, i+1) );
         integral2Cube.push_back(diagExCube->Integral(integBin[2],integBin[3], i+1, i+1) );
-        if (sett->verbose)
-            std::cout <<"Cube Integral of bin " <<i+1 <<" is: " <<integral1Cube[i] << " " <<integral2Cube[i] <<std::endl;
     }
 }
 

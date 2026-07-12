@@ -1,4 +1,50 @@
 <!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+ShapeIt 2.0 - Web Interface
+═══════════════════════════════════════════════════════════════════════════════
+
+This is the web-based user interface for the ShapeIt nuclear physics analysis tool.
+It provides a browser-based alternative to the native desktop application.
+
+Key components:
+  - Menu bar for file operations and settings management
+  - Sidebar with 4 tabs: Levels, Excitation & Bins, Projections, Options
+  - Main canvas area for JSROOT visualization of ROOT histograms
+  - Log panel at bottom for status messages and output
+  - File browser dialog for opening/saving files
+  - WebSocket connection to C++ backend for real-time communication
+
+The interface communicates with a C++ backend via WebSocket, sending commands
+and receiving updates. JSROOT library handles rendering of ROOT objects.
+
+FEATURES:
+  - Integration and Autofit modes for peak analysis
+  - Width calibration: Linear fit of peak widths vs energy to guide autofits
+  - Display options: Individual points, averages, color-coded peaks
+  - Settings persistence with modified/saved status tracking
+  - Real-time visualization of matrices, projections, and calibration plots
+
+CODE STRUCTURE:
+  1. HTML (lines ~30-300): UI structure with menu bar, sidebar tabs, canvas holder
+  2. JavaScript imports (lines ~305-310): JSROOT libraries for ROOT visualization
+  3. Global state (lines ~315-340): WebSocket handle, settings path, dirty flag
+  4. Settings management (lines ~345-390): Track and display save/modified status
+  5. Logging (lines ~395-410): Status bar and log panel updates
+  6. Canvas setup (lines ~415-430): JSROOT canvas initialization
+  7. UI interactions (lines ~435-550): Tab switching, menus, resize handle
+  8. File browser (lines ~555-650): Modal dialog for open/save operations
+  9. WebSocket message handling (lines ~655-780): Server communication protocol
+  10. Event handlers (lines ~785-end): Input changes trigger server updates
+
+COMMUNICATION PROTOCOL:
+  - Frontend -> Backend: Commands like "RUN:", "OPEN:", "SAVE_SETTINGS:", etc.
+  - Backend -> Frontend: "SETTINGS_SYNC:", "DIRLIST:", "LOG:", "NBINS:", etc.
+  - All changes mark settings as dirty and send updates immediately
+  - Width calibration: "SHOW_WIDTH_CALIB" / "WIDTH_CALIB_AVAILABLE:<0|1>"
+
+═══════════════════════════════════════════════════════════════════════════════
+-->
 <html>
 <head>
 <meta charset="utf-8">
@@ -9,8 +55,13 @@
 <link rel="stylesheet" href="webshapeit-styles.css">
 </head>
 <body>
+<!-- Crash banner: shown when WebSocket disconnects unexpectedly -->
 <div id="crash-banner">Connection to ROOT was lost. The application may have crashed -- check your terminal.</div>
+
 <div id="app">
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MENU BAR - File, Settings, Display menus + settings filename display
+       ═══════════════════════════════════════════════════════════════════ -->
   <div id="menubar">
     <div class="menu">
       <button class="menu-label" data-menu="file">File</button>
@@ -33,10 +84,12 @@
     <div class="menu">
       <button class="menu-label" data-menu="display">Display</button>
       <div class="menu-dropdown" data-menu="display">
-        <div style="padding: 4px 14px; font-size: 12px; color: #888;">Verbose level</div>
-        <button class="menu-item verbose-item checked" data-level="0">Silent</button>
-        <button class="menu-item verbose-item" data-level="1">Level 1</button>
-        <button class="menu-item verbose-item" data-level="2">Level 2</button>
+        <label class="menu-item toggle-item" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+          <span>Verbose output</span>
+          <input type="checkbox" id="verbose-toggle" style="margin: 0;">
+        </label>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="btn-show-width-calib">Show width calibration...</button>
       </div>
     </div>
     <div id="settings-info">
@@ -45,9 +98,15 @@
     </div>
     <span id="status">Connecting...</span>
   </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MAIN CONTENT - Canvas (left) and Sidebar (right)
+       ═══════════════════════════════════════════════════════════════════ -->
   <div id="content-row">
+    <!-- JSROOT canvas for displaying ROOT histograms/plots -->
     <div id="canvas_holder"></div>
 
+    <!-- SIDEBAR - 4 tabs: Levels, Excitation & Bins, Projections, Options -->
     <div id="sidebar">
       <div id="sidebar-tabs">
         <button class="tab-btn active" data-tab="levels">Levels</button>
@@ -56,8 +115,11 @@
         <button class="tab-btn" data-tab="options">Options</button>
       </div>
 
+      <button class="btn-run" style="margin: 12px 12px 8px 12px; width: calc(100% - 24px);">ShapeIt!</button>
+
       <div id="sidebar-scroll">
 
+        <!-- TAB 1: Levels - Define energy ranges for Level 1, Level 2, and backgrounds -->
         <div id="panel-levels">
           <h3>Levels</h3>
 
@@ -130,10 +192,9 @@
               <span>keV</span>
             </div>
           </div>
-
-          <button class="btn-run">ShapeIt!</button>
         </div>
 
+        <!-- TAB 2: Excitation & Bins - Excitation range, bin size, scaling parameters -->
         <div id="panel-excitation" style="display: none;">
           <h3>Excitation &amp; Bins</h3>
 
@@ -175,24 +236,20 @@
 
           <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Efficiency correction</p>
           <input type="number" id="eff-corr" value="1" style="width: 100px;">
-
-          <button class="btn-run">ShapeIt!</button>
         </div>
 
+        <!-- TAB 3: Projections - View matrix, diagonal projection, or individual bins -->
         <div id="panel-projections" style="display: none;">
           <h3>Projections</h3>
 
           <button class="proj-btn" id="btn-show-matrix">Matrix</button>
           <button class="proj-btn" id="btn-show-proj">Diagonal projection (sum)</button>
 
-          <p style="font-size: 13px; color: #555; margin: 14px 0 6px;">Bin</p>
+          <p style="font-size: 13px; color: #555; margin: 14px 0 6px;">Projection of bin</p>
           <select id="bin-select" style="width: 100%; padding: 6px; box-sizing: border-box;" disabled></select>
-
-          <p style="font-size: 12px; color: #999; margin-top: 14px;">Log/Linear Y-axis scale toggle coming soon.</p>
-
-          <button class="btn-run">ShapeIt!</button>
         </div>
 
+        <!-- TAB 4: Options - Matrix selection, mode, analysis options, display settings -->
         <div id="panel-options" style="display: none;">
           <h3>Options</h3>
 
@@ -220,10 +277,10 @@
             <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
               <input type="checkbox" id="opt-background"> Background subtraction
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #999;">
-              <input type="checkbox" disabled> Use width calibration
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px;" id="width-calib-label">
+              <input type="checkbox" id="opt-width-calib"> Use width calibration
             </label>
-            <p style="font-size: 12px; color: #999; margin: 0;">Width calibration unlocks after a fit provides calibration data. Not wired up yet.</p>
+            <p style="font-size: 12px; color: #666; margin: 0 0 0 26px; line-height: 1.3;">Fit peak widths vs energy to guide autofits (requires autofit mode + existing calibration data)</p>
           </div>
 
           <div style="margin: 20px 0 16px; padding: 12px; border: 2px solid #4a90e2; border-radius: 6px; background: #f8fbff;">
@@ -246,16 +303,59 @@
               <p style="font-size: 11px; color: #666; margin: 0 0 0 26px; line-height: 1.3;">Plot Peak 1 and Peak 2 in different colors (individual points only)</p>
             </div>
           </div>
+        </div>
 
-          <button class="btn-run">ShapeIt!</button>
+        <!-- TAB 5: Width Calibration - Linear fit parameters for peak widths (hidden by default, shown via menu) -->
+        <div id="panel-width-calib" style="display: none;">
+          <h3>Width Calibration</h3>
+          
+          <p style="font-size: 12px; color: #666; margin: 0 0 14px; line-height: 1.4;">
+            Linear fit: width = offset + slope × E<sub>γ</sub>
+          </p>
+
+          <div class="section-label"><span>Level 1</span></div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+              <label style="font-size: 12px; width: 60px;">Offset:</label>
+              <input type="number" id="wc-l1-offset" value="0" step="0.01" style="width: 100px; padding: 4px;">
+              <span style="font-size: 12px;">keV</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 12px; width: 60px;">Slope:</label>
+              <input type="number" id="wc-l1-slope" value="0" step="0.0001" style="width: 100px; padding: 4px;">
+            </div>
+          </div>
+
+          <div class="section-label"><span>Level 2</span></div>
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+              <label style="font-size: 12px; width: 60px;">Offset:</label>
+              <input type="number" id="wc-l2-offset" value="0" step="0.01" style="width: 100px; padding: 4px;">
+              <span style="font-size: 12px;">keV</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 12px; width: 60px;">Slope:</label>
+              <input type="number" id="wc-l2-slope" value="0" step="0.0001" style="width: 100px; padding: 4px;">
+            </div>
+          </div>
+
+          <button id="btn-save-width-calib" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
+            Save Calibration to Settings File
+          </button>
+
+          <p style="font-size: 11px; color: #666; margin: 0; line-height: 1.3;">
+            Note: Parameters are only saved to the settings file when you click the button above. Otherwise previous values are retained.
+          </p>
         </div>
 
       </div>
     </div>
   </div>
 
+  <!-- Resize handle for dragging log panel height -->
   <div id="resize-handle"></div>
 
+  <!-- LOG PANEL - Status messages and analysis output -->
   <div id="logpanel">
     <div id="logpanel-header">
       <span style="flex: 1;">Messages</span>
@@ -266,6 +366,9 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     FILE BROWSER MODAL - For opening/saving files (matrix, settings, oslo)
+     ═══════════════════════════════════════════════════════════════════ -->
 <div id="filebrowser-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1000;">
   <div style="background: #fff; width: 520px; max-height: 70vh; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box;">
     <h3 id="fb-title" style="margin: 0 0 10px;">Select a file</h3>
@@ -285,6 +388,9 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     EXIT DIALOG MODAL - Prompt to save changes before exiting
+     ═══════════════════════════════════════════════════════════════════ -->
 <div id="exit-dialog-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1001;">
   <div style="background: #fff; width: 440px; border-radius: 8px; padding: 20px; box-sizing: border-box;">
     <h3 style="margin: 0 0 12px; font-size: 16px;">Unsaved Changes</h3>
@@ -296,154 +402,144 @@
       <button id="exit-cancel" style="padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; background: #3a86ff; color: #fff; cursor: pointer;">Cancel</button>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VERSION UPGRADE DIALOG - Prompt when saving old format files
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div id="version-dialog-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1002;">
+    <div style="background: #fff; width: 480px; border-radius: 8px; padding: 20px; box-sizing: border-box;">
+      <h3 style="margin: 0 0 12px; font-size: 16px;">Settings File Format</h3>
+      <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.5;">
+        This settings file uses the ShapeIt 1.0 format. Would you like to upgrade to the ShapeIt 2.0 format?
+      </p>
+      <p style="margin: 0 0 20px; font-size: 13px; line-height: 1.4; color: #666;">
+        <strong>ShapeIt 2.0 format:</strong> Includes version information for better compatibility tracking.<br>
+        <strong>ShapeIt 1.0 format:</strong> Compatible with the original ShapeIt application.
+      </p>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="version-keep-old" style="padding: 8px 16px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer;">Keep 1.0 Format</button>
+        <button id="version-upgrade" style="padding: 8px 16px; font-size: 13px; border: none; border-radius: 4px; background: #3a86ff; color: #fff; cursor: pointer;">Upgrade to 2.0</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="module">
   // ═══════════════════════════════════════════════════════════════════════════════
-  // IMPORTS - External libraries from JSROOT
+  // IMPORTS - JSROOT library for rendering ROOT histograms in browser
   // ═══════════════════════════════════════════════════════════════════════════════
   import { connectWebWindow } from 'jsroot/webwindow';
   import { TCanvasPainter, settings } from 'jsroot';
 
-  // Disable zoom wheel in JSROOT canvas (prevents accidental zooming)
-  // Confirmed via JSROOT's settings reference (root.cern/js/latest/jsdoc/settings.html)
-  settings.ZoomWheel = false;
+  settings.ZoomWheel = false;  // Disable mouse wheel zoom to prevent accidents
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // GLOBAL STATE - Application-wide variables
+  // GLOBAL STATE - WebSocket handle, settings file path, and dirty tracking
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * WebSocket connection handle to communicate with C++ backend
-   * @type {object|null}
-   */
-  let conn_handle = null;
-  
-  /**
-   * Full path to the currently loaded settings file
-   * @type {string|null}
-   */
-  let currentSettingsPath = null;
-  
-  /**
-   * Initial directory path received from server (used as starting point for file browser)
-   * @type {string}
-   */
-  let startDir = '';
-  
-  /**
-   * Tracks whether settings have been modified since last save
-   * @type {boolean}
-   */
-  let settingsDirty = false;
+  let conn_handle = null;           // WebSocket connection to C++ backend
+  let currentSettingsPath = null;   // Full path to loaded settings file
+  let startDir = '';                // Initial directory for file browser
+  let settingsDirty = false;        // True if settings changed since last save
+  let widthCalibAvailable = false;  // True if width calibration data exists
+  let pendingSavePath = null;       // Path for pending save (used by version dialog)
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // SETTINGS STATE MANAGEMENT
+  // SETTINGS STATE - Track and display save/modified status in menubar
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Mark settings as modified (unsaved changes exist)
-   * Updates the UI to show "(modified)" indicator
-   */
+  // Mark settings as modified → shows "(modified)" in yellow
   function markSettingsDirty() {
     settingsDirty = true;
     updateSettingsDisplay();
   }
 
-  /**
-   * Mark settings as clean (just saved or loaded)
-   * Updates the UI to show "(saved)" indicator or clear status
-   */
+  // Mark settings as clean (just saved/loaded) → shows "(saved)"
   function markSettingsClean() {
     settingsDirty = false;
     updateSettingsDisplay();
   }
 
-  /**
-   * Update the settings file display in the menubar
-   * Shows current filename, full path, and saved/modified status
-   */
+  // Update menubar to show filename and save status
   function updateSettingsDisplay() {
     const pathEl = document.getElementById('settings-path');
     const statusEl = document.getElementById('settings-status');
     
     if (currentSettingsPath) {
-      // Extract just the filename from the full path for display
       const filename = currentSettingsPath.split('/').pop();
       pathEl.textContent = filename;
       
-      // Show modification status
       if (settingsDirty) {
         statusEl.textContent = '(modified)';
-        statusEl.className = 'modified';  // Yellow/orange color
+        statusEl.className = 'modified';
       } else {
         statusEl.textContent = '(saved)';
-        statusEl.className = '';  // Default color
+        statusEl.className = '';
       }
     } else {
-      // No settings file loaded
       pathEl.textContent = 'No settings file';
       statusEl.textContent = '';
       statusEl.className = '';
     }
   }
 
+  // Update width calibration checkbox state based on availability
+  function updateWidthCalibState() {
+    const checkbox = document.getElementById('opt-width-calib');
+    const label = document.getElementById('width-calib-label');
+    const showBtn = document.getElementById('btn-show-width-calib');
+    
+    if (widthCalibAvailable) {
+      checkbox.disabled = false;
+      label.style.color = '';
+      showBtn.disabled = false;
+    } else {
+      checkbox.disabled = true;
+      checkbox.checked = false;
+      label.style.color = '#999';
+      showBtn.disabled = true;
+    }
+  }
+
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // LOGGING & STATUS DISPLAY
+  // LOGGING - Add timestamped messages to status bar and log panel
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Display a status message in both the status bar and log panel
-   * @param {string} msg - Message to display
-   */
   function setStatus(msg) {
-    // Update status bar
     document.getElementById('status').innerText = msg;
     
-    // Add timestamped entry to log panel
     const log = document.getElementById('logpanel-content');
     const time = new Date().toLocaleTimeString();
     const line = document.createElement('div');
     line.textContent = '[' + time + '] ' + msg;
     log.appendChild(line);
-    
-    // Auto-scroll to bottom
-    log.scrollTop = log.scrollHeight;
+    log.scrollTop = log.scrollHeight;  // Auto-scroll to bottom
   }
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // CANVAS SETUP - JSROOT canvas for displaying ROOT histograms/plots
+  // CANVAS SETUP - Initialize JSROOT canvas for displaying ROOT plots
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Initialize and embed the JSROOT canvas for displaying plots
-   * Creates a WebSocket channel for real-time updates from C++ backend
-   * @param {object} handle - WebSocket connection handle
-   */
   function embedCanvas(handle) {
     const conn = handle.createChannel();
     const dom = document.getElementById('canvas_holder');
     const painter = new TCanvasPainter(dom, null);
     
-    // Configure canvas for online (live) mode
-    painter.online_canvas = true;
+    painter.online_canvas = true;   // Live mode (updates from server)
     painter.embed_canvas = true;
     painter.use_openui = false;
     
-    // Connect canvas to WebSocket channel
     painter.useWebsocket(conn);
-    
-    // Tell server which channel ID to use for canvas updates
-    handle.send('channel:' + conn.getChannelId());
+    handle.send('channel:' + conn.getChannelId());  // Tell server which channel to use
   }
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // UI - LOG PANEL RESIZING
+  // LOG PANEL RESIZING - Drag handle to adjust height
   // ═══════════════════════════════════════════════════════════════════════════════
   
   const resizeHandle = document.getElementById('resize-handle');
@@ -453,10 +549,6 @@
   let startY = 0;
   let startHeight = 0;
   
-  /**
-   * Handle for dragging the log panel resize handle
-   * User can click and drag to make log panel taller/shorter
-   */
   resizeHandle.addEventListener('mousedown', (e) => {
     isResizing = true;
     startY = e.clientY;
@@ -466,10 +558,8 @@
   
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
-    
-    // Calculate new height (dragging up increases height, dragging down decreases)
-    const deltaY = startY - e.clientY;
-    const newHeight = Math.max(60, Math.min(600, startHeight + deltaY));  // Clamp between 60-600px
+    const deltaY = startY - e.clientY;  // Up = positive, down = negative
+    const newHeight = Math.max(60, Math.min(600, startHeight + deltaY));
     logPanel.style.height = newHeight + 'px';
   });
   
@@ -479,66 +569,44 @@
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // UI - SIDEBAR TAB SWITCHING
+  // SIDEBAR TABS - Switch between Levels, Excitation & Bins, Projections, Options
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Sidebar has 4 tabs: Levels, Excitation & Bins, Projections, Options
-   * This manages switching between them
-   */
   const tabs = {
     levels: { el: document.getElementById('panel-levels') },
     excitation: { el: document.getElementById('panel-excitation') },
     projections: { el: document.getElementById('panel-projections') },
     options: { el: document.getElementById('panel-options') },
+    'width-calib': { el: document.getElementById('panel-width-calib') },
   };
   
-  /**
-   * Show a specific sidebar panel and hide all others
-   * @param {string} name - Tab name ('levels', 'excitation', 'projections', or 'options')
-   */
   function showTab(name) {
-    // Hide all panels
-    Object.values(tabs).forEach(t => t.el.style.display = 'none');
+    Object.values(tabs).forEach(t => t.el.style.display = 'none');  // Hide all
+    tabs[name].el.style.display = 'block';  // Show selected
     
-    // Show selected panel
-    tabs[name].el.style.display = 'block';
-    
-    // Update tab button active state
+    // Update tab button styling
     document.querySelectorAll('.tab-btn').forEach(b => 
       b.classList.toggle('active', b.dataset.tab === name)
     );
   }
   
-  // Attach click handlers to all tab buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // UI - MENUBAR DROPDOWN MANAGEMENT
+  // MENUBAR - Dropdown menu behavior (File, Settings, Display)
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Tracks whether any menu is currently open (for hover behavior)
-   * @type {boolean}
-   */
-  let menuBarActive = false;
+  let menuBarActive = false;  // Tracks if any menu is open (enables hover switching)
   
-  /**
-   * Close all open dropdown menus
-   */
   function closeAllMenus() {
     document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('open'));
     document.querySelectorAll('.menu-label').forEach(l => l.classList.remove('open'));
     menuBarActive = false;
   }
   
-  /**
-   * Open a specific dropdown menu
-   * @param {string} name - Menu name ('file', 'settings', or 'display')
-   */
   function openMenu(name) {
     closeAllMenus();
     const dropdown = document.querySelector('.menu-dropdown[data-menu="' + name + '"]');
@@ -548,9 +616,8 @@
     menuBarActive = true;
   }
   
-  // Setup click handlers for menu labels
+  // Click menu label to toggle open/closed
   document.querySelectorAll('.menu-label').forEach(label => {
-    // Click to toggle menu
     label.addEventListener('click', (e) => {
       e.stopPropagation();
       const name = label.dataset.menu;
@@ -560,14 +627,13 @@
       if (!wasOpen) openMenu(name);
     });
     
-    // Once a menu is open, hovering other labels switches to them (like native menubar)
+    // Hover switches to other menus once one is open (native menubar behavior)
     label.addEventListener('mouseenter', () => {
       if (menuBarActive) openMenu(label.dataset.menu);
     });
   });
   
-  // Click anywhere else closes menus
-  document.addEventListener('click', closeAllMenus);
+  document.addEventListener('click', closeAllMenus);  // Click outside closes menus
   
   // Prevent clicks inside dropdowns from closing them
   document.querySelectorAll('.menu-dropdown').forEach(d => {
@@ -576,50 +642,39 @@
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // UI - VERBOSE LEVEL SELECTION (Display Menu)
+  // VERBOSE LEVEL - Control logging detail (Silent / Level 1 / Level 2)
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Controls how much logging output the C++ backend produces
-   * Level 0 = Silent, Level 1 = Basic info, Level 2 = Detailed debug
-   */
-  document.querySelectorAll('.verbose-item').forEach(item => {
-    item.addEventListener('click', () => {
-      // Update UI checkmark
-      document.querySelectorAll('.verbose-item').forEach(i => i.classList.remove('checked'));
-      item.classList.add('checked');
-      
-      // Send to server
-      if (conn_handle) conn_handle.send('VERBOSE:' + item.dataset.level);
-      closeAllMenus();
-    });
+  document.getElementById('verbose-toggle').addEventListener('change', (e) => {
+    const level = e.target.checked ? 1 : 0;
+    if (conn_handle) conn_handle.send('VERBOSE:' + level);
+  });
+
+  // Show width calibration plot
+  document.getElementById('btn-show-width-calib').addEventListener('click', () => {
+    if (conn_handle) {
+      conn_handle.send('SHOW_WIDTH_CALIB');
+      showTab('width-calib');  // Switch to width calibration panel
+    }
+    closeAllMenus();
   });
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // UI - PROJECTION/VISUALIZATION CONTROLS (Projections Tab)
+  // PROJECTIONS - Buttons to show matrix, diagonal projection, or specific bins
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Show the full 2D matrix visualization
-   */
   document.getElementById('btn-show-matrix').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWMATRIX');
   });
   
-  /**
-   * Show diagonal projection (summed data along the diagonal)
-   */
   document.getElementById('btn-show-proj').addEventListener('click', () => {
     if (conn_handle) conn_handle.send('SHOWPROJ');
   });
   
-  /**
-   * Show projection for a specific excitation energy bin
-   * This dropdown is populated after running ShapeIt with bin data
-   */
+  // Bin selector dropdown (populated after running ShapeIt)
   const binSelect = document.getElementById('bin-select');
-  let dropdownOpened = false;  // Track if dropdown was actually opened
+  let dropdownOpened = false;
   
   binSelect.addEventListener('change', (e) => {
     if (conn_handle && e.target.value) {
@@ -627,13 +682,11 @@
     }
   });
   
-  // Track when dropdown is opened
   binSelect.addEventListener('mousedown', () => {
     dropdownOpened = true;
   });
   
-  // When dropdown closes, show the selected bin projection
-  // This handles the case where user re-selects the already-selected option
+  // Handle re-selecting the same option (still show it)
   binSelect.addEventListener('blur', () => {
     if (dropdownOpened && conn_handle && binSelect.value) {
       setTimeout(() => {
@@ -648,23 +701,9 @@
   // FILE BROWSER - Modal dialog for opening/saving files
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  /**
-   * Current mode of file browser
-   * @type {string|null} 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings' | 'save-settings-and-exit'
-   */
-  let fbMode = null;
-  
-  /**
-   * Current directory path being displayed in file browser
-   * @type {string}
-   */
-  let fbCurrentPath = '';
+  let fbMode = null;          // 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings' | 'save-settings-and-exit'
+  let fbCurrentPath = '';     // Current directory being displayed
 
-  /**
-   * Open the file browser modal dialog
-   * @param {string} mode - Browser mode (determines what happens when file is selected)
-   * @param {string} title - Title to display in dialog
-   */
   function openFileBrowser(mode, title) {
     fbMode = mode;
     fbCurrentPath = startDir;
@@ -676,18 +715,20 @@
     document.getElementById('fb-list').innerHTML = '<div style="padding: 8px; color: #888;">Loading...</div>';
     document.getElementById('filebrowser-overlay').style.display = 'flex';
     
-    // Request directory listing from server
     if (conn_handle) conn_handle.send('LISTDIR:' + fbCurrentPath);
   }
+
   function closeFileBrowser() {
     document.getElementById('filebrowser-overlay').style.display = 'none';
   }
 
+  // Render directory listing received from server
   function renderDirListing(path, lines) {
     fbCurrentPath = path;
     document.getElementById('fb-path').value = path;
     const list = document.getElementById('fb-list');
     list.innerHTML = '';
+    
     lines.forEach(line => {
       if (!line) return;
       const isDir = line[0] === 'D';
@@ -713,60 +754,80 @@
     });
   }
 
+  // Handle file selection
   function confirmSelection(fullPath) {
     if (fbMode === 'open-matrix') conn_handle.send('OPEN:' + fullPath);
     else if (fbMode === 'open-oslo') conn_handle.send('OSLO:' + fullPath);
     else if (fbMode === 'open-settings') {
       conn_handle.send('LOAD_SETTINGS:' + fullPath);
       currentSettingsPath = fullPath;
-      markSettingsClean();  // Loading settings marks them as clean
+      markSettingsClean();
       updateSettingsDisplay();
     }
     closeFileBrowser();
   }
 
+  // File browser button handlers
   document.getElementById('fb-up').addEventListener('click', () => {
     const parent = fbCurrentPath.replace(/\/[^/]*$/, '') || '/';
     conn_handle.send('LISTDIR:' + parent);
   });
+  
   document.getElementById('fb-go').addEventListener('click', () => {
     conn_handle.send('LISTDIR:' + document.getElementById('fb-path').value.trim());
   });
+  
   document.getElementById('fb-cancel').addEventListener('click', closeFileBrowser);
+  
   document.getElementById('fb-save-confirm').addEventListener('click', () => {
     const filename = document.getElementById('fb-filename').value.trim();
     if (!filename) return;
     const fullPath = fbCurrentPath.replace(/\/$/, '') + '/' + filename;
     conn_handle.send('SAVE_SETTINGS:' + fullPath);
     currentSettingsPath = fullPath;
-    markSettingsClean();  // Saving marks settings as clean
+    markSettingsClean();
     updateSettingsDisplay();
     closeFileBrowser();
     
-    // If we were saving before exit, now exit
     if (fbMode === 'save-settings-and-exit') {
-      setTimeout(doExit, 100);  // Brief delay to let save complete
+      setTimeout(doExit, 100);  // Exit after brief delay
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // WEBSOCKET CONNECTION - Establishes communication with C++ backend
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   connectWebWindow({
     receiver: {
+      // Called when connection established
       onWebsocketOpened(handle) {
         conn_handle = handle;
         setStatus('Connected.');
         embedCanvas(handle);
         updateSettingsDisplay();
+        updateWidthCalibState();  // Initialize width calibration state
       },
+      
+      // Process messages from server
       onWebsocketMsg(handle, msg) {
         if (typeof msg !== 'string') return;
+        
+        // Directory listing for file browser
         if (msg.startsWith('DIRLIST:')) {
           const body = msg.slice(8);
           const lines = body.split('\n');
           const path = lines.shift();
           renderDirListing(path, lines);
-        } else if (msg.startsWith('DIRERROR:')) {
+        }
+        
+        // Directory error
+        else if (msg.startsWith('DIRERROR:')) {
           setStatus(msg.slice(9));
-        } else if (msg.startsWith('MATRIXLIST:')) {
+        }
+        
+        // Matrix list for dropdown
+        else if (msg.startsWith('MATRIXLIST:')) {
           const lines = msg.slice(11).split('\n');
           const selectIndex = parseInt(lines.shift(), 10);
           const sel = document.getElementById('matrix-select');
@@ -779,7 +840,10 @@
             if (i + 1 === selectIndex) opt.selected = true;
             sel.appendChild(opt);
           });
-        } else if (msg.startsWith('SETTINGS_SYNC:')) {
+        }
+        
+        // Settings sync from server (when loading settings file)
+        else if (msg.startsWith('SETTINGS_SYNC:')) {
           const v = msg.slice(14).split('|').map(Number);
           document.getElementById('lvl1-lo').value = v[0];
           document.getElementById('lvl1-hi').value = v[1];
@@ -787,14 +851,23 @@
           document.getElementById('lvl2-hi').value = v[3];
           document.getElementById('exc-lo').value = v[4];
           document.getElementById('exc-hi').value = v[5];
+          
           const hasDoublet1 = v[6] !== 0 || v[7] !== 0;
           document.getElementById('doublet1').checked = hasDoublet1;
           document.getElementById('doublet1-fields').style.display = hasDoublet1 ? 'block' : 'none';
-          if (hasDoublet1) { document.getElementById('d1-lo').value = v[6]; document.getElementById('d1-hi').value = v[7]; }
+          if (hasDoublet1) {
+            document.getElementById('d1-lo').value = v[6];
+            document.getElementById('d1-hi').value = v[7];
+          }
+          
           const hasDoublet2 = v[8] !== 0 || v[9] !== 0;
           document.getElementById('doublet2').checked = hasDoublet2;
           document.getElementById('doublet2-fields').style.display = hasDoublet2 ? 'block' : 'none';
-          if (hasDoublet2) { document.getElementById('d2-lo').value = v[8]; document.getElementById('d2-hi').value = v[9]; }
+          if (hasDoublet2) {
+            document.getElementById('d2-lo').value = v[8];
+            document.getElementById('d2-hi').value = v[9];
+          }
+          
           document.getElementById('opt-interpol').checked = v[10] !== 0;
           document.getElementById('opt-oslo').checked = v[11] !== 0;
           document.getElementById('opt-sliding').checked = v[12] !== 0;
@@ -803,9 +876,11 @@
           document.getElementById('gsf-scaling').value = v[15];
           document.getElementById('auto-scale').checked = v[16] !== 0;
           document.getElementById('eff-corr').value = v[17];
+          
           const mode = v[18];
           document.getElementById('mode-integration').checked = (mode !== 2);
           document.getElementById('mode-autofit').checked = (mode === 2);
+          
           document.getElementById('bg1-lo1').value = v[19];
           document.getElementById('bg1-hi1').value = v[20];
           document.getElementById('bg1-lo2').value = v[21];
@@ -814,40 +889,88 @@
           document.getElementById('bg2-hi1').value = v[24];
           document.getElementById('bg2-lo2').value = v[25];
           document.getElementById('bg2-hi2').value = v[26];
-          // Display options (indices 27, 28, 29)
+          
+          // Display options
           if (v.length >= 30) {
             document.getElementById('opt-display-single').checked = v[27] !== 0;
             document.getElementById('opt-display-avg').checked = v[28] !== 0;
             document.getElementById('opt-colour').checked = v[29] !== 0;
           }
-        } else if (msg.startsWith('STARTDIR:')) {
+          
+          // Width calibration (index 30, if present)
+          if (v.length >= 31) {
+            document.getElementById('opt-width-calib').checked = v[30] !== 0;
+          }
+          
+          // Bin size variation and bin sizes (indices 31-33, if present)
+          if (v.length >= 34) {
+            const doBinVariation = v[31] !== 0;
+            document.getElementById('bin-variation').checked = doBinVariation;
+            document.getElementById('binsize-lo').value = v[32];
+            document.getElementById('binsize-hi').value = v[33];
+            // Enable/disable the high bin size field based on variation setting
+            document.getElementById('binsize-hi').disabled = !doBinVariation;
+            document.getElementById('nbins-hi').disabled = !doBinVariation;
+          }
+          
+          // Verbose level (index 34, if present)
+          if (v.length >= 35) {
+            const verboseLevel = v[34];
+            document.getElementById('verbose-toggle').checked = (verboseLevel !== 0);
+          }
+          
+          // Width calibration parameters (indices 35-38, if present)
+          if (v.length >= 39) {
+            document.getElementById('wc-l1-offset').value = v[35];
+            document.getElementById('wc-l1-slope').value = v[36];
+            document.getElementById('wc-l2-offset').value = v[37];
+            document.getElementById('wc-l2-slope').value = v[38];
+          }
+        }
+        
+        // Starting directory
+        else if (msg.startsWith('STARTDIR:')) {
           startDir = msg.slice(9);
-        } else if (msg.startsWith('NBINS:')) {
+        }
+        
+        // Width calibration availability status
+        else if (msg.startsWith('WIDTH_CALIB_AVAILABLE:')) {
+          widthCalibAvailable = (msg.slice(22) === '1');
+          updateWidthCalibState();
+        }
+        
+        // Bin count update (after running ShapeIt)
+        else if (msg.startsWith('NBINS:')) {
           const parts = msg.slice(6).split('|').map(Number);
           const [sizeLo, sizeHi, nLo, nHi] = parts;
           document.getElementById('binsize-lo').value = sizeLo;
           document.getElementById('binsize-hi').value = sizeHi;
           document.getElementById('nbins-lo').value = nLo;
           document.getElementById('nbins-hi').value = nHi;
+          
           const sel = document.getElementById('bin-select');
           sel.innerHTML = '';
           for (let i = 1; i <= nLo; i++) {
             const opt = document.createElement('option');
             opt.value = i;
             opt.textContent = 'bin ' + i;
-            if (i === 1) opt.selected = true;  // Auto-select bin 1
+            if (i === 1) opt.selected = true;
             sel.appendChild(opt);
           }
           sel.disabled = (nLo < 1);
-        } else if (msg.startsWith('LOG:')) {
-          // Direct log output from C++ to message window (no timestamp, already has context)
+        }
+        
+        // Single log line
+        else if (msg.startsWith('LOG:')) {
           const log = document.getElementById('logpanel-content');
           const line = document.createElement('div');
           line.textContent = msg.slice(4);
           log.appendChild(line);
           log.scrollTop = log.scrollHeight;
-        } else if (msg.startsWith('LOGBATCH:')) {
-          // Batched log output - split by newlines and append all at once
+        }
+        
+        // Batched log output
+        else if (msg.startsWith('LOGBATCH:')) {
           const log = document.getElementById('logpanel-content');
           const lines = msg.slice(9).split('\n');
           const fragment = document.createDocumentFragment();
@@ -860,10 +983,21 @@
           }
           log.appendChild(fragment);
           log.scrollTop = log.scrollHeight;
-        } else {
+        }
+        
+        // Prompt for version upgrade
+        else if (msg.startsWith('PROMPT_VERSION_UPGRADE:')) {
+          const path = msg.slice(23);
+          showVersionDialog(path);
+        }
+        
+        // Generic status message
+        else {
           setStatus(msg);
         }
       },
+      
+      // Called when connection lost
       onWebsocketClosed() {
         conn_handle = null;
         setStatus('Disconnected.');
@@ -872,10 +1006,16 @@
     },
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UI EVENT HANDLERS - Send updates to server when inputs change
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  // Clear log button
   document.getElementById('btn-close-log').addEventListener('click', () => {
     document.getElementById('logpanel-content').innerHTML = '';
   });
 
+  // Doublet toggles show/hide extra energy ranges
   document.getElementById('doublet1').addEventListener('change', (e) => {
     document.getElementById('doublet1-fields').style.display = e.target.checked ? 'block' : 'none';
     sendLevelEnergies();
@@ -885,7 +1025,7 @@
     sendLevelEnergies();
   });
 
-  // Send level energies to server when changed (so they're saved correctly)
+  // Send level energies to server
   function sendLevelEnergies() {
     const val = id => document.getElementById(id).value;
     const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
@@ -896,7 +1036,10 @@
       isDoublet1, val('d1-lo'), val('d1-hi'),
       isDoublet2, val('d2-lo'), val('d2-hi'),
     ].join('|');
-    if (conn_handle) conn_handle.send('LEVELENERGIES:' + msg);
+    if (conn_handle) {
+      conn_handle.send('LEVELENERGIES:' + msg);
+      conn_handle.send('UPDATE_MARKERS');  // Trigger live marker update
+    }
     markSettingsDirty();
   }
   
@@ -904,70 +1047,87 @@
     document.getElementById(id).addEventListener('change', sendLevelEnergies);
   });
 
+  // Excitation energy range
   function sendExcitationUpdate() {
     const lo = document.getElementById('exc-lo').value;
     const hi = document.getElementById('exc-hi').value;
-    if (conn_handle) conn_handle.send('EXCITATION:' + lo + '|' + hi);
+    if (conn_handle) {
+      conn_handle.send('EXCITATION:' + lo + '|' + hi);
+      conn_handle.send('UPDATE_MARKERS');  // Trigger live marker update
+    }
     markSettingsDirty();
   }
   document.getElementById('exc-lo').addEventListener('change', sendExcitationUpdate);
   document.getElementById('exc-hi').addEventListener('change', sendExcitationUpdate);
 
+  // Background energy ranges
   function sendBgEnergies() {
     const v = id => document.getElementById(id).value;
     const msg = [
       v('bg1-lo1'), v('bg1-hi1'), v('bg1-lo2'), v('bg1-hi2'),
       v('bg2-lo1'), v('bg2-hi1'), v('bg2-lo2'), v('bg2-hi2'),
     ].join('|');
-    if (conn_handle) conn_handle.send('BGENERGIES:' + msg);
+    if (conn_handle) {
+      conn_handle.send('BGENERGIES:' + msg);
+      conn_handle.send('UPDATE_MARKERS');  // Trigger live marker update
+    }
     markSettingsDirty();
   }
   ['bg1-lo1', 'bg1-hi1', 'bg1-lo2', 'bg1-hi2', 'bg2-lo1', 'bg2-hi1', 'bg2-lo2', 'bg2-hi2'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendBgEnergies);
   });
 
+  // File menu items
   document.getElementById('btn-open').addEventListener('click', () => {
     openFileBrowser('open-matrix', 'Open matrix (.root file)');
     closeAllMenus();
   });
+  
   document.getElementById('matrix-select').addEventListener('change', (e) => {
     if (conn_handle) conn_handle.send('SELECTMATRIX:' + e.target.value);
     markSettingsDirty();
   });
+  
   document.querySelectorAll('input[name="mode-radio"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
       if (conn_handle) conn_handle.send('MODE:' + e.target.value);
       markSettingsDirty();
     });
   });
+  
   document.getElementById('btn-oslo').addEventListener('click', () => {
     openFileBrowser('open-oslo', 'Set literature file');
     closeAllMenus();
   });
+  
   document.getElementById('btn-load-settings').addEventListener('click', () => {
     openFileBrowser('open-settings', 'Open settings file');
     closeAllMenus();
   });
+  
   document.getElementById('btn-save-settings').addEventListener('click', () => {
     if (currentSettingsPath) {
       conn_handle.send('SAVE_SETTINGS:' + currentSettingsPath);
-      markSettingsClean();  // Saving marks as clean
+      markSettingsClean();
       updateSettingsDisplay();
     } else {
       openFileBrowser('save-settings', 'Save settings as...');
     }
     closeAllMenus();
   });
+  
   document.getElementById('btn-save-settings-as').addEventListener('click', () => {
     openFileBrowser('save-settings', 'Save settings as...');
     closeAllMenus();
   });
 
-  // ---- Exit handling ----
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // EXIT DIALOG - Handle unsaved changes when closing
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   function showExitDialog() {
     const overlay = document.getElementById('exit-dialog-overlay');
     const saveCurrent = document.getElementById('exit-save-current');
-    // Show "Save" button only if we have a current settings path
     saveCurrent.style.display = currentSettingsPath ? 'inline-block' : 'none';
     overlay.style.display = 'flex';
   }
@@ -977,11 +1137,8 @@
   }
 
   function doExit() {
-    // Send EXIT command to server so it can clean up gracefully
     if (conn_handle) conn_handle.send('EXIT');
-    // Close the window (may not work in all browsers due to security)
     window.close();
-    // If window.close() didn't work, at least disconnect
     setStatus('Exiting... (you can close this tab now)');
   }
 
@@ -1013,7 +1170,6 @@
 
   document.getElementById('exit-save-as').addEventListener('click', () => {
     hideExitDialog();
-    // Open file browser with a special mode that exits after saving
     fbMode = 'save-settings-and-exit';
     fbCurrentPath = startDir;
     document.getElementById('fb-title').textContent = 'Save settings before exit';
@@ -1023,21 +1179,58 @@
     if (conn_handle) conn_handle.send('LISTDIR:' + fbCurrentPath);
   });
 
-  // ---- Options panel: send immediately on change, matching the native app's
-  // immediate-apply-on-click behavior (no separate Apply button) ----
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // VERSION UPGRADE DIALOG - Handle format version selection
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function showVersionDialog(path) {
+    pendingSavePath = path;
+    document.getElementById('version-dialog-overlay').style.display = 'flex';
+  }
+
+  function hideVersionDialog() {
+    document.getElementById('version-dialog-overlay').style.display = 'none';
+    pendingSavePath = null;
+  }
+
+  document.getElementById('version-keep-old').addEventListener('click', () => {
+    if (pendingSavePath && conn_handle) {
+      conn_handle.send('SAVE_SETTINGS_VERSION1:' + pendingSavePath);
+      markSettingsClean();
+      updateSettingsDisplay();
+    }
+    hideVersionDialog();
+  });
+
+  document.getElementById('version-upgrade').addEventListener('click', () => {
+    if (pendingSavePath && conn_handle) {
+      conn_handle.send('SAVE_SETTINGS_VERSION2:' + pendingSavePath);
+      markSettingsClean();
+      updateSettingsDisplay();
+    }
+    hideVersionDialog();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // OPTIONS PANEL - Checkboxes for interpolation, oslo, sliding, background, width calib
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   function sendOptions() {
     const v = id => document.getElementById(id).checked ? 1 : 0;
     const msg = [
-      v('opt-interpol'), v('opt-oslo'), v('opt-sliding'), v('opt-background'),
+      v('opt-interpol'), v('opt-oslo'), v('opt-sliding'), v('opt-background'), v('opt-width-calib'),
     ].join('|');
     if (conn_handle) conn_handle.send('OPTIONS:' + msg);
     markSettingsDirty();
   }
-  ['opt-interpol', 'opt-oslo', 'opt-sliding', 'opt-background'].forEach(id => {
+  ['opt-interpol', 'opt-oslo', 'opt-sliding', 'opt-background', 'opt-width-calib'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendOptions);
   });
 
-  // ---- Display Options: control individual/average display and color ----
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // DISPLAY OPTIONS - Control individual/average points and color coding
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   function sendDisplayOptions() {
     const displaySingle = document.getElementById('opt-display-single').checked ? 1 : 0;
     const displayAvg = document.getElementById('opt-display-avg').checked ? 1 : 0;
@@ -1050,7 +1243,10 @@
     document.getElementById(id).addEventListener('change', sendDisplayOptions);
   });
 
-  // ---- Excitation & Bins panel ----
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // EXCITATION & BINS PANEL - Bin size, bin count, and integration parameters
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
   function sendBinSize() {
     const lo = document.getElementById('binsize-lo').value;
     const hi = document.getElementById('binsize-hi').value;
@@ -1058,11 +1254,13 @@
     if (conn_handle) conn_handle.send('BINSIZE:' + lo + '|' + hi + '|' + isVar);
     markSettingsDirty();
   }
+  
   document.getElementById('bin-variation').addEventListener('change', (e) => {
     document.getElementById('binsize-hi').disabled = !e.target.checked;
     document.getElementById('nbins-hi').disabled = !e.target.checked;
     sendBinSize();
   });
+  
   document.getElementById('binsize-lo').addEventListener('change', sendBinSize);
   document.getElementById('binsize-hi').addEventListener('change', sendBinSize);
 
@@ -1070,6 +1268,7 @@
     if (conn_handle) conn_handle.send('NBINSLO:' + e.target.value);
     markSettingsDirty();
   });
+  
   document.getElementById('nbins-hi').addEventListener('change', (e) => {
     if (conn_handle) conn_handle.send('NBINSHI:' + e.target.value);
     markSettingsDirty();
@@ -1087,9 +1286,40 @@
     document.getElementById(id).addEventListener('change', sendIntParams);
   });
 
-  // ---- ShapeIt! button -- one instance per tab panel, all doing the same thing ----
-  document.querySelectorAll('.btn-run').forEach(btn => {
-    btn.addEventListener('click', () => {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // WIDTH CALIBRATION PANEL - Edit fit parameters and update display live
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function sendWidthCalibParams() {
+    const l1_offset = document.getElementById('wc-l1-offset').value;
+    const l1_slope = document.getElementById('wc-l1-slope').value;
+    const l2_offset = document.getElementById('wc-l2-offset').value;
+    const l2_slope = document.getElementById('wc-l2-slope').value;
+    const msg = l1_offset + '|' + l1_slope + '|' + l2_offset + '|' + l2_slope;
+    if (conn_handle) {
+      conn_handle.send('UPDATE_WIDTH_CALIB_LINES:' + msg);
+    }
+  }
+  
+  ['wc-l1-offset', 'wc-l1-slope', 'wc-l2-offset', 'wc-l2-slope'].forEach(id => {
+    document.getElementById(id).addEventListener('change', sendWidthCalibParams);
+  });
+  
+  document.getElementById('btn-save-width-calib').addEventListener('click', () => {
+    if (currentSettingsPath && conn_handle) {
+      sendWidthCalibParams();
+      conn_handle.send('SAVE_WIDTH_CALIB:' + currentSettingsPath);
+      setStatus('Width calibration saved to settings file.');
+    } else {
+      setStatus('Error: No settings file loaded. Please load or save settings first.');
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SHAPEIT BUTTON - Run analysis with current settings
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  document.querySelector('.btn-run').addEventListener('click', () => {
       if (!conn_handle) return;
       const val = id => document.getElementById(id).value;
       const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
@@ -1103,7 +1333,6 @@
       ].join('|');
       conn_handle.send('RUN:' + msg);
       setStatus('Running...');
-    });
   });
 </script>
 </body>

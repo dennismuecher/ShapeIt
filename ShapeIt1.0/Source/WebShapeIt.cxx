@@ -211,7 +211,13 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->bgEne[1][2]) + "|" + std::to_string(sett->bgEne[1][3]) + "|";
     msg += std::to_string(sett->displaySingle ? 1 : 0) + "|";
     msg += std::to_string(sett->displayAvg ? 1 : 0) + "|";
-    msg += std::to_string(sett->colour ? 1 : 0);
+    msg += std::to_string(sett->colour ? 1 : 0) + "|";
+    msg += std::to_string(sett->doWidthCal ? 1 : 0) + "|";
+    msg += std::to_string(sett->doBinVariation ? 1 : 0) + "|";
+    msg += std::to_string(sett->exi_size[0]) + "|" + std::to_string(sett->exi_size[1]) + "|";
+    msg += std::to_string(sett->verbose) + "|";
+    msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
+    msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
     window->Send(connid, msg);
 }
 
@@ -303,8 +309,69 @@ double gLastLevEne[4] = {0, 0, 0, 0};
 double gLastBgEne[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 bool gHaveLastMarkers = false;
 
-// Forward declaration
+// Track width calibration plot axis ranges (set once when plot is created)
+double gWidthCalibXMin = 0, gWidthCalibXMax = 0, gWidthCalibYMin = 0, gWidthCalibYMax = 0;
+bool gHaveWidthCalibRanges = false;
+
+// Forward declarations
 void RunShapeIt(unsigned connid);
+void RunWidthCalibration(unsigned connid);
+
+// Runs a temporary single-iteration autofit analysis purely to generate width
+// calibration data, without affecting the user's actual settings for sliding
+// window or bin variation. This allows width calibration to be viewed anytime
+// (even before pressing ShapeIt) and always uses optimal settings (single bin
+// size, no sliding window) to get the maximum number of data points.
+void RunWidthCalibration(unsigned connid)
+{
+    std::cout << "=== Running width calibration analysis ===" << std::endl;
+    
+    if (!matrix) {
+        window->Send(connid, "No matrix loaded yet.");
+        return;
+    }
+    
+    // Save ALL current settings that we'll temporarily override
+    // This ensures the user's settings are completely untouched
+    int savedMode = sett->mode;
+    bool savedSlidingWindow = sett->doSlidingWindow;
+    bool savedBinVariation = sett->doBinVariation;
+    double savedExiSize1 = sett->exi_size[1];  // Save high bin size too
+    
+    std::cout << "Saving user settings - Mode: " << savedMode 
+              << ", SlidingWindow: " << savedSlidingWindow 
+              << ", BinVariation: " << savedBinVariation << std::endl;
+    
+    // Force settings optimal for width calibration
+    sett->mode = 2;  // Autofit mode required for width data
+    sett->doSlidingWindow = false;  // No sliding window - want single peaks
+    sett->doBinVariation = false;   // Single bin size only - maximum data points
+    
+    std::cout << "Running single-iteration autofit for width calibration..." << std::endl;
+    std::cout << "  (Temporarily using: Autofit mode, no sliding window, no bin variation)" << std::endl;
+    
+    // Run a temporary analysis just to populate the width data in the matrix
+    // We discard the ShapeCollector results - only the width fits matter
+    ShapeCollector *tempColl = ShapeController::RunAnalysis(sett, matrix);
+    delete tempColl;
+    
+    // Restore ALL original settings - user should see no change
+    sett->mode = savedMode;
+    sett->doSlidingWindow = savedSlidingWindow;
+    sett->doBinVariation = savedBinVariation;
+    sett->exi_size[1] = savedExiSize1;  // Restore high bin size
+    
+    std::cout << "Width calibration complete. User settings restored." << std::endl;
+    std::cout << "  Restored - Mode: " << sett->mode 
+              << ", SlidingWindow: " << sett->doSlidingWindow 
+              << ", BinVariation: " << sett->doBinVariation << std::endl;
+    
+    // Send the fitted parameters to the UI to populate the fields
+    std::string msg = "WIDTH_CALIB_PARAMS:";
+    msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
+    msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
+    window->Send(connid, msg);
+}
 
 // Clean up autofit display: remove intermediate cyan fits and add clean background lines
 void CleanupAutofitDisplay()
@@ -518,6 +585,8 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
 
 void RunShapeIt(unsigned connid)
 {
+    std::cout << "=== RunShapeIt called, display mode = " << gDisplayMode << " ===" << std::endl;
+    
     if (!matrix) {
         window->Send(connid, "No matrix loaded yet -- open one first.");
         return;
@@ -526,8 +595,11 @@ void RunShapeIt(unsigned connid)
     std::cout << "About to run with these settings:\n";
     DumpSettings();
 
+    std::cout << "Deleting old gSFColl..." << std::endl;
     delete gSFColl;
+    std::cout << "Running analysis..." << std::endl;
     gSFColl = ShapeController::RunAnalysis(sett, matrix);
+    std::cout << "Analysis complete." << std::endl;
 
     // Testing whether the crash is about the DATA, about error bars specifically
     // (my earlier bare-TGraph test had none -- a real gap in that test), or
@@ -618,10 +690,40 @@ void RunShapeIt(unsigned connid)
     std::cout << "Total points collected: " << allX.size()
               << ", fresh error-bar graphs built: " << freshGraphs.size() << std::endl;
 
-    canvas->cd();
-
-    canvas->Clear();
+    std::cout << "About to clear canvas and draw results..." << std::endl;
+    std::cout << "Current display mode before clear: " << gDisplayMode << std::endl;
+    
+    // If coming from width calibration view (mode 7), the TMultiGraph owns the TGraphs
+    // we created, and canvas->Clear() will try to delete them. To avoid any potential
+    // ownership/deletion issues, manually delete the primitives BEFORE calling Clear().
+    if (gDisplayMode == 7) {
+        std::cout << "Coming from width calibration view, doing explicit cleanup..." << std::endl;
+        canvas->cd();
+        TList *prims = canvas->GetListOfPrimitives();
+        if (prims) {
+            std::cout << "Canvas has " << prims->GetSize() << " primitives before clear" << std::endl;
+            // Remove and delete all primitives manually to ensure clean deletion order
+            while (prims->GetSize() > 0) {
+                TObject *obj = prims->First();
+                std::cout << "  Removing: " << obj->ClassName() << " (" << obj->GetName() << ")" << std::endl;
+                prims->Remove(obj);
+                delete obj;  // Explicitly delete - this will also delete owned graphs if it's a TMultiGraph
+            }
+            std::cout << "All primitives manually deleted." << std::endl;
+        }
+        // Now Clear() should have nothing to do
+        std::cout << "Calling canvas->Clear() on empty canvas..." << std::endl;
+        canvas->Clear();
+    } else {
+        // Normal case - just clear as usual
+        canvas->cd();
+        std::cout << "Calling canvas->Clear()..." << std::endl;
+        canvas->Clear();
+    }
+    
+    std::cout << "Canvas cleared, nulling marker pointers..." << std::endl;
     for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+    std::cout << "Marker pointers nulled." << std::endl;
 
     bool firstDrawn = false;
     TGraph *firstGraph = nullptr;  // Track the first graph drawn with "A" option
@@ -630,6 +732,8 @@ void RunShapeIt(unsigned connid)
     // When colour=false, both use color 6
     int color1 = 6;  // kMagenta
     int color2 = sett->colour ? 7 : 6;  // kCyan if colour enabled, otherwise same as Level 1
+    
+    std::cout << "Drawing " << freshGraphs.size() << " graphs..." << std::endl;
     for (auto &fg : freshGraphs) {
         TGraph *g = fg.graph;
 
@@ -666,6 +770,7 @@ void RunShapeIt(unsigned connid)
         
         firstDrawn = true;
     }
+    std::cout << "Graphs drawn." << std::endl;
     
     // After all graphs are drawn, set the axis labels and plot title.
     // When a graph is drawn with the "A" option, it owns the histogram that
@@ -726,13 +831,18 @@ void RunShapeIt(unsigned connid)
     // that plausibly corrupts the same primitive list CreatePadSnapshot walks
     // moments later -- which lines up exactly with where this crash happens.
     // This is display mode 0: "results view, no markers apply".
+    std::cout << "Setting display mode to 0 (results view)..." << std::endl;
     gDisplayMode = 0;
     gHaveLastRange = false;
 
+    std::cout << "Calling PushCanvasUpdate()..." << std::endl;
     PushCanvasUpdate();
+    std::cout << "Canvas update pushed." << std::endl;
 
+    std::cout << "Sending completion messages..." << std::endl;
     window->Send(connid, "Done.");
     SendNBins(connid);
+    std::cout << "=== RunShapeIt complete ===" << std::endl;
 }
 
 // Lists a directory's contents and sends it back as a simple newline-delimited
@@ -789,7 +899,10 @@ void ProcessData(unsigned connid, const std::string &arg)
     std::ostringstream logBuffer;
     std::streambuf* oldBuf = std::cout.rdbuf(logBuffer.rdbuf());
     
-    std::cout << "Got message from browser: " << arg << std::endl;
+    // Suppress noisy width calibration update messages
+    if (arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") != 0) {
+        std::cout << "Got message from browser: " << arg << std::endl;
+    }
 
     if (arg.compare(0, 8, "channel:") == 0) {
         int chid = std::stoi(arg.substr(8));
@@ -809,6 +922,8 @@ void ProcessData(unsigned connid, const std::string &arg)
             if (idx > 0) {
                 SendMatrixListAndSelect(connid, currentMatrixPath, idx);
                 SendNBins(connid);
+                // Enable width calibration since matrix is loaded
+                window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
             }
         }
         
@@ -843,6 +958,8 @@ void ProcessData(unsigned connid, const std::string &arg)
         matrix = new ShapeMatrix(sett);
         SendMatrixListAndSelect(connid, currentMatrixPath, 1);
         SendNBins(connid);
+        // Enable width calibration now that we have a matrix loaded
+        window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
         window->Send(connid, "Matrix opened: " + path);
     }
     else if (arg.compare(0, 13, "SELECTMATRIX:") == 0) {
@@ -853,6 +970,8 @@ void ProcessData(unsigned connid, const std::string &arg)
         int idx = std::stoi(arg.substr(13));
         SendMatrixListAndSelect(connid, currentMatrixPath, idx);
         SendNBins(connid);
+        // Enable width calibration since we have a matrix
+        window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
         window->Send(connid, "Matrix selected.");
     }
     else if (arg.compare(0, 5, "OSLO:") == 0) {
@@ -912,6 +1031,8 @@ void ProcessData(unsigned connid, const std::string &arg)
             if (idx > 0) {
                 SendMatrixListAndSelect(connid, currentMatrixPath, idx);
                 SendNBins(connid);
+                // Enable width calibration since we have a matrix loaded
+                window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
             }
             else
                 window->Send(connid, "Warning: matrix '" + sett->matrixName + "' from settings not found in " + sett->dataFileName);
@@ -930,10 +1051,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         window->Send(connid, "Settings saved: " + path);
     }
     else if (arg.compare(0, 8, "OPTIONS:") == 0) {
-        // order: doInterpol|doOslo|doSlidingWindow|doBackground
-        // (doBinVariation moved to the Integration Bin panel/BINSIZE message)
+        // order: doInterpol|doOslo|doSlidingWindow|doBackground|doWidthCal
         auto v = ParsePipeDoubles(arg.substr(8));
-        if (v.size() != 4) {
+        if (v.size() != 5) {
             window->Send(connid, "Malformed OPTIONS message.");
             return;
         }
@@ -941,6 +1061,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->doOslo          = v[1] != 0.0;
         sett->doSlidingWindow = v[2] != 0.0;
         sett->doBackground    = v[3] != 0.0;
+        sett->doWidthCal      = v[4] != 0.0;
         window->Send(connid, "Options updated.");
     }
     else if (arg.compare(0, 16, "DISPLAY_OPTIONS:") == 0) {
@@ -1038,6 +1159,35 @@ void ProcessData(unsigned connid, const std::string &arg)
         DrawMarkers(); // refreshes the draggable boxes to match, if a projection is shown
         window->Send(connid, "Background regions updated.");
     }
+    else if (arg == "UPDATE_MARKERS") {
+        // Redraw markers with current settings (triggered by energy changes in UI)
+        DrawMarkers(true);
+    }
+    else if (arg == "SHOW_LEVELS_PANEL") {
+        // When Levels panel is clicked, show bin 1 projection ONLY if not already viewing a projection
+        if (!matrix) {
+            window->Send(connid, "No matrix loaded yet -- open one first.");
+            return;
+        }
+        
+        // Only switch to bin 1 projection if not already in a projection view (modes 4 or 5)
+        if (gDisplayMode != 4 && gDisplayMode != 5) {
+            std::cout << "Levels panel opened - switching from mode " << gDisplayMode << " to bin 1 projection" << std::endl;
+            gCurrentBin = 1;
+            gDisplayMode = 5;
+            canvas->cd();
+            canvas->Clear();
+            for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            gCurrentHist->Draw();
+            gHaveLastRange = false;
+            CleanupAutofitDisplay();
+            DrawMarkers();
+        } else {
+            std::cout << "Levels panel opened - already in projection mode " << gDisplayMode << ", keeping current view" << std::endl;
+        }
+        window->Send(connid, "Levels panel shown.");
+    }
     else if (arg == "SHOWMATRIX") {
         if (!matrix) {
             window->Send(connid, "No matrix loaded yet -- open one first.");
@@ -1099,6 +1249,154 @@ void ProcessData(unsigned connid, const std::string &arg)
         gCurrentHist->Draw("hist");
         gHaveLastRange = false;
         DrawMarkers();
+    }
+    else if (arg == "SHOW_WIDTH_CALIB") {
+        if (!matrix) {
+            window->Send(connid, "No matrix loaded yet.");
+            return;
+        }
+        
+        // Save existing calibration parameters before running fresh fit
+        double savedWidthCal[2][2];
+        savedWidthCal[0][0] = sett->widthCal[0][0];
+        savedWidthCal[0][1] = sett->widthCal[0][1];
+        savedWidthCal[1][0] = sett->widthCal[1][0];
+        savedWidthCal[1][1] = sett->widthCal[1][1];
+        
+        bool hasExistingCalib = (savedWidthCal[0][0] != 0.0 || savedWidthCal[0][1] != 0.0 ||
+                                  savedWidthCal[1][0] != 0.0 || savedWidthCal[1][1] != 0.0);
+        
+        // ALWAYS run fresh fit to generate graph data points
+        window->Send(connid, "Generating width calibration data...");
+        RunWidthCalibration(connid);
+        
+        // If we had existing calibration from settings file, restore it (use those fit lines, not the fresh fit)
+        if (hasExistingCalib) {
+            sett->widthCal[0][0] = savedWidthCal[0][0];
+            sett->widthCal[0][1] = savedWidthCal[0][1];
+            sett->widthCal[1][0] = savedWidthCal[1][0];
+            sett->widthCal[1][1] = savedWidthCal[1][1];
+        }
+        
+        // Extract the width data graphs (populated by RunWidthCalibration above)
+        TGraph *T1 = matrix->getFitWidthGraph(0);
+        TGraph *T2 = matrix->getFitWidthGraph(1);
+        
+        canvas->cd();
+        canvas->Clear();
+        // Null out marker pointers since Clear() deleted them
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gBgBox[i] = nullptr; }
+        gDisplayMode = 7;  // Width calibration display mode
+        
+        // Create fit functions using parameters from sett->widthCal
+        // These will either be from the file or from the fresh fit we just ran
+        TF1 *fit1 = nullptr;
+        TF1 *fit2 = nullptr;
+        
+        if (T1->GetN() > 0) {
+            fit1 = new TF1("fit1", "[0] + [1]*x", 0, 10000);
+            fit1->SetParameter(0, sett->widthCal[0][0]);
+            fit1->SetParameter(1, sett->widthCal[0][1]);
+            fit1->SetLineColor(kRed);
+            fit1->SetLineWidth(2);
+        }
+        
+        if (T2->GetN() > 0) {
+            fit2 = new TF1("fit2", "[0] + [1]*x", 0, 10000);
+            fit2->SetParameter(0, sett->widthCal[1][0]);
+            fit2->SetParameter(1, sett->widthCal[1][1]);
+            fit2->SetLineColor(kBlue);
+            fit2->SetLineWidth(2);
+        }
+        
+        // Find the combined range of both graphs for proper axis scaling
+        double xMin = 1e9, xMax = -1e9, yMin = 1e9, yMax = -1e9;
+        
+        if (T1->GetN() > 0) {
+            double xmin1, xmax1, ymin1, ymax1;
+            T1->ComputeRange(xmin1, ymin1, xmax1, ymax1);
+            xMin = std::min(xMin, xmin1);
+            xMax = std::max(xMax, xmax1);
+            yMin = std::min(yMin, ymin1);
+            yMax = std::max(yMax, ymax1);
+        }
+        
+        if (T2->GetN() > 0) {
+            double xmin2, xmax2, ymin2, ymax2;
+            T2->ComputeRange(xmin2, ymin2, xmax2, ymax2);
+            xMin = std::min(xMin, xmin2);
+            xMax = std::max(xMax, xmax2);
+            yMin = std::min(yMin, ymin2);
+            yMax = std::max(yMax, ymax2);
+        }
+        
+        // Add 5% padding to ranges
+        double xRange = xMax - xMin;
+        double yRange = yMax - yMin;
+        xMin -= 0.05 * xRange;
+        xMax += 0.05 * xRange;
+        yMin -= 0.05 * yRange;
+        yMax += 0.05 * yRange;
+        
+        // Save these ranges for future updates
+        gWidthCalibXMin = xMin;
+        gWidthCalibXMax = xMax;
+        gWidthCalibYMin = yMin;
+        gWidthCalibYMax = yMax;
+        gHaveWidthCalibRanges = true;
+        
+        // Draw graphs directly without TMultiGraph to avoid any potential Update() calls
+        // Style the graphs
+        T1->SetMarkerStyle(20);
+        T1->SetMarkerColor(kRed);
+        T1->SetLineColor(kRed);
+        T1->SetMarkerSize(1);
+        
+        T2->SetMarkerStyle(21);
+        T2->SetMarkerColor(kBlue);
+        T2->SetLineColor(kBlue);
+        T2->SetMarkerSize(1);
+        
+        // Draw first graph with axes - use explicit range
+        T1->Draw("AP");
+        T1->SetTitle("Peak Widths from Autofit");
+        T1->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+        T1->GetYaxis()->SetTitle("Width (keV)");
+        
+        // Set the axis ranges to include both graphs
+        T1->GetXaxis()->SetLimits(xMin, xMax);
+        T1->GetHistogram()->SetMinimum(yMin);
+        T1->GetHistogram()->SetMaximum(yMax);
+        
+        // Draw second graph on top
+        if (T2->GetN() > 0) {
+            T2->Draw("P SAME");
+        }
+        
+        // Draw fit lines manually - extend fit range to cover the full axis range
+        if (fit1) {
+            fit1->SetRange(xMin, xMax);
+            fit1->Draw("SAME");
+        }
+        if (fit2) {
+            fit2->SetRange(xMin, xMax);
+            fit2->Draw("SAME");
+        }
+        
+        // Add legend (smaller size)
+        TLegend *leg = new TLegend(0.75, 0.80, 0.90, 0.90);
+        leg->SetFillColor(0);
+        if (T1->GetN() > 0) leg->AddEntry(T1, "level 1", "lp");
+        if (T2->GetN() > 0) leg->AddEntry(T2, "level 2", "lp");
+        leg->Draw();
+        
+        // Enable the width calibration checkbox by telling frontend it's available
+        window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
+        
+        // DON'T delete T1/T2 here - they're now drawn on the canvas and will be
+        // cleaned up automatically when the canvas is cleared.
+        
+        PushCanvasUpdate();
     }
     else if (arg.compare(0, 12, "SHOWBINPROJ:") == 0) {
         if (!matrix) {
@@ -1169,6 +1467,107 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** Level energies updated successfully ***" << std::endl;
         window->Send(connid, "Level energies updated.");
     }
+    else if (arg.compare(0, 19, "WIDTH_CALIB_PARAMS:") == 0) {
+        // order: l1_offset|l1_slope|l2_offset|l2_slope
+        auto v = ParsePipeDoubles(arg.substr(19));
+        if (v.size() != 4) {
+            window->Send(connid, "Malformed WIDTH_CALIB_PARAMS message.");
+            return;
+        }
+        sett->widthCal[0][0] = v[0];  // Level 1 offset
+        sett->widthCal[0][1] = v[1];  // Level 1 slope
+        sett->widthCal[1][0] = v[2];  // Level 2 offset
+        sett->widthCal[1][1] = v[3];  // Level 2 slope
+        
+        // Parameters updated - the frontend will trigger SHOW_WIDTH_CALIB to redraw
+        window->Send(connid, "Width calibration parameters updated.");
+    }
+    else if (arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") == 0) {
+        // Just update the fit line parameters without re-running analysis
+        auto v = ParsePipeDoubles(arg.substr(25));
+        if (v.size() != 4) {
+            window->Send(connid, "Malformed UPDATE_WIDTH_CALIB_LINES message.");
+            return;
+        }
+        sett->widthCal[0][0] = v[0];
+        sett->widthCal[0][1] = v[1];
+        sett->widthCal[1][0] = v[2];
+        sett->widthCal[1][1] = v[3];
+        
+        // Only redraw if we're currently viewing width calibration (mode 7)
+        if (gDisplayMode == 7 && matrix) {
+            // Use the saved ranges from when the plot was first created
+            if (!gHaveWidthCalibRanges) {
+                return;
+            }
+            
+            TGraph *T1 = matrix->getFitWidthGraph(0);
+            TGraph *T2 = matrix->getFitWidthGraph(1);
+            
+            // Clear canvas and redraw everything from scratch with correct ranges
+            canvas->cd();
+            canvas->Clear();
+            
+            // Style the graphs
+            T1->SetMarkerStyle(20);
+            T1->SetMarkerColor(kRed);
+            T1->SetLineColor(kRed);
+            T1->SetMarkerSize(1);
+            
+            T2->SetMarkerStyle(21);
+            T2->SetMarkerColor(kBlue);
+            T2->SetLineColor(kBlue);
+            T2->SetMarkerSize(1);
+            
+            // Draw first graph with axes - force the saved range
+            T1->Draw("AP");
+            T1->SetTitle("Peak Widths from Autofit");
+            T1->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+            T1->GetYaxis()->SetTitle("Width (keV)");
+            T1->GetXaxis()->SetLimits(gWidthCalibXMin, gWidthCalibXMax);
+            T1->GetHistogram()->SetMinimum(gWidthCalibYMin);
+            T1->GetHistogram()->SetMaximum(gWidthCalibYMax);
+            
+            // Draw second graph
+            if (T2->GetN() > 0) {
+                T2->Draw("P SAME");
+            }
+            
+            // Now create and draw fit functions with the extended range
+            if (T1->GetN() > 0) {
+                TF1 *fit1 = new TF1("fit1", "[0] + [1]*x", gWidthCalibXMin, gWidthCalibXMax);
+                fit1->SetParameter(0, sett->widthCal[0][0]);
+                fit1->SetParameter(1, sett->widthCal[0][1]);
+                fit1->SetLineColor(kRed);
+                fit1->SetLineWidth(2);
+                fit1->Draw("SAME");
+            }
+            
+            if (T2->GetN() > 0) {
+                TF1 *fit2 = new TF1("fit2", "[0] + [1]*x", gWidthCalibXMin, gWidthCalibXMax);
+                fit2->SetParameter(0, sett->widthCal[1][0]);
+                fit2->SetParameter(1, sett->widthCal[1][1]);
+                fit2->SetLineColor(kBlue);
+                fit2->SetLineWidth(2);
+                fit2->Draw("SAME");
+            }
+            
+            // Add legend
+            TLegend *leg = new TLegend(0.75, 0.80, 0.90, 0.90);
+            leg->SetFillColor(0);
+            if (T1->GetN() > 0) leg->AddEntry(T1, "level 1", "lp");
+            if (T2->GetN() > 0) leg->AddEntry(T2, "level 2", "lp");
+            leg->Draw();
+            
+            PushCanvasUpdate();
+        }
+    }
+    else if (arg.compare(0, 17, "SAVE_WIDTH_CALIB:") == 0) {
+        std::string path = arg.substr(17);
+        sett->settFileName = path;
+        sett->SaveSettings();
+        window->Send(connid, "Width calibration saved to: " + path);
+    }
     else if (arg.compare(0, 4, "RUN:") == 0) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|
         //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi
@@ -1190,7 +1589,22 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->levEne_2[2] = isDoublet2 ? v[10] : 0.0;
         sett->levEne_2[3] = isDoublet2 ? v[11] : 0.0;
 
+        // Keep stdout redirected to logBuffer so verbose output is captured
+        std::cout << "*** About to call RunShapeIt() ***" << std::endl;
+        
         RunShapeIt(connid);
+        
+        std::cout << "*** RunShapeIt() returned ***" << std::endl;
+        
+        // Restore stdout and send all captured output including verbose logs
+        std::cout.rdbuf(oldBuf);
+        std::string logs = logBuffer.str();
+        if (!logs.empty() && window) {
+            window->Send(connid, "LOGBATCH:" + logs);
+        }
+        
+        // Return early since we've already handled stdout restoration
+        return;
     }
     
     // Restore stdout and send batched log
@@ -1232,7 +1646,7 @@ void WebShapeIt()
     sett->setBgEne2(bg2);
 
     // Auto-load default settings file for development convenience
-    std::string defaultSettingsPath = gStartDir + "/../Analysis/88Kr/88Kr.dat";
+    std::string defaultSettingsPath = gStartDir + "/../Analysis/88Kr/test.dat";
     std::ifstream testFile(defaultSettingsPath.c_str());
     if (testFile.good()) {
         testFile.close();
@@ -1292,6 +1706,4 @@ void WebShapeIt()
     window->Show();
 
     std::cout << "\nShapeIt 2.0 prototype running.\n";
-    std::cout << "(Note: button clicks may take up to ~1 minute to take effect --\n"
-              << "this is a known, unresolved delay from earlier testing, not new.)\n";
 }

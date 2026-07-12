@@ -81,6 +81,7 @@ public:
     int nOfBins = 1;
     double eff_corr = 1;					//correction factor for level 2;
     int minCounts = 0;                      //minimum number of counts required in a bin to be considered
+    bool isVersion2Format = false;          //true if settings file uses ShapeIt 2.0 format
 	
 	void SetMeV(bool b) {MeV = (b) ? 1000 : 1;}		//set MeV=1000 in case of b true
     void SetFileName(std::string str) {dataFileName = str;}

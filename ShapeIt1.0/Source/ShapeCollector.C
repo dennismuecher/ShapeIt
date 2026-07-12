@@ -88,13 +88,49 @@ void ShapeCollector::Collect() {
     //reset gSF collector vector
     ClearCollector();
     
+    // Calculate total number of iterations for progress reporting
+    int totalIterations = 0;
+    double currentBinSize = m_sett->exi_size[0];
     do {
+        int slidingSteps = m_sett->doSlidingWindow ? kmax : 1;
+        totalIterations += slidingSteps;
+        if (!m_sett->doBinVariation) break;
+        currentBinSize += 50;
+    } while (currentBinSize <= m_sett->exi_size[1]);
+    
+    int iterationCount = 0;
+    
+    // Main loop over bin sizes (only runs once if bin variation is disabled)
+    while (m_matrix->GetESize() <= m_sett->exi_size[1]) {
         //sliding window
         for (int i = 1; i < kmax; i++) {
+            
+            iterationCount++;
             
             // the sliding window moves from the inital position in kmax steps to the end position, which is one bin to the "left"
             // the high energy is kept at the initital value, at all times
             m_matrix->SetEne0( m_sett->exiEne[0] - ( (double) (i-1) * m_matrix->GetESize() / (kmax-1)));
+            
+            // Print loop status information
+            if (m_sett->verbose) {
+                // Calculate number of bins from the excitation energy range and bin size
+                int nBins = (int)((m_matrix->GetEne1() - m_matrix->GetEne0()) / m_matrix->GetESize());
+                if ((int)(m_matrix->GetEne1() - m_matrix->GetEne0()) % (int)m_matrix->GetESize() != 0)
+                    nBins++;
+                
+                std::cout << "\n========================================" << std::endl;
+                std::cout << "Loop " << iterationCount << " of " << totalIterations << std::endl;
+                std::cout << "Bin size: " << m_matrix->GetESize() << " keV" << std::endl;
+                std::cout << "Excitation window: " << m_matrix->GetEne0() << " - " << m_matrix->GetEne1() << " keV" << std::endl;
+                std::cout << "Number of bins: " << nBins << std::endl;
+                if (m_sett->doSlidingWindow) {
+                    std::cout << "Sliding window step: " << i << " of " << kmax << std::endl;
+                }
+                if (m_sett->doBinVariation) {
+                    std::cout << "Bin size variation: enabled (range " << m_sett->exi_size[0] << " - " << m_sett->exi_size[1] << " keV)" << std::endl;
+                }
+                std::cout << "========================================\n" << std::endl;
+            }
             
            //get gSF data
             gSFCollector.push_back( new ShapeGSF(m_sett, m_matrix));
@@ -111,7 +147,7 @@ void ShapeCollector::Collect() {
         m_matrix->SetESize( m_matrix->GetESize() + 50 );
         //update matrix and recalculate gSF in case doSlidingWindow is not active; otherwise this is done in the sliding window loop
         
-    } while (m_matrix->GetESize() <= m_sett->exi_size[1]);
+    }
     
     //normalize all data to each other
     NormCollect();
