@@ -1678,6 +1678,110 @@ void ProcessData(unsigned connid, const std::string &arg)
         
         PushCanvasUpdate();
     }
+    else if (arg == "SHOW_GSF_RESULTS") {
+        std::cout << "=== SHOW_GSF_RESULTS handler called ===" << std::endl;
+        
+        if (!gSFColl) {
+            std::cout << "ERROR: gSFColl is null" << std::endl;
+            window->Send(connid, "GSF_RESULTS:ERROR:No gSF results available. Run ShapeIt first.");
+            return;
+        }
+        
+        std::cout << "gSFColl exists, checking display options..." << std::endl;
+        std::cout << "  displayAvg: " << sett->displayAvg << std::endl;
+        std::cout << "  displaySingle: " << sett->displaySingle << std::endl;
+        std::cout << "  GetNSmooth(): " << gSFColl->GetNSmooth() << std::endl;
+        std::cout << "  GetN(): " << gSFColl->GetN() << std::endl;
+        
+        // Check if we have anything to display
+        bool hasAverage = sett->displayAvg && (gSFColl->GetNSmooth() > 0);
+        bool hasIndividual = sett->displaySingle && (gSFColl->GetN() > 0);
+        
+        if (!hasAverage && !hasIndividual) {
+            std::cout << "ERROR: No display options enabled" << std::endl;
+            window->Send(connid, "GSF_RESULTS:ERROR:No gSF display options selected. Enable 'Display Average' or 'Display Individual' in Options panel.");
+            return;
+        }
+        
+        // Build gSF results text by directly extracting data from the collector graphs
+        std::ostringstream resultText;
+        
+        // Show smoothed/average graph if enabled
+        if (sett->displayAvg && hasAverage) {
+            std::cout << "Extracting average graph data..." << std::endl;
+            TGraphAsymmErrors *smoothGraph = gSFColl->getAvgGraph();
+            if (smoothGraph && smoothGraph->GetN() > 0) {
+                std::cout << "  Average graph has " << smoothGraph->GetN() << " points" << std::endl;
+                resultText << "gSF values for smoothed graph:\n";
+                resultText << "energy    gSF   error gSF\n";
+                
+                for (int i = 0; i < smoothGraph->GetN(); i++) {
+                    double e = smoothGraph->GetX()[i];
+                    double g = smoothGraph->GetY()[i];
+                    double dgHigh = smoothGraph->GetEYhigh()[i];
+                    double dgLow = smoothGraph->GetEYlow()[i];
+                    
+                    if (std::abs(dgHigh - dgLow) < 1e-10)
+                        resultText << e << " " << g << " " << dgHigh << "\n";
+                    else
+                        resultText << e << " " << g << " + " << dgHigh << " - " << dgLow << "\n";
+                }
+                resultText << "\n";
+            } else {
+                std::cout << "WARNING: Average graph is null or empty" << std::endl;
+            }
+        }
+        
+        // Show individual merged data points if enabled (sorted by energy)
+        if (sett->displaySingle && hasIndividual) {
+            std::cout << "Extracting individual merged data points..." << std::endl;
+            TGraphErrors *mergedGraph = gSFColl->getMergedGraph();
+            if (mergedGraph && mergedGraph->GetN() > 0) {
+                std::cout << "  Merged graph has " << mergedGraph->GetN() << " points" << std::endl;
+                resultText << "Individual gSF data points (all iterations merged, sorted by energy):\n";
+                resultText << "energy    gSF   error\n";
+                
+                for (int i = 0; i < mergedGraph->GetN(); i++) {
+                    double e = mergedGraph->GetX()[i];
+                    double g = mergedGraph->GetY()[i];
+                    double dg = mergedGraph->GetEY()[i];
+                    
+                    resultText << e << " " << g << " " << dg << "\n";
+                }
+                resultText << "\n";
+            } else {
+                std::cout << "WARNING: Merged graph is null or empty" << std::endl;
+            }
+        }
+        
+        // Show literature data if loaded
+        if (sett->doOslo) {
+            std::cout << "Extracting literature graph data..." << std::endl;
+            TGraphErrors *litGraph = gSFColl->getLitGraph();
+            if (litGraph && litGraph->GetN() > 0) {
+                std::cout << "  Literature graph has " << litGraph->GetN() << " points" << std::endl;
+                resultText << "Literature gSF values:\n";
+                resultText << "energy    gSF    error\n";
+                
+                for (int i = 0; i < litGraph->GetN(); i++) {
+                    double e = litGraph->GetX()[i];
+                    double g = litGraph->GetY()[i];
+                    double dg = litGraph->GetEY()[i];
+                    
+                    resultText << e << " " << g << " " << dg << "\n";
+                }
+            } else {
+                std::cout << "  Literature graph is null or empty" << std::endl;
+            }
+        }
+        
+        std::string finalText = resultText.str();
+        std::cout << "Generated " << finalText.length() << " characters of output" << std::endl;
+        std::cout << "First 200 chars: " << finalText.substr(0, std::min((size_t)200, finalText.length())) << std::endl;
+        
+        window->Send(connid, "GSF_RESULTS:SUCCESS:" + finalText);
+        std::cout << "=== SHOW_GSF_RESULTS complete ===" << std::endl;
+    }
     else if (arg.compare(0, 12, "SHOWBINPROJ:") == 0) {
         if (!matrix) {
             window->Send(connid, "No matrix loaded yet -- open one first.");

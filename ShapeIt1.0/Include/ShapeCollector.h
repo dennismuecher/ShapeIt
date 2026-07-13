@@ -61,6 +61,7 @@ public:
     TMultiGraph*                    getMultGraph();
     TGraphErrors*                   getLitGraph(){return litCollector->GetLevGraph();}
     TGraphAsymmErrors*              getAvgGraph(){return gSFGraphSmooth;}
+    TGraphErrors*                   getMergedGraph(){return gSFGraph;}  //returns merged individual data points (sorted by energy)
 
 };
 #endif

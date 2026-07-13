@@ -92,6 +92,7 @@ COMMUNICATION PROTOCOL:
         <button class="menu-item" id="btn-show-width-calib">Show width calibration...</button>
         <button class="menu-item" id="btn-show-level-density">Show level density...</button>
         <button class="menu-item" id="btn-show-settings-file">Show settings file...</button>
+        <button class="menu-item" id="btn-show-gsf-results">Show gSF results...</button>
       </div>
     </div>
     <div id="settings-info">
@@ -429,7 +430,7 @@ COMMUNICATION PROTOCOL:
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-     SETTINGS FILE VIEWER - Display settings file content
+     SETTINGS FILE VIEWER - Display settings file content and gSF results
      ═══════════════════════════════════════════════════════════════════ -->
 <div id="settings-viewer-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1003;">
   <div style="background: #fff; width: 600px; max-height: 80vh; border-radius: 8px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column;">
@@ -696,6 +697,14 @@ COMMUNICATION PROTOCOL:
       } else {
         setStatus('No settings file loaded');
       }
+    }
+    closeAllMenus();
+  });
+
+  // Show gSF results
+  document.getElementById('btn-show-gsf-results').addEventListener('click', () => {
+    if (conn_handle) {
+      conn_handle.send('SHOW_GSF_RESULTS');
     }
     closeAllMenus();
   });
@@ -1083,6 +1092,20 @@ COMMUNICATION PROTOCOL:
           showSettingsViewer(content);
         }
         
+        // gSF results text
+        else if (msg.startsWith('GSF_RESULTS:')) {
+          const rest = msg.substring(12);  // Remove "GSF_RESULTS:"
+          const colonPos = rest.indexOf(':');
+          const status = rest.substring(0, colonPos);
+          const content = rest.substring(colonPos + 1);
+          
+          if (status === 'ERROR') {
+            setStatus(content);
+          } else if (status === 'SUCCESS') {
+            showSettingsViewer(content, 'gSF Results');
+          }
+        }
+        
         // Width calibration parameters (silent update - no status display)
         else if (msg.startsWith('WIDTH_CALIB_PARAMS:')) {
           const v = msg.slice(19).split('|').map(Number);
@@ -1325,9 +1348,12 @@ COMMUNICATION PROTOCOL:
   // SETTINGS FILE VIEWER - Display settings file content in modal
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  function showSettingsViewer(content) {
-    const filename = currentSettingsPath ? currentSettingsPath.split('/').pop() : 'Settings File';
-    document.getElementById('settings-viewer-title').textContent = filename;
+  function showSettingsViewer(content, title = null) {
+    if (!title) {
+      const filename = currentSettingsPath ? currentSettingsPath.split('/').pop() : 'Settings File';
+      title = filename;
+    }
+    document.getElementById('settings-viewer-title').textContent = title;
     document.getElementById('settings-viewer-content').textContent = content;
     document.getElementById('settings-viewer-overlay').style.display = 'flex';
   }
