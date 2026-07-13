@@ -1419,21 +1419,43 @@ void ProcessData(unsigned connid, const std::string &arg)
         bool hasExistingCalib = (savedWidthCal[0][0] != 0.0 || savedWidthCal[0][1] != 0.0 ||
                                   savedWidthCal[1][0] != 0.0 || savedWidthCal[1][1] != 0.0);
         
-        // ALWAYS run fresh fit to generate graph data points
+        // ALWAYS run fresh fit to generate graph data points AND fit parameters
         window->Send(connid, "Generating width calibration data...");
         RunWidthCalibration(connid);
         
-        // If we had existing calibration from settings file, restore it (use those fit lines, not the fresh fit)
+        // Extract the width data graphs (populated by RunWidthCalibration above)
+        TGraph *T1 = matrix->getFitWidthGraph(0);
+        TGraph *T2 = matrix->getFitWidthGraph(1);
+        
+        // Perform linear fits on the width data (mirrors ShapeFrame.C case 7)
+        // This populates sett->widthCal with the fit parameters
+        if (T1->GetN() > 0) {
+            T1->Fit("pol1", "Q");  // Q = quiet mode
+            TF1 *fit1 = T1->GetFunction("pol1");
+            if (fit1) {
+                sett->widthCal[0][0] = fit1->GetParameter(0);
+                sett->widthCal[0][1] = fit1->GetParameter(1);
+            }
+        }
+        
+        if (T2->GetN() > 0) {
+            T2->Fit("pol1", "Q");  // Q = quiet mode
+            TF1 *fit2 = T2->GetFunction("pol1");
+            if (fit2) {
+                sett->widthCal[1][0] = fit2->GetParameter(0);
+                sett->widthCal[1][1] = fit2->GetParameter(1);
+            }
+        }
+        
+        // Only restore old fit parameters if they were non-zero (i.e., from a settings file with width cal active)
+        // If all zeros, keep the fresh fit results instead
         if (hasExistingCalib) {
             sett->widthCal[0][0] = savedWidthCal[0][0];
             sett->widthCal[0][1] = savedWidthCal[0][1];
             sett->widthCal[1][0] = savedWidthCal[1][0];
             sett->widthCal[1][1] = savedWidthCal[1][1];
         }
-        
-        // Extract the width data graphs (populated by RunWidthCalibration above)
-        TGraph *T1 = matrix->getFitWidthGraph(0);
-        TGraph *T2 = matrix->getFitWidthGraph(1);
+        // else: keep the fresh fit parameters from the fits above
         
         canvas->cd();
         canvas->Clear();
@@ -1545,6 +1567,12 @@ void ProcessData(unsigned connid, const std::string &arg)
         
         // Enable the width calibration checkbox by telling frontend it's available
         window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
+        
+        // Send the final calibration parameters to UI (either restored from file or fresh fit)
+        std::string msg = "WIDTH_CALIB_PARAMS:";
+        msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
+        msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
+        window->Send(connid, msg);
         
         // DON'T delete T1/T2 here - they're now drawn on the canvas and will be
         // cleaned up automatically when the canvas is cleared.
