@@ -21,10 +21,54 @@ void ShapeRho::Read() {
     if (m_sett->rhoFileName !="") {
         rhoGraph = new TGraphErrors(m_sett->rhoFileName.c_str(),"%lg %lg %lg");
         
-        //manually multiplying experimental level density!!!!!!!
-      for (int i=0; i < rhoGraph->GetN(); i++) {
-        rhoGraph->SetPoint( i, rhoGraph->GetX()[i], m_sett->rhoScale*rhoGraph->GetY()[i]);
-    }
+        // Auto-detect units: check if input is in MeV or keV
+        // Find maximum energy in the dataset
+        double maxEnergy = 0;
+        for (int i=0; i < rhoGraph->GetN(); i++) {
+            double energy = rhoGraph->GetX()[i];
+            if (energy > maxEnergy) maxEnergy = energy;
+        }
+        
+        // Heuristic: if max energy < 50, assume MeV (since excitations > 50 MeV are unphysical)
+        // Otherwise assume keV (default expected format)
+        bool isInMeV = (maxEnergy < 50.0);
+        
+        if (isInMeV) {
+            // Store conversion info for WebSocket notification
+            wasConvertedFromMeV = true;
+            originalMaxEnergy = maxEnergy;
+            
+            // Print warning to terminal (visible when running ROOT directly)
+            std::cout << "\n" << std::string(70, '=') << std::endl;
+            std::cout << "WARNING: NLD file appears to be in MeV units" << std::endl;
+            std::cout << "         (max energy = " << std::fixed << std::setprecision(2) << maxEnergy << " MeV)" << std::endl;
+            std::cout << "         Auto-converting to keV for internal consistency..." << std::endl;
+            std::cout << std::string(70, '=') << "\n" << std::endl;
+        } else {
+            wasConvertedFromMeV = false;
+            originalMaxEnergy = 0.0;
+        }
+        
+        // Apply scaling factor and convert units if needed
+        for (int i=0; i < rhoGraph->GetN(); i++) {
+            double energy = rhoGraph->GetX()[i];
+            double rho = rhoGraph->GetY()[i];
+            double rho_err = rhoGraph->GetEY()[i];
+            
+            if (isInMeV) {
+                // Convert from MeV to keV: E[MeV] * 1000 = E[keV], rho[MeV^-1] / 1000 = rho[keV^-1]
+                energy = energy * 1000.0;
+                rho = (rho / 1000.0) * m_sett->rhoScale;
+                rho_err = (rho_err / 1000.0) * m_sett->rhoScale;
+            } else {
+                // Already in keV, just apply scale factor
+                rho = rho * m_sett->rhoScale;
+                rho_err = rho_err * m_sett->rhoScale;
+            }
+            
+            rhoGraph->SetPoint(i, energy, rho);
+            rhoGraph->SetPointError(i, 0, rho_err);
+        }
             
         if (m_sett->verbose)
             std::cout <<"Read " << rhoGraph->GetN() <<" data points from level density file " <<m_sett->rhoFileName.c_str() <<std::endl;
@@ -32,6 +76,8 @@ void ShapeRho::Read() {
     else {
         std::cout <<"No level density file given!"<<std::endl;
         rhoGraph = 0;
+        wasConvertedFromMeV = false;
+        originalMaxEnergy = 0.0;
     }
 }
 
@@ -41,7 +87,7 @@ void ShapeRho::Draw() {
     std::cout <<"rho graphs contains: " <<rhoGraph->GetN()<<std::endl;
     rhoGraph->SetMarkerStyle(4);
     rhoGraph->SetMarkerColor(kBlue);
-    rhoGraph->SetTitle("exp. level density - this work; energy (MeV); level density (1/MeV)");
+    rhoGraph->SetTitle("exp. level density - this work; energy (keV); level density (1/keV)");
     rhoGraph->SetFillColorAlpha(4,0.5);
     rhoGraph->SetFillStyle(3010);
 
@@ -73,7 +119,7 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
     }
     graph_t->SetMarkerStyle(22);
     graph_t->SetMarkerColor(kBlue);
-    graph_t->SetTitle("present work; energy (MeV); level density (1/MeV)");
+    graph_t->SetTitle("present work; energy (keV); level density (1/keV)");
     graph_t->SetFillColorAlpha(kRed,0.2);
     graph_t->SetFillStyle(3010);
     //printing results to terminal
@@ -88,11 +134,15 @@ TGraphAsymmErrors* graph_t = new TGraphAsymmErrors();
 
 TGraphErrors* ShapeRho::Transform(double A, double alpha) {
     TGraphErrors* graph_t = new TGraphErrors();
-    //normalize at 0.5MeV
-    double scale = 1 / TMath::Exp(alpha * 0.5);
+    // alpha is in units of [1/MeV], but energy is now in keV
+    // Convert alpha to [1/keV]: alpha[1/MeV] / 1000 = alpha[1/keV]
+    double alpha_keV = alpha / 1000.0;
+    
+    //normalize at 500 keV (was 0.5 MeV)
+    double scale = 1 / TMath::Exp(alpha_keV * 500.0);
     for (int i=0; i < rhoGraph->GetN(); i++) {
-        double Y = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetY()[i];
-        double EY = scale * TMath::Exp(alpha * rhoGraph->GetX()[i]) * rhoGraph->GetEY()[i];
+        double Y = scale * TMath::Exp(alpha_keV * rhoGraph->GetX()[i]) * rhoGraph->GetY()[i];
+        double EY = scale * TMath::Exp(alpha_keV * rhoGraph->GetX()[i]) * rhoGraph->GetEY()[i];
 
         graph_t->SetPoint( graph_t->GetN(), rhoGraph->GetX()[i],Y);
         graph_t->SetPointError( graph_t->GetN()-1, 0, EY);

@@ -78,7 +78,9 @@ COMMUNICATION PROTOCOL:
         <button class="menu-item" id="btn-save-settings">Save settings</button>
         <button class="menu-item" id="btn-save-settings-as">Save settings as...</button>
         <div class="menu-divider"></div>
-        <button class="menu-item" id="btn-oslo">Set literature file...</button>
+        <button class="menu-item" id="btn-oslo">Load gSF literature (Oslo) data...</button>
+        <button class="menu-item" id="btn-rho">Load NLD literature (Oslo) data...</button>
+        <button class="menu-item" id="btn-discrete">Load discrete levels data...</button>
       </div>
     </div>
     <div class="menu">
@@ -91,15 +93,21 @@ COMMUNICATION PROTOCOL:
         <div class="menu-divider"></div>
         <button class="menu-item" id="btn-show-width-calib">Show width calibration...</button>
         <button class="menu-item" id="btn-show-level-density">Show level density...</button>
+        <button class="menu-item" id="btn-show-discrete-levels">Show discrete levels...</button>
         <button class="menu-item" id="btn-show-settings-file">Show settings file...</button>
         <button class="menu-item" id="btn-show-gsf-results">Show gSF results...</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-label" data-menu="transformation">Transformation</button>
+      <div class="menu-dropdown" data-menu="transformation">
+        <button class="menu-item" id="btn-slope-correction">Slope correction...</button>
       </div>
     </div>
     <div id="settings-info">
       <span id="settings-path">No settings file</span>
       <span id="settings-status"></span>
     </div>
-    <span id="status">Connecting...</span>
   </div>
   
   <!-- ═══════════════════════════════════════════════════════════════════════
@@ -324,6 +332,10 @@ COMMUNICATION PROTOCOL:
             Linear fit: width = offset + slope × E<sub>γ</sub>
           </p>
 
+          <button id="btn-refresh-width-fits" style="width: 100%; padding: 10px; margin-bottom: 16px; background: #3a86ff; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer;">
+            Refresh Fits from Data
+          </button>
+
           <div class="section-label"><span>Level 1</span></div>
           <div style="margin-bottom: 16px;">
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
@@ -349,8 +361,62 @@ COMMUNICATION PROTOCOL:
               <input type="number" id="wc-l2-slope" value="0" step="0.0001" style="width: 100px; padding: 4px;">
             </div>
           </div>
+        </div>
 
+        <!-- TAB 6: Slope Correction - Alpha transformation for gSF and NLD (hidden by default, shown via menu) -->
+        <div id="panel-slope-correction" style="display: none;">
+          <h3>Slope Correction</h3>
+          
+          <p style="font-size: 12px; color: #666; margin: 0 0 14px; line-height: 1.4;">
+            Apply slope transformation to gSF and level density using the α parameter.
+          </p>
 
+          <div class="section-label"><span>Transformation Parameter</span></div>
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+              <label style="font-size: 12px; width: 80px;">Slope Δα:</label>
+              <input type="number" id="alpha-slope" value="0" step="0.01" style="width: 100px; padding: 4px;">
+              <span style="font-size: 12px;">[1/MeV]</span>
+            </div>
+            <p style="font-size: 11px; color: #666; margin: 0 0 0 0; line-height: 1.3;">
+              Changes the slope of both gSF and NLD. Positive values increase slope.
+            </p>
+          </div>
+
+          <div class="section-label"><span>Normalization</span></div>
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+              <label style="font-size: 12px; width: 80px;">gSF scale B:</label>
+              <input type="number" id="lit-norm" value="1" step="0.01" style="width: 100px; padding: 4px;">
+            </div>
+            <p style="font-size: 11px; color: #666; margin: 0 0 0 0; line-height: 1.3;">
+              Scaling factor for literature gSF values.
+            </p>
+          </div>
+
+          <div class="section-label"><span>Monte Carlo Alpha Search</span></div>
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+              <label style="font-size: 12px; width: 80px;">Iterations:</label>
+              <input type="number" id="mc-iterations" value="100" min="10" max="1000" style="width: 100px; padding: 4px;">
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+              <label style="font-size: 12px; width: 80px;">Ex low min:</label>
+              <input type="number" id="mc-exi-min" value="3000" step="100" style="width: 100px; padding: 4px;">
+              <span style="font-size: 11px;">keV</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+              <label style="font-size: 12px; width: 80px;">Ex low max:</label>
+              <input type="number" id="mc-exi-max" value="5000" step="100" style="width: 100px; padding: 4px;">
+              <span style="font-size: 11px;">keV</span>
+            </div>
+            <button id="btn-run-mc" style="width: 100%; padding: 8px; background: #ff9800; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              Find Best α
+            </button>
+            <p style="font-size: 11px; color: #666; margin: 10px 0 0 0; line-height: 1.3;">
+              Varies lower excitation boundary to find optimal slope correction. Results displayed in separate window.
+            </p>
+          </div>
         </div>
 
       </div>
@@ -364,7 +430,7 @@ COMMUNICATION PROTOCOL:
   <div id="logpanel">
     <div id="logpanel-header">
       <span style="flex: 1;">Messages</span>
-      <span id="status" style="margin-right: 12px; color: #9ab;">Connecting...</span>
+      <span id="status-logpanel" style="margin-right: 12px; color: #9ab;">Connecting...</span>
       <button id="btn-close-log">Clear</button>
     </div>
     <div id="logpanel-content"></div>
@@ -377,6 +443,7 @@ COMMUNICATION PROTOCOL:
 <div id="filebrowser-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1000;">
   <div style="background: #fff; width: 520px; max-height: 70vh; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box;">
     <h3 id="fb-title" style="margin: 0 0 10px;">Select a file</h3>
+    <div id="fb-format-desc" style="display: none; font-size: 12px; color: #666; margin-bottom: 8px; padding: 6px 8px; background: #f0f8ff; border-left: 3px solid #3a86ff; border-radius: 3px;"></div>
     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
       <button id="fb-up">Up</button>
       <input type="text" id="fb-path" style="flex: 1; padding: 5px;">
@@ -442,12 +509,59 @@ COMMUNICATION PROTOCOL:
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     UNIT CONVERSION WARNING - Shown when MeV file is auto-converted
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="unit-warning-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1004;">
+  <div style="background: #fff; width: 480px; border-radius: 8px; padding: 24px; box-sizing: border-box; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+      <div style="width: 48px; height: 48px; background: #ff9800; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">⚠️</div>
+      <h3 style="margin: 0; font-size: 18px; color: #333;">Unit Conversion Applied</h3>
+    </div>
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 16px; margin-bottom: 16px;">
+      <p style="margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: #333;">
+        <strong>NLD file detected in MeV units</strong>
+      </p>
+      <p id="unit-warning-details" style="margin: 0 0 12px; font-size: 13px; line-height: 1.4; color: #555;">
+        Maximum energy detected: <strong id="unit-warning-maxE">0.00</strong> MeV
+      </p>
+      <p style="margin: 0; font-size: 13px; line-height: 1.4; color: #555;">
+        The file has been automatically converted to keV for internal consistency with the application.
+      </p>
+    </div>
+    <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <p style="margin: 0; font-size: 12px; line-height: 1.4; color: #1565c0;">
+        <strong>ℹ️ Note:</strong> All future files should use keV units for energy and keV⁻¹ for level density. Legacy MeV files are automatically converted.
+      </p>
+    </div>
+    <div style="text-align: right;">
+      <button id="unit-warning-ok" style="padding: 10px 24px; font-size: 14px; font-weight: 600; border: none; border-radius: 4px; background: #ff9800; color: #fff; cursor: pointer; transition: background 0.2s;">OK</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   // ═══════════════════════════════════════════════════════════════════════════════
   // IMPORTS - JSROOT library for rendering ROOT histograms in browser
   // ═══════════════════════════════════════════════════════════════════════════════
-  import { connectWebWindow } from 'jsroot/webwindow';
-  import { TCanvasPainter, settings } from 'jsroot';
+  
+  let connectWebWindow, TCanvasPainter, settings;
+  
+  try {
+    const webwindowModule = await import('jsroot/webwindow');
+    connectWebWindow = webwindowModule.connectWebWindow;
+    
+    const jsrootModule = await import('jsroot');
+    TCanvasPainter = jsrootModule.TCanvasPainter;
+    settings = jsrootModule.settings;
+  } catch (error) {
+    console.error('FATAL: Failed to load JSROOT modules:', error);
+    const statusLogpanel = document.getElementById('status-logpanel');
+    if (statusLogpanel) statusLogpanel.innerText = 'ERROR: Failed to load JSROOT';
+    document.getElementById('crash-banner').style.display = 'block';
+    document.getElementById('crash-banner').textContent = 'Failed to load JSROOT library. Make sure you are running this through ROOT\'s web server (root WebShapeIt.cxx)';
+    throw error;
+  }
 
   settings.ZoomWheel = false;  // Disable mouse wheel zoom to prevent accidents
 
@@ -527,7 +641,8 @@ COMMUNICATION PROTOCOL:
   // ═══════════════════════════════════════════════════════════════════════════════
   
   function setStatus(msg) {
-    document.getElementById('status').innerText = msg;
+    // Update only log panel status and content
+    document.getElementById('status-logpanel').innerText = msg;
     
     const log = document.getElementById('logpanel-content');
     const time = new Date().toLocaleTimeString();
@@ -596,6 +711,7 @@ COMMUNICATION PROTOCOL:
     projections: { el: document.getElementById('panel-projections') },
     options: { el: document.getElementById('panel-options') },
     'width-calib': { el: document.getElementById('panel-width-calib') },
+    'slope-correction': { el: document.getElementById('panel-slope-correction') },
   };
   
   function showTab(name) {
@@ -609,7 +725,20 @@ COMMUNICATION PROTOCOL:
   }
   
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+      showTab(btn.dataset.tab);
+      
+      // If switching to Projections tab, automatically show bin 1 projection
+      if (btn.dataset.tab === 'projections' && conn_handle) {
+        conn_handle.send('SHOWPROJ');
+        setStatus('Showing bin 1 projection');
+      }
+      
+      // If switching to Excitation & Bins tab, show matrix
+      if (btn.dataset.tab === 'excitation' && conn_handle) {
+        conn_handle.send('SHOWMATRIX');
+      }
+    });
   });
 
 
@@ -689,6 +818,14 @@ COMMUNICATION PROTOCOL:
     closeAllMenus();
   });
 
+  // Show discrete levels histogram
+  document.getElementById('btn-show-discrete-levels').addEventListener('click', () => {
+    if (conn_handle) {
+      conn_handle.send('SHOW_DISCRETE_LEVELS');
+    }
+    closeAllMenus();
+  });
+
   // Show settings file content
   document.getElementById('btn-show-settings-file').addEventListener('click', () => {
     if (conn_handle) {
@@ -709,6 +846,12 @@ COMMUNICATION PROTOCOL:
     closeAllMenus();
   });
 
+  // Show slope correction panel
+  document.getElementById('btn-slope-correction').addEventListener('click', () => {
+    showTab('slope-correction');
+    closeAllMenus();
+  });
+
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // PROJECTIONS - Buttons to show matrix, diagonal projection, or specific bins
@@ -719,7 +862,10 @@ COMMUNICATION PROTOCOL:
   });
   
   document.getElementById('btn-show-proj').addEventListener('click', () => {
-    if (conn_handle) conn_handle.send('SHOWPROJ');
+    if (conn_handle) {
+      setStatus('Showing bin 1 projection');
+      conn_handle.send('SHOWPROJ');
+    }
   });
   
   // Bin selector dropdown (populated after running ShapeIt)
@@ -751,13 +897,33 @@ COMMUNICATION PROTOCOL:
   // FILE BROWSER - Modal dialog for opening/saving files
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  let fbMode = null;          // 'open-matrix' | 'open-oslo' | 'open-settings' | 'save-settings' | 'save-settings-and-exit'
+  let fbMode = null;          // 'open-matrix' | 'open-oslo' | 'open-rho' | 'open-settings' | 'save-settings' | 'save-settings-and-exit'
   let fbCurrentPath = '';     // Current directory being displayed
 
   function openFileBrowser(mode, title) {
     fbMode = mode;
-    fbCurrentPath = startDir;
+    // Start in settings file directory if available, otherwise use start directory
+    if (currentSettingsPath) {
+      fbCurrentPath = currentSettingsPath.substring(0, currentSettingsPath.lastIndexOf('/')) || startDir;
+    } else {
+      fbCurrentPath = startDir;
+    }
     document.getElementById('fb-title').textContent = title;
+    
+    // Set format description based on mode
+    const descEl = document.getElementById('fb-format-desc');
+    if (mode === 'open-oslo') {
+      descEl.textContent = 'Expected format: 3-column text file (energy [keV], gSF [keV⁻³], error [keV⁻³])';
+      descEl.style.display = 'block';
+    } else if (mode === 'open-rho') {
+      descEl.textContent = 'Expected format: 3-column text file (Ex [keV], rho [keV⁻¹], rho_error [keV⁻¹])';
+      descEl.style.display = 'block';
+    } else if (mode === 'open-discrete') {
+      descEl.textContent = 'Expected format: 2-column text file (Ex [keV], number_of_states_per_bin)';
+      descEl.style.display = 'block';
+    } else {
+      descEl.style.display = 'none';
+    }
     
     // Show filename input only for save modes
     document.getElementById('fb-savebar').style.display = (mode === 'save-settings' || mode === 'save-settings-and-exit') ? 'flex' : 'none';
@@ -808,6 +974,14 @@ COMMUNICATION PROTOCOL:
   function confirmSelection(fullPath) {
     if (fbMode === 'open-matrix') conn_handle.send('OPEN:' + fullPath);
     else if (fbMode === 'open-oslo') conn_handle.send('OSLO:' + fullPath);
+    else if (fbMode === 'open-rho') {
+      conn_handle.send('RHO:' + fullPath);
+      markSettingsDirty();
+    }
+    else if (fbMode === 'open-discrete') {
+      conn_handle.send('DISCRETE:' + fullPath);
+      markSettingsDirty();
+    }
     else if (fbMode === 'open-settings') {
       conn_handle.send('LOAD_SETTINGS:' + fullPath);
       currentSettingsPath = fullPath;
@@ -848,14 +1022,25 @@ COMMUNICATION PROTOCOL:
   // WEBSOCKET CONNECTION - Establishes communication with C++ backend
   // ═══════════════════════════════════════════════════════════════════════════════
   
+  // Add timeout detection
+  const connectionTimeout = setTimeout(() => {
+    if (!conn_handle) {
+      setStatus('Connection timeout - Is ROOT running? Check browser console (F12) for details');
+      console.error('WebSocket connection timeout after 10 seconds');
+      console.error('Make sure you started the application with: root WebShapeIt.cxx');
+      document.getElementById('crash-banner').style.display = 'block';
+      document.getElementById('crash-banner').textContent = 'Connection timeout. Make sure ROOT is running (root WebShapeIt.cxx)';
+    }
+  }, 10000);
+  
   connectWebWindow({
     receiver: {
       // Called when connection established
       onWebsocketOpened(handle) {
+        clearTimeout(connectionTimeout);
         conn_handle = handle;
         setStatus('Connected.');
         embedCanvas(handle);
-        // Don't call updateSettingsDisplay() here - wait for backend to send settings info
         updateWidthCalibState();  // Initialize width calibration state
       },
       
@@ -979,6 +1164,12 @@ COMMUNICATION PROTOCOL:
             document.getElementById('wc-l1-slope').value = v[40];
             document.getElementById('wc-l2-offset').value = v[41];
             document.getElementById('wc-l2-slope').value = v[42];
+          }
+          
+          // Alpha transformation parameters (indices 43-44, if present)
+          if (v.length >= 45) {
+            document.getElementById('alpha-slope').value = v[43];
+            document.getElementById('lit-norm').value = v[44];
           }
         }
         
@@ -1117,6 +1308,22 @@ COMMUNICATION PROTOCOL:
           }
         }
         
+        // Unit conversion warning (MeV to keV)
+        else if (msg.startsWith('UNIT_WARNING:')) {
+          const maxEnergy = parseFloat(msg.slice(13));
+          showUnitWarning(maxEnergy);
+          setStatus('NLD file converted from MeV to keV (max energy: ' + maxEnergy.toFixed(2) + ' MeV)');
+        }
+        
+        // Monte Carlo result
+        else if (msg.startsWith('MC_RESULT:')) {
+          const v = msg.slice(10).split('|').map(Number);
+          const bestAlpha = v[0];
+          const bestChi2 = v[1];
+          document.getElementById('alpha-slope').value = bestAlpha.toFixed(3);
+          setStatus('Monte Carlo complete: Best α = ' + bestAlpha.toFixed(3) + ', χ² = ' + bestChi2.toFixed(2));
+        }
+        
         // Generic status message
         else {
           setStatus(msg);
@@ -1229,7 +1436,17 @@ COMMUNICATION PROTOCOL:
   });
   
   document.getElementById('btn-oslo').addEventListener('click', () => {
-    openFileBrowser('open-oslo', 'Set literature file');
+    openFileBrowser('open-oslo', 'Load gSF literature (Oslo) data');
+    closeAllMenus();
+  });
+  
+  document.getElementById('btn-rho').addEventListener('click', () => {
+    openFileBrowser('open-rho', 'Load NLD literature (Oslo) data');
+    closeAllMenus();
+  });
+  
+  document.getElementById('btn-discrete').addEventListener('click', () => {
+    openFileBrowser('open-discrete', 'Load discrete levels data');
     closeAllMenus();
   });
   
@@ -1304,7 +1521,12 @@ COMMUNICATION PROTOCOL:
   document.getElementById('exit-save-as').addEventListener('click', () => {
     hideExitDialog();
     fbMode = 'save-settings-and-exit';
-    fbCurrentPath = startDir;
+    // Start in settings file directory if available, otherwise use start directory
+    if (currentSettingsPath) {
+      fbCurrentPath = currentSettingsPath.substring(0, currentSettingsPath.lastIndexOf('/')) || startDir;
+    } else {
+      fbCurrentPath = startDir;
+    }
     document.getElementById('fb-title').textContent = 'Save settings before exit';
     document.getElementById('fb-savebar').style.display = 'flex';
     document.getElementById('fb-list').innerHTML = '<div style="padding: 8px; color: #888;">Loading...</div>';
@@ -1363,6 +1585,28 @@ COMMUNICATION PROTOCOL:
   }
 
   document.getElementById('settings-viewer-close').addEventListener('click', hideSettingsViewer);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // UNIT CONVERSION WARNING - Show when MeV to keV conversion happens
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function showUnitWarning(maxEnergy) {
+    document.getElementById('unit-warning-maxE').textContent = maxEnergy.toFixed(2);
+    document.getElementById('unit-warning-overlay').style.display = 'flex';
+  }
+
+  function hideUnitWarning() {
+    document.getElementById('unit-warning-overlay').style.display = 'none';
+  }
+
+  document.getElementById('unit-warning-ok').addEventListener('click', hideUnitWarning);
+  
+  // Allow clicking backdrop to close (optional)
+  document.getElementById('unit-warning-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'unit-warning-overlay') {
+      hideUnitWarning();
+    }
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // OPTIONS PANEL - Checkboxes for interpolation, oslo, sliding, background, width calib
@@ -1443,6 +1687,13 @@ COMMUNICATION PROTOCOL:
   // WIDTH CALIBRATION PANEL - Edit fit parameters and update display live
   // ═══════════════════════════════════════════════════════════════════════════════
   
+  // Refresh fits button - runs autofit and updates parameters
+  document.getElementById('btn-refresh-width-fits').addEventListener('click', () => {
+    if (conn_handle) {
+      conn_handle.send('REFRESH_WIDTH_CALIB_FITS');
+    }
+  });
+  
   function sendWidthCalibParams() {
     const l1_offset = document.getElementById('wc-l1-offset').value;
     const l1_slope = document.getElementById('wc-l1-slope').value;
@@ -1457,6 +1708,32 @@ COMMUNICATION PROTOCOL:
   
   ['wc-l1-offset', 'wc-l1-slope', 'wc-l2-offset', 'wc-l2-slope'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendWidthCalibParams);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SLOPE CORRECTION - Alpha transformation for gSF and NLD
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function sendAlphaTransform() {
+    const alpha = document.getElementById('alpha-slope').value;
+    const litNorm = document.getElementById('lit-norm').value;
+    if (conn_handle) {
+      conn_handle.send('ALPHA_TRANSFORM:' + alpha + '|' + litNorm);
+    }
+    markSettingsDirty();
+  }
+  
+  document.getElementById('alpha-slope').addEventListener('change', sendAlphaTransform);
+  document.getElementById('lit-norm').addEventListener('change', sendAlphaTransform);
+
+  // Monte Carlo alpha search
+  document.getElementById('btn-run-mc').addEventListener('click', () => {
+    if (!conn_handle) return;
+    const nIter = document.getElementById('mc-iterations').value;
+    const exiMin = document.getElementById('mc-exi-min').value;
+    const exiMax = document.getElementById('mc-exi-max').value;
+    conn_handle.send('RUN_MC_ALPHA:' + nIter + '|' + exiMin + '|' + exiMax);
+    setStatus('Running Monte Carlo alpha search (' + nIter + ' iterations)...');
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════

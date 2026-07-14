@@ -14,6 +14,8 @@
 #define SHAPERHO_H
 
 #include <iostream>
+#include <iomanip>
+#include <string>
 
 #include "ShapeSetting.h"
 
@@ -30,6 +32,8 @@ public:
     ShapeRho(ShapeSetting* t_setting);
     TGraphErrors *rhoGraph;
     double rhoScaleTrafo = 1;        //scaling factor for transformed graph
+    bool wasConvertedFromMeV = false;  // Flag indicating MeV->keV conversion happened
+    double originalMaxEnergy = 0.0;    // Original max energy if converted
     void Read();
     void Draw();
     TGraphAsymmErrors* rhoTrafoGraph(double alpha, double alpha_l, double alpha_h);

@@ -1,5 +1,8 @@
 // WebShapeIt.cxx
 //
+// BACKUP TIMESTAMP: 2026-07-13 - Before string comparison refactor
+// TO RESTORE: Copy from git or search for "BACKUP_TIMESTAMP" in version control
+//
 // First real increment of ShapeIt 2.0 -- NOT a mockup, this calls your actual
 // ShapeSetting/ShapeMatrix/ShapeController/ShapeCollector classes unchanged.
 // Only the Peaks and Energies panel is wired up; Mode/Options/Integration Bin
@@ -27,6 +30,9 @@
 #include "TGraphErrors.h"
 #include "TMultiGraph.h"
 #include "TList.h"
+#include "TRandom3.h"
+#include "TMarker.h"
+#include "TPaveText.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -39,9 +45,40 @@
 #include "ShapeSetting.C"
 #include "ShapeMatrix.C"
 #include "ShapeGSF.C"
+#include "ShapeRho.C"
 #include "ShapeCollector.C"
 #include "ShapeAlpha.C"
 #include "ShapeController.C"
+
+// ============================================================================
+// String comparison helpers - eliminates manual length counting bugs
+// ============================================================================
+
+// Check if a string starts with a given prefix
+inline bool starts_with(const std::string &str, const std::string &prefix) {
+    return str.size() >= prefix.size() && 
+           str.compare(0, prefix.size(), prefix) == 0;
+}
+
+// Extract payload after a prefix (returns empty string if prefix not found)
+inline std::string after_prefix(const std::string &str, const std::string &prefix) {
+    if (starts_with(str, prefix)) {
+        return str.substr(prefix.size());
+    }
+    return "";
+}
+
+// Check prefix and extract payload in one step
+inline bool extract_payload(const std::string &str, const std::string &prefix, 
+                            std::string &payload) {
+    if (starts_with(str, prefix)) {
+        payload = str.substr(prefix.size());
+        return true;
+    }
+    return false;
+}
+
+// ============================================================================
 
 std::shared_ptr<ROOT::RWebWindow> window;
 TCanvas *canvas = nullptr;
@@ -65,11 +102,28 @@ TH1   *gCurrentHist   = nullptr; // whatever's currently drawn in modes 4/5, use
 // splits "685|900|1497|1732|3500|6700" style messages on '|'
 std::vector<double> ParsePipeDoubles(const std::string &s)
 {
+    std::cout << "[ParsePipeDoubles] Input: '" << s << "'" << std::endl;
+    std::cout.flush();
+    
     std::vector<double> out;
     std::stringstream ss(s);
     std::string tok;
-    while (std::getline(ss, tok, '|'))
-        out.push_back(std::stod(tok));
+    int idx = 0;
+    while (std::getline(ss, tok, '|')) {
+        std::cout << "[ParsePipeDoubles] Token " << idx << ": '" << tok << "'" << std::endl;
+        std::cout.flush();
+        
+        double val = std::stod(tok);
+        out.push_back(val);
+        
+        std::cout << "[ParsePipeDoubles] Converted to: " << val << std::endl;
+        std::cout.flush();
+        idx++;
+    }
+    
+    std::cout << "[ParsePipeDoubles] Total parsed: " << out.size() << " values" << std::endl;
+    std::cout.flush();
+    
     return out;
 }
 
@@ -220,37 +274,50 @@ void SendMatrixListAndSelect(unsigned connid, const std::string &matrixPath, int
 
     matrix->SetMatrix(selectIndex);
     
-    // Set pad margins before drawing
+    // Clear canvas and set up fresh, exactly like SHOWMATRIX does
     canvas->cd();
-    gPad->SetRightMargin(0.15);
-    gPad->SetLeftMargin(0.12);
+    canvas->Clear();
+    
+    // Set pad margins to accommodate the manually-positioned color palette
+    gPad->SetRightMargin(0.15);  // 15% right margin provides space for palette
+    gPad->SetLeftMargin(0.12);   // 12% left margin for y-axis label
     gPad->SetTopMargin(0.08);
     gPad->SetBottomMargin(0.10);
     
+    // Enable logarithmic z-axis scale
+    gPad->SetLogz(1);
+    
     TH2* hist = matrix->GetInputMatrix(BaseName(matrixPath));
-    hist->SetStats(0);
+    hist->SetStats(0);  // Disable statistics box
+    
+    // Set axis titles with LaTeX formatting
     hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
     hist->GetYaxis()->SetTitle("E_{x} (keV)");
     hist->GetXaxis()->SetTitleSize(0.045);
     hist->GetYaxis()->SetTitleSize(0.045);
     hist->GetXaxis()->SetTitleOffset(1.0);
     hist->GetYaxis()->SetTitleOffset(1.1);
+    
+    // Draw histogram without automatic palette (use "col" not "colz")
     hist->Draw("col");
     
-    // Manually create and position the color palette
+    // Manually create and position the color palette using NDC coordinates
+    // First create it with histogram coordinates (required by constructor)
     double xmin = hist->GetXaxis()->GetXmin();
     double xmax = hist->GetXaxis()->GetXmax();
     double ymin = hist->GetYaxis()->GetXmin();
     double ymax = hist->GetYaxis()->GetXmax();
     TPaletteAxis *palette = new TPaletteAxis(xmax, ymin, xmax + (xmax-xmin)*0.05, ymax, hist);
-    palette->SetX1NDC(0.86);
-    palette->SetX2NDC(0.89);
-    palette->SetY1NDC(0.10);
-    palette->SetY2NDC(0.90);
+    
+    // Override with NDC coordinates to position it within the right margin
+    palette->SetX1NDC(0.86);  // Left edge at 86% of canvas width
+    palette->SetX2NDC(0.89);  // Right edge at 89% of canvas width
+    palette->SetY1NDC(0.10);  // Bottom aligned with pad margin
+    palette->SetY2NDC(0.90);  // Top aligned with pad margin
     palette->Draw();
     
     matrix->Diag();
-    canvas->cd();
+    gPad->Modified();
     PushCanvasUpdate();
 }
 
@@ -291,7 +358,8 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->exi_size[0]) + "|" + std::to_string(sett->exi_size[1]) + "|";
     msg += std::to_string(sett->verbose) + "|";
     msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
-    msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
+    msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]) + "|";
+    msg += std::to_string(sett->lit_alpha) + "|" + std::to_string(sett->lit_norm);
     window->Send(connid, msg);
 }
 
@@ -414,9 +482,277 @@ bool gHaveLastMarkers = false;
 double gWidthCalibXMin = 0, gWidthCalibXMax = 0, gWidthCalibYMin = 0, gWidthCalibYMax = 0;
 bool gHaveWidthCalibRanges = false;
 
+// Monte Carlo state for timer-based iteration
+struct MCState {
+    int currentIter;
+    int totalIters;
+    double exiMin, exiMax, savedExiLow, savedExiHigh;
+    TGraph *graph;
+    std::vector<double> alphas, chi2s, exis;
+    TRandom3 rng;
+    unsigned connid;
+};
+
+MCState *gMCState = nullptr;
+
 // Forward declarations
 void RunShapeIt(unsigned connid);
 void RunWidthCalibration(unsigned connid);
+void RunMonteCarlo(unsigned connid, int nIterations, double exiLowMin, double exiLowMax);
+void MCTimerCallback();
+
+// Timer callback for Monte Carlo iterations - runs ONE iteration at a time with live display
+void MCTimerCallback()
+{
+    if (!gMCState || gMCState->currentIter >= gMCState->totalIters) {
+        if (gMCState) {
+            std::cout << "All iterations complete, creating final display..." << std::endl;
+            
+            // Final display with best fit marker
+            canvas->cd();
+            canvas->Clear();
+            canvas->Divide(2, 2);
+            
+            auto minIt = std::min_element(gMCState->chi2s.begin(), gMCState->chi2s.end());
+            int minIdx = std::distance(gMCState->chi2s.begin(), minIt);
+            double bestAlpha = gMCState->alphas[minIdx];
+            double bestChi2 = *minIt;
+            double bestExLow = gMCState->exis[minIdx];
+            
+            std::cout << "Best fit: alpha=" << bestAlpha << ", chi2=" << bestChi2 
+                      << ", Ex_low=" << bestExLow << std::endl;
+            
+            // Top left: chi2 vs alpha with best point marked
+            canvas->cd(1);
+            TGraph *gFinal = new TGraph(gMCState->alphas.size(), &gMCState->alphas[0], &gMCState->chi2s[0]);
+            gFinal->SetTitle("Chi^{2} vs #alpha (Final);#alpha [MeV^{-1}];#chi^{2}");
+            gFinal->SetMarkerStyle(20);
+            gFinal->SetMarkerSize(0.8);
+            gFinal->SetMarkerColor(kBlue);
+            gFinal->Draw("AP");
+            
+            TMarker *bestPoint = new TMarker(bestAlpha, bestChi2, 29);
+            bestPoint->SetMarkerColor(kRed);
+            bestPoint->SetMarkerSize(2);
+            bestPoint->Draw();
+            
+            // Top right: Ex_low vs alpha with best point marked
+            canvas->cd(2);
+            TGraph *gExFinal = new TGraph(gMCState->exis.size(), &gMCState->exis[0], &gMCState->alphas[0]);
+            gExFinal->SetTitle("Ex_{low} vs #alpha;Ex_{low} [keV];#alpha [MeV^{-1}]");
+            gExFinal->SetMarkerStyle(20);
+            gExFinal->SetMarkerSize(0.8);
+            gExFinal->SetMarkerColor(kRed);
+            gExFinal->Draw("AP");
+            
+            TMarker *bestPointEx = new TMarker(bestExLow, bestAlpha, 29);
+            bestPointEx->SetMarkerColor(kBlue);
+            bestPointEx->SetMarkerSize(2);
+            bestPointEx->Draw();
+            
+            // Bottom left: alpha histogram with best line
+            canvas->cd(3);
+            double aMin = *std::min_element(gMCState->alphas.begin(), gMCState->alphas.end());
+            double aMax = *std::max_element(gMCState->alphas.begin(), gMCState->alphas.end());
+            TH1D *hFinal = new TH1D("hAlphaFinal", 
+                                     Form("Alpha Distribution (Best: %.3f);#alpha [MeV^{-1}];Counts", bestAlpha),
+                                     50, aMin, aMax);
+            for (double a : gMCState->alphas) hFinal->Fill(a);
+            hFinal->SetLineColor(kBlue);
+            hFinal->SetLineWidth(2);
+            hFinal->Draw();
+            
+            TLine *bestLine = new TLine(bestAlpha, 0, bestAlpha, hFinal->GetMaximum());
+            bestLine->SetLineColor(kRed);
+            bestLine->SetLineWidth(2);
+            bestLine->Draw();
+            
+            // Bottom right: Ex_low histogram with best line
+            canvas->cd(4);
+            TH1D *hExFinal = new TH1D("hExFinal",
+                                       Form("Ex_{low} Distribution (Best: %.0f);Ex_{low} [keV];Counts", bestExLow),
+                                       50, gMCState->exiMin, gMCState->exiMax);
+            for (double ex : gMCState->exis) hExFinal->Fill(ex);
+            hExFinal->SetLineColor(kRed);
+            hExFinal->SetLineWidth(2);
+            hExFinal->Draw();
+            
+            TLine *bestLineEx = new TLine(bestExLow, 0, bestExLow, hExFinal->GetMaximum());
+            bestLineEx->SetLineColor(kBlue);
+            bestLineEx->SetLineWidth(2);
+            bestLineEx->Draw();
+            
+            canvas->cd();
+            gPad->Modified();
+            PushCanvasUpdate();
+            
+            // Restore settings
+            sett->exiEne[0] = gMCState->savedExiLow;
+            sett->exiEne[1] = gMCState->savedExiHigh;
+            
+            std::string msg = "MC_RESULT:" + std::to_string(bestAlpha) + "|" + std::to_string(bestChi2) 
+                              + "|" + std::to_string(bestExLow);
+            window->Send(gMCState->connid, msg);
+            
+            std::cout << "Monte Carlo complete. Best alpha: " << bestAlpha 
+                      << " (chi2: " << bestChi2 << ", Ex_low: " << bestExLow << " keV)" << std::endl;
+            
+            delete gMCState->graph;
+            delete gMCState;
+            gMCState = nullptr;
+        }
+        return;
+    }
+    
+    // Run ONE iteration
+    // Randomize lower excitation boundary
+    double exiLow = gMCState->rng.Uniform(gMCState->exiMin, gMCState->exiMax);
+    sett->exiEne[0] = exiLow;
+    sett->exiEne[1] = gMCState->savedExiHigh;
+    
+    // Run analysis (suppress verbose output)
+    int savedVerbose = sett->verbose;
+    sett->verbose = 0;
+    ShapeCollector *tempColl = ShapeController::RunAnalysis(sett, matrix);
+    
+    if (!tempColl) {
+        std::cout << "  WARNING: iteration " << (gMCState->currentIter+1) << " returned null" << std::endl;
+        sett->verbose = savedVerbose;
+        gMCState->currentIter++;
+        return;
+    }
+    
+    // Fit alpha to find best value for this iteration
+    ShapeAlpha *alphaFit = ShapeController::FitAlpha(sett, tempColl);
+    double alpha = alphaFit->getMinAlpha();
+    double chi2 = alphaFit->getMinChi2();
+    
+    delete alphaFit;
+    sett->verbose = savedVerbose;
+    
+    gMCState->alphas.push_back(alpha);
+    gMCState->chi2s.push_back(chi2);
+    gMCState->exis.push_back(exiLow);
+    
+    std::cout << "Iteration " << (gMCState->currentIter+1) << "/" << gMCState->totalIters 
+              << ": Ex_low=" << exiLow << ", alpha=" << alpha << ", chi2=" << chi2 << std::endl;
+    
+    // Apply alpha transformation to get properly scaled gSF data
+    tempColl->Transform(sett->lit_norm, alpha);
+    
+    // Get THIS iteration's data AFTER alpha transformation (don't accumulate)
+    TGraphErrors *mergedGraph = tempColl->getMergedGraph();
+    TGraph *litGraph = tempColl->getLitGraph();
+    TGraphErrors *litCopy = nullptr;
+    
+    if (litGraph && litGraph->GetN() > 0) {
+        TGraphErrors *litOrig = dynamic_cast<TGraphErrors*>(litGraph);
+        if (litOrig) litCopy = new TGraphErrors(*litOrig);
+    }
+    
+    // CREATE FRESH GRAPH FOR THIS ITERATION ONLY (don't accumulate into gMCState->graph)
+    TGraph *freshGraph = nullptr;
+    if (mergedGraph && mergedGraph->GetN() > 0) {
+        std::vector<double> x(mergedGraph->GetN()), y(mergedGraph->GetN());
+        for (int j = 0; j < mergedGraph->GetN(); j++) {
+            x[j] = mergedGraph->GetX()[j];
+            y[j] = mergedGraph->GetY()[j];
+        }
+        freshGraph = new TGraph((int)x.size(), x.data(), y.data());
+    }
+    
+    delete tempColl;
+    
+    // Redraw: lit first, then THIS iteration's points on top
+    canvas->cd();
+    gPad->SetLogy(1);  // Enable log scale on Y axis
+    
+    if (litCopy) {
+        litCopy->SetLineColor(kRed);
+        litCopy->SetLineWidth(2);
+        litCopy->SetFillColor(kRed-10);
+        litCopy->SetFillStyle(3013);
+        litCopy->Draw("AL3");
+        litCopy->SetTitle(Form("MC Iteration %d/%d (alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
+                               gMCState->currentIter+1, gMCState->totalIters, alpha));
+    }
+    
+    if (freshGraph) {
+        freshGraph->SetMarkerStyle(20);
+        freshGraph->SetMarkerSize(0.5);
+        freshGraph->SetMarkerColor(kBlue);
+        freshGraph->SetLineColor(kBlue);
+        
+        if (litCopy) {
+            freshGraph->Draw("P SAME");
+        } else {
+            freshGraph->Draw("AP");
+            freshGraph->SetTitle(Form("MC Iteration %d/%d (alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
+                                       gMCState->currentIter+1, gMCState->totalIters, alpha));
+        }
+    }
+    
+    gMCState->currentIter++;
+    
+    gPad->Modified();
+    PushCanvasUpdate();
+}
+
+// Monte Carlo to find best alpha: runs multiple iterations with varying lower
+// excitation energy boundary, accumulates chi2 and alpha values, displays
+// live progress in main canvas. Uses timer-based batching for live updates.
+void RunMonteCarlo(unsigned connid, int nIterations, double exiLowMin, double exiLowMax)
+{
+    std::cout << "\n=== RunMonteCarlo ENTERED ===" << std::endl;
+    std::cout << "Parameters: nIterations=" << nIterations 
+              << ", exiLowMin=" << exiLowMin << ", exiLowMax=" << exiLowMax << std::endl;
+    
+    if (!matrix || !sett->doOslo) {
+        std::cout << "ERROR: Prerequisites not met!" << std::endl;
+        std::cout << "  matrix = " << (matrix ? "loaded" : "NULL") << std::endl;
+        std::cout << "  doOslo = " << sett->doOslo << std::endl;
+        window->Send(connid, "ERROR: Monte Carlo requires matrix and Oslo literature data loaded.");
+        return;
+    }
+    
+    std::cout << "Prerequisites OK, starting MC run..." << std::endl;
+    
+    // Clear canvas and set up progress display
+    canvas->cd();
+    canvas->Clear();
+    gDisplayMode = 8;
+    for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+    
+    // Initialize MC state
+    gMCState = new MCState{
+        0,                    // currentIter
+        nIterations,          // totalIters
+        exiLowMin,            // exiMin
+        exiLowMax,            // exiMax
+        sett->exiEne[0],      // savedExiLow
+        sett->exiEne[1],      // savedExiHigh
+        new TGraph(),         // graph
+        {},                   // alphas
+        {},                   // chi2s
+        {},                   // exis
+        TRandom3(0),          // rng
+        connid                // connid
+    };
+    
+    gMCState->graph->SetTitle("MC Progress: Accumulating gSF Results;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
+    gMCState->graph->SetMarkerStyle(20);
+    gMCState->graph->SetMarkerSize(0.5);
+    gMCState->graph->SetMarkerColor(kBlue);
+    gMCState->graph->Draw("AP");
+    PushCanvasUpdate();
+    
+    // Start timer to run iterations one at a time with live display
+    static TTimer *mcTimer = new TTimer();
+    mcTimer->Connect("Timeout()", 0, 0, "MCTimerCallback()");
+    mcTimer->Start(100, kFALSE); // Every 100ms, run 1 iteration
+    
+    std::cout << "MC timer started - will run " << nIterations << " iterations with live display" << std::endl;
+}
 
 // Runs a temporary single-iteration autofit analysis purely to generate width
 // calibration data, without affecting the user's actual settings for sliding
@@ -947,6 +1283,18 @@ void RunShapeIt(unsigned connid)
             std::cout << "Warning: graph histogram not found, cannot set axis labels" << std::endl;
         }
     }
+    
+    // Add chi2 and alpha text box if Oslo data is displayed (matches ShapeFrame::getPaveTextgSF())
+    if (sett->doOslo) {
+        TPaveText *t = new TPaveText(0.8, 0.85, 0.95, 0.95, "brNDC");
+        t->SetTextSize(0.025);
+        t->SetTextAlign(13);
+        t->SetFillColor(10);
+        t->SetTextColor(61);
+        t->AddText(Form("slope #alpha: %4.2f", sett->lit_alpha));
+        t->AddText(Form("#chi^{2} value: %4.2f", gSFColl->getChi2()));
+        t->Draw();
+    }
     // Fallback: if no error-bar graphs were found (e.g. nothing matched
     // TGraphErrors/TGraphAsymmErrors), fall back to the plain-TGraph test
     // from before, so this still shows something.
@@ -1046,21 +1394,20 @@ void SendDirListing(unsigned connid, std::string path)
 
 void ProcessData(unsigned connid, const std::string &arg)
 {
-    // Buffer stdout and send in batch to avoid queue overflow
-    std::ostringstream logBuffer;
-    std::streambuf* oldBuf = std::cout.rdbuf(logBuffer.rdbuf());
+    // TEMPORARILY DISABLED: stdout buffering to help debug Monte Carlo issue
+    // Just print directly to terminal like a normal C++ program
     
     // Suppress noisy debug messages for channel setup and width calibration updates
-    if (arg.compare(0, 8, "channel:") != 0 && arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") != 0) {
+    if (!starts_with(arg, "channel:") && !starts_with(arg, "UPDATE_WIDTH_CALIB_LINES:")) {
         std::cout << "Got message from browser: " << arg << std::endl;
     }
 
-    if (arg.compare(0, 8, "channel:") == 0) {
-        int chid = std::stoi(arg.substr(8));
+    if (starts_with(arg, "channel:")) {
+        int chid = std::stoi(after_prefix(arg, "channel:"));
         auto web_imp = dynamic_cast<TWebCanvas *>(canvas->GetCanvasImp());
         if (web_imp) {
             web_imp->ShowWebWindow({ window, connid, chid });
-            web_imp->ForceUpdate();
+            // DON'T ForceUpdate yet - wait until after we've drawn the matrix with log scale
         }
         window->Send(connid, "STARTDIR:" + gStartDir);
         
@@ -1083,6 +1430,9 @@ void ProcessData(unsigned connid, const std::string &arg)
                 // Enable width calibration since matrix is loaded
                 window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
             }
+        } else {
+            // No matrix loaded - push an empty canvas
+            if (web_imp) web_imp->ForceUpdate();
         }
         
         // Sync all settings to UI (this updates all form fields to match loaded settings)
@@ -1094,8 +1444,8 @@ void ProcessData(unsigned connid, const std::string &arg)
             window->Send(connid, "Settings loaded: " + sett->settFileName);
         }
     }
-    else if (arg.compare(0, 5, "OPEN:") == 0) {
-        std::string path = arg.substr(5);
+    else if (starts_with(arg, "OPEN:")) {
+        std::string path = after_prefix(arg, "OPEN:");
 
         if (gSystem->AccessPathName(path.c_str())) {
             // AccessPathName returns non-zero (true) when the path does NOT exist
@@ -1126,19 +1476,19 @@ void ProcessData(unsigned connid, const std::string &arg)
         window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
         window->Send(connid, "Matrix opened: " + path);
     }
-    else if (arg.compare(0, 13, "SELECTMATRIX:") == 0) {
+    else if (starts_with(arg, "SELECTMATRIX:")) {
         if (!matrix) {
             window->Send(connid, "No matrix file open yet.");
             return;
         }
-        int idx = std::stoi(arg.substr(13));
+        int idx = std::stoi(after_prefix(arg, "SELECTMATRIX:"));
         SendMatrixListAndSelect(connid, currentMatrixPath, idx);
         SendNBins(connid);
         // Enable width calibration since we have a matrix
         window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
     }
-    else if (arg.compare(0, 5, "OSLO:") == 0) {
-        std::string path = arg.substr(5);
+    else if (starts_with(arg, "OSLO:")) {
+        std::string path = after_prefix(arg, "OSLO:");
 
         if (gSystem->AccessPathName(path.c_str())) {
             window->Send(connid, "Literature file not found: " + path);
@@ -1147,13 +1497,49 @@ void ProcessData(unsigned connid, const std::string &arg)
 
         sett->osloFileName = path;
         sett->doOslo = true;
-        window->Send(connid, "Literature file set: " + path);
+        window->Send(connid, "gSF literature file set: " + path);
     }
-    else if (arg.compare(0, 8, "LISTDIR:") == 0) {
-        SendDirListing(connid, arg.substr(8));
+    else if (starts_with(arg, "RHO:")) {
+        std::string path = after_prefix(arg, "RHO:");
+
+        if (gSystem->AccessPathName(path.c_str())) {
+            window->Send(connid, "NLD file not found: " + path);
+            return;
+        }
+
+        sett->rhoFileName = path;
+        
+        // Create ShapeRho object to read the file and check for unit conversion
+        ShapeRho* tempRho = new ShapeRho(sett);
+        
+        // Check if MeV to keV conversion happened and notify browser
+        if (tempRho && tempRho->wasConvertedFromMeV) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2) << tempRho->originalMaxEnergy;
+            std::string warning = "UNIT_WARNING:" + oss.str();
+            window->Send(connid, warning);
+        }
+        
+        delete tempRho;  // Clean up temporary object
+        
+        window->Send(connid, "NLD literature file set: " + path);
     }
-    else if (arg.compare(0, 14, "LOAD_SETTINGS:") == 0) {
-        std::string path = arg.substr(14);
+    else if (starts_with(arg, "DISCRETE:")) {
+        std::string path = after_prefix(arg, "DISCRETE:");
+
+        if (gSystem->AccessPathName(path.c_str())) {
+            window->Send(connid, "Discrete levels file not found: " + path);
+            return;
+        }
+
+        sett->discreteLevelFile = path;
+        window->Send(connid, "Discrete levels file set: " + path);
+    }
+    else if (starts_with(arg, "LISTDIR:")) {
+        SendDirListing(connid, after_prefix(arg, "LISTDIR:"));
+    }
+    else if (starts_with(arg, "LOAD_SETTINGS:")) {
+        std::string path = after_prefix(arg, "LOAD_SETTINGS:");
 
         if (gSystem->AccessPathName(path.c_str())) {
             window->Send(connid, "Settings file not found: " + path);
@@ -1163,12 +1549,14 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->settFileName = path;
         sett->ReadSettings();
 
-        // dataFileName/osloFileName as read are literal raw lines from the file,
+        // dataFileName/osloFileName/rhoFileName/discreteLevelFile as read are literal raw lines from the file,
         // unresolved -- if relative, resolve against the settings file's own
         // directory rather than wherever ROOT happened to be launched from.
         std::string settDir = DirName(path);
         sett->dataFileName = ResolveRelativeTo(settDir, sett->dataFileName);
         sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
+        sett->rhoFileName = ResolveRelativeTo(settDir, sett->rhoFileName);
+        sett->discreteLevelFile = ResolveRelativeTo(settDir, sett->discreteLevelFile);
 
         DumpSettings();
 
@@ -1204,18 +1592,18 @@ void ProcessData(unsigned connid, const std::string &arg)
         SendSettingsSync(connid);
         window->Send(connid, "Settings loaded: " + path);
     }
-    else if (arg.compare(0, 14, "SAVE_SETTINGS:") == 0) {
+    else if (starts_with(arg, "SAVE_SETTINGS:")) {
         // Uses sett as it currently stands -- i.e. whatever the last "ShapeIt!"
         // run (or Options change) set it to. Click ShapeIt! at least once before
         // saving so the Peaks panel's current values are actually captured.
-        std::string path = arg.substr(14);
+        std::string path = after_prefix(arg, "SAVE_SETTINGS:");
         sett->settFileName = path;
         sett->SaveSettings();
         window->Send(connid, "Settings saved: " + path);
     }
-    else if (arg.compare(0, 8, "OPTIONS:") == 0) {
+    else if (starts_with(arg, "OPTIONS:")) {
         // order: doInterpol|doOslo|doSlidingWindow|doBackground|doWidthCal
-        auto v = ParsePipeDoubles(arg.substr(8));
+        auto v = ParsePipeDoubles(after_prefix(arg, "OPTIONS:"));
         if (v.size() != 5) {
             window->Send(connid, "Malformed OPTIONS message.");
             return;
@@ -1226,9 +1614,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->doBackground    = v[3] != 0.0;
         sett->doWidthCal      = v[4] != 0.0;
     }
-    else if (arg.compare(0, 16, "DISPLAY_OPTIONS:") == 0) {
+    else if (starts_with(arg, "DISPLAY_OPTIONS:")) {
         // order: displaySingle|displayAvg|colour
-        auto v = ParsePipeDoubles(arg.substr(16));
+        auto v = ParsePipeDoubles(after_prefix(arg, "DISPLAY_OPTIONS:"));
         if (v.size() != 3) {
             window->Send(connid, "Malformed DISPLAY_OPTIONS message.");
             return;
@@ -1237,9 +1625,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->displayAvg    = v[1] != 0.0;
         sett->colour        = v[2] != 0.0;
     }
-    else if (arg.compare(0, 8, "BINSIZE:") == 0) {
+    else if (starts_with(arg, "BINSIZE:")) {
         // order: lo|hi|isVariation
-        auto v = ParsePipeDoubles(arg.substr(8));
+        auto v = ParsePipeDoubles(after_prefix(arg, "BINSIZE:"));
         if (v.size() != 3) {
             window->Send(connid, "Malformed BINSIZE message.");
             return;
@@ -1252,12 +1640,12 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->exi_size[1] = sett->doBinVariation ? hi : sett->exi_size[0];
         SendNBins(connid);
     }
-    else if (arg.compare(0, 8, "NBINSLO:") == 0) {
+    else if (starts_with(arg, "NBINSLO:")) {
         // mirrors DoNumberEntry's id==8 case: editing "Nr. of bins" (low)
         // recomputes the corresponding bin size via BinToSize(). Trusts the
         // typed count as-is -- does NOT recompute it back from the derived
         // size, which is what caused the earlier drift bug.
-        int nLo = std::stoi(arg.substr(8));
+        int nLo = std::stoi(after_prefix(arg, "NBINSLO:"));
         if (nLo < 1) nLo = 1;
         sett->nOfBins = nLo;
         sett->exi_size[0] = sett->BinToSize();
@@ -1266,12 +1654,12 @@ void ProcessData(unsigned connid, const std::string &arg)
         int nHigh = sett->doBinVariation ? sett->SizeToBin(sett->exi_size[1]) : sett->nOfBins;
         SendBinSyncValues(connid, sett->nOfBins, nHigh);
     }
-    else if (arg.compare(0, 8, "NBINSHI:") == 0) {
+    else if (starts_with(arg, "NBINSHI:")) {
         // mirrors DoNumberEntry's id==12 case exactly, including its two
         // correction passes: hi bin size must exceed lo by at least 50 keV,
         // and the resulting bin count must be at least 3. sett->nOfBins (the
         // low count) is untouched here -- echoed back as-is, not recomputed.
-        int nHigh = std::stoi(arg.substr(8));
+        int nHigh = std::stoi(after_prefix(arg, "NBINSHI:"));
         double size = sett->BinToSize(nHigh);
         if (size <= sett->exi_size[0] + 50) {
             size = sett->exi_size[0] + 50;
@@ -1284,9 +1672,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->exi_size[1] = size;
         SendBinSyncValues(connid, sett->nOfBins, nHigh);
     }
-    else if (arg.compare(0, 10, "INTPARAMS:") == 0) {
+    else if (starts_with(arg, "INTPARAMS:")) {
         // order: minCounts|scaling|autoScale|effCorr
-        auto v = ParsePipeDoubles(arg.substr(10));
+        auto v = ParsePipeDoubles(after_prefix(arg, "INTPARAMS:"));
         if (v.size() != 4) {
             window->Send(connid, "Malformed INTPARAMS message.");
             return;
@@ -1296,15 +1684,15 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->doAutoScale = v[2] != 0.0;
         sett->eff_corr    = v[3];
     }
-    else if (arg.compare(0, 8, "VERBOSE:") == 0) {
-        sett->verbose = std::stoi(arg.substr(8));
+    else if (starts_with(arg, "VERBOSE:")) {
+        sett->verbose = std::stoi(after_prefix(arg, "VERBOSE:"));
     }
-    else if (arg.compare(0, 5, "MODE:") == 0) {
-        sett->mode = std::stoi(arg.substr(5)); // 1 = Integration, 2 = Autofit
+    else if (starts_with(arg, "MODE:")) {
+        sett->mode = std::stoi(after_prefix(arg, "MODE:")); // 1 = Integration, 2 = Autofit
     }
-    else if (arg.compare(0, 11, "BGENERGIES:") == 0) {
+    else if (starts_with(arg, "BGENERGIES:")) {
         // order: bgEne[0][0..3] | bgEne[1][0..3]  (8 values)
-        auto v = ParsePipeDoubles(arg.substr(11));
+        auto v = ParsePipeDoubles(after_prefix(arg, "BGENERGIES:"));
         if (v.size() != 8) {
             window->Send(connid, "Malformed BGENERGIES message.");
             return;
@@ -1318,28 +1706,15 @@ void ProcessData(unsigned connid, const std::string &arg)
         DrawMarkers(true);
     }
     else if (arg == "SHOW_LEVELS_PANEL") {
-        // When Levels panel is clicked, show bin 1 projection ONLY if not already viewing a projection
+        // When Levels panel is clicked, don't change the current view
+        // The panel is just for editing parameters, not for forcing a specific display
         if (!matrix) {
             window->Send(connid, "No matrix loaded yet -- open one first.");
             return;
         }
         
-        // Only switch to bin 1 projection if not already in a projection view (modes 4 or 5)
-        if (gDisplayMode != 4 && gDisplayMode != 5) {
-            std::cout << "Levels panel opened - switching from mode " << gDisplayMode << " to bin 1 projection" << std::endl;
-            gCurrentBin = 1;
-            gDisplayMode = 5;
-            canvas->cd();
-            canvas->Clear();
-            for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
-            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
-            gCurrentHist->Draw();
-            gHaveLastRange = false;
-            CleanupAutofitDisplay();
-            DrawMarkers();
-        } else {
-            std::cout << "Levels panel opened - already in projection mode " << gDisplayMode << ", keeping current view" << std::endl;
-        }
+        // Don't switch views - just acknowledge the panel was opened
+        std::cout << "Levels panel opened - keeping current view (mode " << gDisplayMode << ")" << std::endl;
     }
     else if (arg == "SHOWMATRIX") {
         if (!matrix) {
@@ -1356,6 +1731,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         gPad->SetLeftMargin(0.12);   // 12% left margin for y-axis label
         gPad->SetTopMargin(0.08);
         gPad->SetBottomMargin(0.10);
+        
+        // Enable logarithmic z-axis scale
+        gPad->SetLogz(1);
         
         TH2* hist = matrix->GetInputMatrix(BaseName(currentMatrixPath));
         hist->SetStats(0);  // Disable statistics box
@@ -1386,7 +1764,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         palette->SetY2NDC(0.90);  // Top aligned with pad margin
         palette->Draw();
         
-        DrawMarkers();
+        gPad->Modified();
         PushCanvasUpdate();
     }
     else if (arg == "SHOWPROJ") {
@@ -1394,14 +1772,28 @@ void ProcessData(unsigned connid, const std::string &arg)
             window->Send(connid, "No matrix loaded yet -- open one first.");
             return;
         }
-        gDisplayMode = 4;
+        std::cout << "SHOWPROJ: Displaying bin 1 projection" << std::endl;
+        // Show bin 1 projection instead of summed diagonal
+        gCurrentBin = 1;
+        gDisplayMode = 5;
         canvas->cd();
         canvas->Clear();
         for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
-        gCurrentHist = matrix->GetDiag(BaseName(currentMatrixPath));
-        gCurrentHist->Draw("hist");
+        gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+        if (!gCurrentHist) {
+            std::cout << "ERROR: GetDiagEx returned null!" << std::endl;
+            window->Send(connid, "ERROR: Failed to get projection histogram");
+            return;
+        }
+        std::cout << "Got histogram, drawing..." << std::endl;
+        gCurrentHist->Draw();
         gHaveLastRange = false;
+        CleanupAutofitDisplay();
         DrawMarkers();
+        std::cout << "About to push canvas update..." << std::endl;
+        PushCanvasUpdate();
+        std::cout << "Canvas updated." << std::endl;
+        window->Send(connid, "Showing bin 1 projection");
     }
     else if (arg == "SHOW_WIDTH_CALIB") {
         if (!matrix) {
@@ -1409,80 +1801,18 @@ void ProcessData(unsigned connid, const std::string &arg)
             return;
         }
         
-        // Save existing calibration parameters before running fresh fit
-        double savedWidthCal[2][2];
-        savedWidthCal[0][0] = sett->widthCal[0][0];
-        savedWidthCal[0][1] = sett->widthCal[0][1];
-        savedWidthCal[1][0] = sett->widthCal[1][0];
-        savedWidthCal[1][1] = sett->widthCal[1][1];
+        // Check if we have existing calibration parameters from settings file
+        bool hasExistingCalib = (sett->widthCal[0][0] != 0.0 || sett->widthCal[0][1] != 0.0 ||
+                                  sett->widthCal[1][0] != 0.0 || sett->widthCal[1][1] != 0.0);
         
-        bool hasExistingCalib = (savedWidthCal[0][0] != 0.0 || savedWidthCal[0][1] != 0.0 ||
-                                  savedWidthCal[1][0] != 0.0 || savedWidthCal[1][1] != 0.0);
-        
-        // ALWAYS run fresh fit to generate graph data points AND fit parameters
+        // Run calibration to generate graph data points (needed for display)
+        // but DON'T fit the data yet - just show the points
         window->Send(connid, "Generating width calibration data...");
         RunWidthCalibration(connid);
         
         // Extract the width data graphs (populated by RunWidthCalibration above)
         TGraph *T1 = matrix->getFitWidthGraph(0);
         TGraph *T2 = matrix->getFitWidthGraph(1);
-        
-        // Perform linear fits on the width data (mirrors ShapeFrame.C case 7)
-        // This populates sett->widthCal with the fit parameters
-        if (T1->GetN() > 0) {
-            T1->Fit("pol1", "Q");  // Q = quiet mode
-            TF1 *fit1 = T1->GetFunction("pol1");
-            if (fit1) {
-                sett->widthCal[0][0] = fit1->GetParameter(0);
-                sett->widthCal[0][1] = fit1->GetParameter(1);
-            }
-        }
-        
-        if (T2->GetN() > 0) {
-            T2->Fit("pol1", "Q");  // Q = quiet mode
-            TF1 *fit2 = T2->GetFunction("pol1");
-            if (fit2) {
-                sett->widthCal[1][0] = fit2->GetParameter(0);
-                sett->widthCal[1][1] = fit2->GetParameter(1);
-            }
-        }
-        
-        // Only restore old fit parameters if they were non-zero (i.e., from a settings file with width cal active)
-        // If all zeros, keep the fresh fit results instead
-        if (hasExistingCalib) {
-            sett->widthCal[0][0] = savedWidthCal[0][0];
-            sett->widthCal[0][1] = savedWidthCal[0][1];
-            sett->widthCal[1][0] = savedWidthCal[1][0];
-            sett->widthCal[1][1] = savedWidthCal[1][1];
-        }
-        // else: keep the fresh fit parameters from the fits above
-        
-        canvas->cd();
-        canvas->Clear();
-        // Null out marker pointers since Clear() deleted them
-        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
-        gDisplayMode = 7;  // Width calibration display mode
-        
-        // Create fit functions using parameters from sett->widthCal
-        // These will either be from the file or from the fresh fit we just ran
-        TF1 *fit1 = nullptr;
-        TF1 *fit2 = nullptr;
-        
-        if (T1->GetN() > 0) {
-            fit1 = new TF1("fit1", "[0] + [1]*x", 0, 10000);
-            fit1->SetParameter(0, sett->widthCal[0][0]);
-            fit1->SetParameter(1, sett->widthCal[0][1]);
-            fit1->SetLineColor(kRed);
-            fit1->SetLineWidth(2);
-        }
-        
-        if (T2->GetN() > 0) {
-            fit2 = new TF1("fit2", "[0] + [1]*x", 0, 10000);
-            fit2->SetParameter(0, sett->widthCal[1][0]);
-            fit2->SetParameter(1, sett->widthCal[1][1]);
-            fit2->SetLineColor(kBlue);
-            fit2->SetLineWidth(2);
-        }
         
         // Find the combined range of both graphs for proper axis scaling
         double xMin = 1e9, xMax = -1e9, yMin = 1e9, yMax = -1e9;
@@ -1520,7 +1850,12 @@ void ProcessData(unsigned connid, const std::string &arg)
         gWidthCalibYMax = yMax;
         gHaveWidthCalibRanges = true;
         
-        // Draw graphs directly without TMultiGraph to avoid any potential Update() calls
+        canvas->cd();
+        canvas->Clear();
+        // Null out marker pointers since Clear() deleted them
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+        gDisplayMode = 7;  // Width calibration display mode
+        
         // Style the graphs
         T1->SetMarkerStyle(20);
         T1->SetMarkerColor(kRed);
@@ -1548,14 +1883,28 @@ void ProcessData(unsigned connid, const std::string &arg)
             T2->Draw("P SAME");
         }
         
-        // Draw fit lines manually - extend fit range to cover the full axis range
-        if (fit1) {
-            fit1->SetRange(xMin, xMax);
-            fit1->Draw("SAME");
-        }
-        if (fit2) {
-            fit2->SetRange(xMin, xMax);
-            fit2->Draw("SAME");
+        // Only draw fit lines if we have existing calibration parameters from settings file
+        if (hasExistingCalib) {
+            TF1 *fit1 = nullptr;
+            TF1 *fit2 = nullptr;
+            
+            if (T1->GetN() > 0 && (sett->widthCal[0][0] != 0.0 || sett->widthCal[0][1] != 0.0)) {
+                fit1 = new TF1("fit1", "[0] + [1]*x", xMin, xMax);
+                fit1->SetParameter(0, sett->widthCal[0][0]);
+                fit1->SetParameter(1, sett->widthCal[0][1]);
+                fit1->SetLineColor(kRed);
+                fit1->SetLineWidth(2);
+                fit1->Draw("SAME");
+            }
+            
+            if (T2->GetN() > 0 && (sett->widthCal[1][0] != 0.0 || sett->widthCal[1][1] != 0.0)) {
+                fit2 = new TF1("fit2", "[0] + [1]*x", xMin, xMax);
+                fit2->SetParameter(0, sett->widthCal[1][0]);
+                fit2->SetParameter(1, sett->widthCal[1][1]);
+                fit2->SetLineColor(kBlue);
+                fit2->SetLineWidth(2);
+                fit2->Draw("SAME");
+            }
         }
         
         // Add legend (smaller size)
@@ -1568,7 +1917,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         // Enable the width calibration checkbox by telling frontend it's available
         window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
         
-        // Send the final calibration parameters to UI (either restored from file or fresh fit)
+        // Send the current calibration parameters to UI (from settings file)
         std::string msg = "WIDTH_CALIB_PARAMS:";
         msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
         msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
@@ -1578,6 +1927,104 @@ void ProcessData(unsigned connid, const std::string &arg)
         // cleaned up automatically when the canvas is cleared.
         
         PushCanvasUpdate();
+    }
+    else if (arg == "REFRESH_WIDTH_CALIB_FITS") {
+        if (!matrix) {
+            window->Send(connid, "No matrix loaded yet.");
+            return;
+        }
+        
+        if (gDisplayMode != 7) {
+            window->Send(connid, "Not currently viewing width calibration.");
+            return;
+        }
+        
+        window->Send(connid, "Refreshing width calibration fits...");
+        
+        // Extract the width data graphs (already populated by previous SHOW_WIDTH_CALIB)
+        TGraph *T1 = matrix->getFitWidthGraph(0);
+        TGraph *T2 = matrix->getFitWidthGraph(1);
+        
+        // Perform linear fits on the width data to get NEW parameters
+        if (T1->GetN() > 0) {
+            TF1 *tempFit1 = new TF1("tempfit1", "pol1", gWidthCalibXMin, gWidthCalibXMax);
+            T1->Fit(tempFit1, "QN");  // Q = quiet, N = don't store function in graph
+            sett->widthCal[0][0] = tempFit1->GetParameter(0);
+            sett->widthCal[0][1] = tempFit1->GetParameter(1);
+            delete tempFit1;
+        }
+        
+        if (T2->GetN() > 0) {
+            TF1 *tempFit2 = new TF1("tempfit2", "pol1", gWidthCalibXMin, gWidthCalibXMax);
+            T2->Fit(tempFit2, "QN");  // Q = quiet, N = don't store function in graph
+            sett->widthCal[1][0] = tempFit2->GetParameter(0);
+            sett->widthCal[1][1] = tempFit2->GetParameter(1);
+            delete tempFit2;
+        }
+        
+        // Send the new parameters to UI
+        std::string msg = "WIDTH_CALIB_PARAMS:";
+        msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
+        msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]);
+        window->Send(connid, msg);
+        
+        // Redraw the plot with the new fit lines
+        canvas->cd();
+        canvas->Clear();
+        
+        // Style the graphs
+        T1->SetMarkerStyle(20);
+        T1->SetMarkerColor(kRed);
+        T1->SetLineColor(kRed);
+        T1->SetMarkerSize(1);
+        
+        T2->SetMarkerStyle(21);
+        T2->SetMarkerColor(kBlue);
+        T2->SetLineColor(kBlue);
+        T2->SetMarkerSize(1);
+        
+        // Draw first graph with axes
+        T1->Draw("AP");
+        T1->SetTitle("Peak Widths from Autofit");
+        T1->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+        T1->GetYaxis()->SetTitle("Width (keV)");
+        T1->GetXaxis()->SetLimits(gWidthCalibXMin, gWidthCalibXMax);
+        T1->GetHistogram()->SetMinimum(gWidthCalibYMin);
+        T1->GetHistogram()->SetMaximum(gWidthCalibYMax);
+        
+        // Draw second graph
+        if (T2->GetN() > 0) {
+            T2->Draw("P SAME");
+        }
+        
+        // Draw fit lines with new parameters
+        if (T1->GetN() > 0) {
+            TF1 *fit1 = new TF1("fit1", "[0] + [1]*x", gWidthCalibXMin, gWidthCalibXMax);
+            fit1->SetParameter(0, sett->widthCal[0][0]);
+            fit1->SetParameter(1, sett->widthCal[0][1]);
+            fit1->SetLineColor(kRed);
+            fit1->SetLineWidth(2);
+            fit1->Draw("SAME");
+        }
+        
+        if (T2->GetN() > 0) {
+            TF1 *fit2 = new TF1("fit2", "[0] + [1]*x", gWidthCalibXMin, gWidthCalibXMax);
+            fit2->SetParameter(0, sett->widthCal[1][0]);
+            fit2->SetParameter(1, sett->widthCal[1][1]);
+            fit2->SetLineColor(kBlue);
+            fit2->SetLineWidth(2);
+            fit2->Draw("SAME");
+        }
+        
+        // Add legend
+        TLegend *leg = new TLegend(0.75, 0.80, 0.90, 0.90);
+        leg->SetFillColor(0);
+        if (T1->GetN() > 0) leg->AddEntry(T1, "level 1", "lp");
+        if (T2->GetN() > 0) leg->AddEntry(T2, "level 2", "lp");
+        leg->Draw();
+        
+        PushCanvasUpdate();
+        window->Send(connid, "Width calibration fits refreshed.");
     }
     else if (arg == "SHOW_SETTINGS_FILE") {
         if (sett->settFileName.empty()) {
@@ -1610,9 +2057,7 @@ void ProcessData(unsigned connid, const std::string &arg)
             return;
         }
         
-        // Resolve relative path against settings file directory
-        std::string settDir = DirName(sett->settFileName);
-        std::string rhoPath = ResolveRelativeTo(settDir, sett->rhoFileName);
+        std::string rhoPath = sett->rhoFileName;
         
         // Check if file exists
         if (gSystem->AccessPathName(rhoPath.c_str())) {
@@ -1620,22 +2065,17 @@ void ProcessData(unsigned connid, const std::string &arg)
             return;
         }
         
-        // Read level density data from file (format: Ex rho rho_error)
-        TGraphErrors *grLevelDensity = new TGraphErrors(rhoPath.c_str(), "%lg %lg %lg");
+        // Read level density data through ShapeRho to get proper MeV→keV conversion
+        ShapeRho* tempRho = new ShapeRho(sett);
+        TGraphErrors *grLevelDensity = tempRho->rhoGraph;
         
-        if (grLevelDensity->GetN() == 0) {
-            delete grLevelDensity;
+        if (!grLevelDensity || grLevelDensity->GetN() == 0) {
+            delete tempRho;
             window->Send(connid, "No level density data in file: " + rhoPath);
             return;
         }
         
-        // Apply scaling factor if set
-        if (sett->rhoScale != 1.0) {
-            for (int i = 0; i < grLevelDensity->GetN(); i++) {
-                grLevelDensity->SetPoint(i, grLevelDensity->GetX()[i], 
-                                         sett->rhoScale * grLevelDensity->GetY()[i]);
-            }
-        }
+        delete tempRho;
         
         grLevelDensity->SetMarkerStyle(20);
         grLevelDensity->SetMarkerSize(0.8);
@@ -1643,66 +2083,93 @@ void ProcessData(unsigned connid, const std::string &arg)
         grLevelDensity->SetLineColor(kBlue);
         grLevelDensity->SetTitle("Level Density");
         
-        gDisplayMode = 0; // Not a mode with markers
+        gDisplayMode = 0;
         canvas->cd();
         canvas->Clear();
         for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = nullptr;
         
-        // Draw level density graph first
         grLevelDensity->Draw("APE");
         grLevelDensity->GetXaxis()->SetTitle("Excitation Energy (keV)");
         grLevelDensity->GetYaxis()->SetTitle("Level Density (1/keV)");
         
-        // Read and overlay discrete levels histogram if available
-        TH1F *discreteLevel = nullptr;
-        if (!sett->discreteLevelFile.empty()) {
-            std::string discPath = ResolveRelativeTo(settDir, sett->discreteLevelFile);
-            
-            if (!gSystem->AccessPathName(discPath.c_str())) {
-                std::ifstream discFile(discPath.c_str());
-                if (discFile.good()) {
-                    std::vector<double> ene, discLev;
-                    double e, disc;
-                    
-                    // Read discrete level data (format: energy level_density)
-                    while (discFile >> e >> disc) {
-                        ene.push_back(e);
-                        discLev.push_back(disc);
-                    }
-                    discFile.close();
-                    
-                    if (!ene.empty()) {
-                        // Find maximum energy
-                        double discreteMax = *std::max_element(ene.begin(), ene.end());
-                        
-                        // Create histogram with bin size from settings
-                        int nBins = (int)((1000.0 * discreteMax) / sett->discreteBins);
-                        discreteLevel = new TH1F("discreteLevel", "discrete levels", nBins, 0, discreteMax);
-                        
-                        // Fill histogram
-                        for (size_t i = 0; i < ene.size(); i++) {
-                            discreteLevel->Fill(ene[i], discLev[i]);
-                        }
-                        
-                        // Style to match ShapeRhoCollector
-                        discreteLevel->SetFillColorAlpha(kAzure-9, 0.4);
-                        discreteLevel->SetFillStyle(3002);
-                        discreteLevel->SetLineColorAlpha(kBlack, 0.6);
-                        
-                        // Draw on same canvas
-                        discreteLevel->Draw("same hist");
-                        
-                        window->Send(connid, "Displaying level density (" + std::to_string(grLevelDensity->GetN()) + 
-                                     " points) with discrete levels (" + std::to_string(ene.size()) + " levels)");
-                    }
-                }
-            }
+        window->Send(connid, "Displaying level density: " + std::to_string(grLevelDensity->GetN()) + " points");
+        
+        PushCanvasUpdate();
+    }
+    else if (arg == "SHOW_DISCRETE_LEVELS") {
+        // Check if discrete level file is set
+        if (sett->discreteLevelFile.empty()) {
+            window->Send(connid, "No discrete level file specified in settings. Load one via Settings > Load discrete levels data...");
+            return;
         }
         
-        if (!discreteLevel) {
-            window->Send(connid, "Displaying level density: " + std::to_string(grLevelDensity->GetN()) + " points");
+        // Check if file exists
+        if (gSystem->AccessPathName(sett->discreteLevelFile.c_str())) {
+            window->Send(connid, "Discrete level file not found: " + sett->discreteLevelFile);
+            return;
         }
+        
+        // Read the discrete levels data file (2 column: Ex [keV], number_of_states)
+        std::ifstream infile(sett->discreteLevelFile.c_str());
+        if (!infile.is_open()) {
+            window->Send(connid, "ERROR: Could not open discrete level file: " + sett->discreteLevelFile);
+            return;
+        }
+        
+        std::vector<double> energies;
+        std::vector<double> states;
+        
+        double ex, nstates;
+        while (infile >> ex >> nstates) {
+            energies.push_back(ex);
+            states.push_back(nstates);
+        }
+        infile.close();
+        
+        if (energies.empty()) {
+            window->Send(connid, "ERROR: No data found in discrete level file");
+            return;
+        }
+        
+        // Determine bin width from data spacing
+        double binWidth = sett->discreteBins;  // Default from settings
+        if (energies.size() > 1) {
+            // Use spacing between first two points as bin width
+            binWidth = energies[1] - energies[0];
+        }
+        
+        // Create histogram
+        double eMin = energies.front() - binWidth/2.0;
+        double eMax = energies.back() + binWidth/2.0;
+        int nBins = (int)((eMax - eMin) / binWidth + 0.5);
+        
+        TH1D* hDiscrete = new TH1D("hDiscrete", "Discrete Level Density;E_{x} [keV];#rho [keV^{-1}]", 
+                                    nBins, eMin, eMax);
+        
+        // Fill histogram
+        for (size_t i = 0; i < energies.size(); i++) {
+            // Convert from number_of_states to level density (divide by bin width in keV)
+            double rho = states[i] / binWidth;
+            hDiscrete->Fill(energies[i], rho);
+        }
+        
+        // Draw on canvas
+        gDisplayMode = 0;
+        canvas->cd();
+        canvas->Clear();
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+        gCurrentHist = nullptr;
+        
+        hDiscrete->SetLineColor(kBlue);
+        hDiscrete->SetLineWidth(2);
+        hDiscrete->Draw("HIST");
+        canvas->SetLogy();
+        
+        std::ostringstream msg;
+        msg << "Displayed discrete levels from: " << sett->discreteLevelFile 
+            << " (" << energies.size() << " bins, " << binWidth << " keV bin width)";
+        window->Send(connid, msg.str());
         
         PushCanvasUpdate();
     }
@@ -1810,7 +2277,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         window->Send(connid, "GSF_RESULTS:SUCCESS:" + finalText);
         std::cout << "=== SHOW_GSF_RESULTS complete ===" << std::endl;
     }
-    else if (arg.compare(0, 12, "SHOWBINPROJ:") == 0) {
+    else if (starts_with(arg, "SHOWBINPROJ:")) {
         if (!matrix) {
             window->Send(connid, "No matrix loaded yet -- open one first.");
             return;
@@ -1822,7 +2289,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         double savedXmin = gLastUxmin;
         double savedXmax = gLastUxmax;
         
-        gCurrentBin = std::stoi(arg.substr(12));
+        gCurrentBin = std::stoi(after_prefix(arg, "SHOWBINPROJ:"));
         gDisplayMode = 5;
         canvas->cd();
         canvas->Clear();
@@ -1849,17 +2316,17 @@ void ProcessData(unsigned connid, const std::string &arg)
         CleanupAutofitDisplay();
         DrawMarkers(hadRange);
     }
-    else if (arg.compare(0, 11, "EXCITATION:") == 0) {
-        auto v = ParsePipeDoubles(arg.substr(11));
+    else if (starts_with(arg, "EXCITATION:")) {
+        auto v = ParsePipeDoubles(after_prefix(arg, "EXCITATION:"));
         if (v.size() == 2) {
             sett->exiEne[0] = v[0];
             sett->exiEne[1] = v[1];
             SendNBins(connid);
         }
     }
-    else if (arg.compare(0, 14, "LEVELENERGIES:") == 0) {
+    else if (starts_with(arg, "LEVELENERGIES:")) {
         std::cout << "*** LEVELENERGIES HANDLER CALLED ***" << std::endl;
-        auto v = ParsePipeDoubles(arg.substr(14));
+        auto v = ParsePipeDoubles(after_prefix(arg, "LEVELENERGIES:"));
         std::cout << "*** Parsed " << v.size() << " values ***" << std::endl;
         if (v.size() != 12) {
             std::cout << "*** ERROR: Expected 12 values, got " << v.size() << " ***" << std::endl;
@@ -1935,9 +2402,9 @@ void ProcessData(unsigned connid, const std::string &arg)
             DrawMarkers(true);
         }
     }
-    else if (arg.compare(0, 19, "WIDTH_CALIB_PARAMS:") == 0) {
+    else if (starts_with(arg, "WIDTH_CALIB_PARAMS:")) {
         // order: l1_offset|l1_slope|l2_offset|l2_slope
-        auto v = ParsePipeDoubles(arg.substr(19));
+        auto v = ParsePipeDoubles(after_prefix(arg, "WIDTH_CALIB_PARAMS:"));
         if (v.size() != 4) {
             window->Send(connid, "Malformed WIDTH_CALIB_PARAMS message.");
             return;
@@ -1947,9 +2414,9 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->widthCal[1][0] = v[2];  // Level 2 offset
         sett->widthCal[1][1] = v[3];  // Level 2 slope
     }
-    else if (arg.compare(0, 25, "UPDATE_WIDTH_CALIB_LINES:") == 0) {
+    else if (starts_with(arg, "UPDATE_WIDTH_CALIB_LINES:")) {
         // Just update the fit line parameters without re-running analysis
-        auto v = ParsePipeDoubles(arg.substr(25));
+        auto v = ParsePipeDoubles(after_prefix(arg, "UPDATE_WIDTH_CALIB_LINES:"));
         if (v.size() != 4) {
             window->Send(connid, "Malformed UPDATE_WIDTH_CALIB_LINES message.");
             return;
@@ -2027,16 +2494,351 @@ void ProcessData(unsigned connid, const std::string &arg)
             PushCanvasUpdate();
         }
     }
-    else if (arg.compare(0, 17, "SAVE_WIDTH_CALIB:") == 0) {
-        std::string path = arg.substr(17);
+    else if (starts_with(arg, "SAVE_WIDTH_CALIB:")) {
+        std::string path = after_prefix(arg, "SAVE_WIDTH_CALIB:");
         sett->settFileName = path;
         sett->SaveSettings();
         window->Send(connid, "Width calibration saved to: " + path);
     }
-    else if (arg.compare(0, 4, "RUN:") == 0) {
+    else if (starts_with(arg, "ALPHA_TRANSFORM:")) {
+        // Expected format: alpha|lit_norm
+        auto v = ParsePipeDoubles(after_prefix(arg, "ALPHA_TRANSFORM:"));
+        if (v.size() != 2) {
+            window->Send(connid, "Malformed ALPHA_TRANSFORM message.");
+            return;
+        }
+        
+        sett->lit_alpha = v[0];
+        sett->lit_norm = v[1];
+        
+        // If we have a collector (after ShapeIt has been run), apply the transformation
+        if (gSFColl) {
+            std::cout << "Applying alpha transformation: alpha=" << sett->lit_alpha 
+                      << ", norm=" << sett->lit_norm << std::endl;
+            gSFColl->Transform(sett->lit_norm, sett->lit_alpha);
+            
+            // Force complete redraw by clearing and rebuilding the graph display
+            // This is the same logic as in RunShapeIt but without re-running the analysis
+            canvas->cd();
+            canvas->Clear();
+            for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+            
+            // Extract and redraw the transformed graphs
+            TMultiGraph *diagGraph = gSFColl->getMultGraph();
+            TList *graphList = diagGraph->GetListOfGraphs();
+            
+            TGraph *litGraph = nullptr;
+            if ((sett->doOslo || sett->doMC) && !sett->osloFileName.empty()) {
+                litGraph = gSFColl->getLitGraph();
+            }
+            TGraph *avgGraph = sett->displayAvg ? gSFColl->getAvgGraph() : nullptr;
+            
+            bool firstDrawn = false;
+            TGraph *firstGraph = nullptr;
+            int colorIdx = 0;
+            int color1 = 6;
+            int color2 = sett->colour ? 7 : 6;
+            
+            if (graphList) {
+                TIter next(graphList);
+                TObject *obj;
+                while ((obj = next())) {
+                    TGraph *g = dynamic_cast<TGraph *>(obj);
+                    if (!g) continue;
+                    
+                    bool isLit = (litGraph != nullptr && g == litGraph);
+                    bool isAvg = (avgGraph != nullptr && g == avgGraph);
+                    
+                    if (isLit) {
+                        g->SetFillColor(kBlue - 10);
+                        g->SetFillStyle(3013);
+                        g->SetLineColor(kBlue);
+                        g->SetLineWidth(2);
+                        g->Draw(firstDrawn ? "L3 SAME" : "AL3");
+                        if (!firstDrawn) firstGraph = g;
+                    } else if (isAvg) {
+                        g->SetMarkerStyle(22);
+                        g->SetMarkerSize(2);
+                        g->SetMarkerColor(1);
+                        g->SetLineColor(1);
+                        g->Draw(firstDrawn ? "P SAME" : "AP");
+                        if (!firstDrawn) firstGraph = g;
+                    } else {
+                        g->SetMarkerStyle(22);
+                        g->SetMarkerSize(2);
+                        int color = (colorIdx % 2 == 0) ? color1 : color2;
+                        g->SetMarkerColor(color);
+                        g->SetLineColor(color);
+                        g->Draw(firstDrawn ? "P SAME" : "AP");
+                        if (!firstDrawn) firstGraph = g;
+                        colorIdx++;
+                    }
+                    firstDrawn = true;
+                }
+            }
+            
+            // Set axis labels and reset Y-axis range for new data
+            if (firstGraph) {
+                // Recompute axis ranges from ALL graphs to ensure everything is visible
+                double xmin = 1e99, xmax = -1e99, ymin = 1e99, ymax = -1e99;
+                
+                if (graphList) {
+                    TIter next(graphList);
+                    TObject *obj;
+                    while ((obj = next())) {
+                        TGraph *g = dynamic_cast<TGraph *>(obj);
+                        if (!g || g->GetN() == 0) continue;
+                        
+                        double gxmin, gxmax, gymin, gymax;
+                        g->ComputeRange(gxmin, gymin, gxmax, gymax);
+                        xmin = std::min(xmin, gxmin);
+                        xmax = std::max(xmax, gxmax);
+                        ymin = std::min(ymin, gymin);
+                        ymax = std::max(ymax, gymax);
+                    }
+                }
+                
+                TH1F *hist = firstGraph->GetHistogram();
+                if (hist) {
+                    hist->SetTitle("Gamma Ray Strength Function from Shape Method;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
+                    hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+                    hist->GetYaxis()->SetTitle("f(E_{#gamma}) (MeV^{-3})");
+                    hist->GetXaxis()->SetTitleSize(0.04);
+                    hist->GetYaxis()->SetTitleSize(0.04);
+                    hist->GetXaxis()->SetTitleOffset(1.0);
+                    hist->GetYaxis()->SetTitleOffset(1.2);
+                    
+                    // Set Y-axis range based on actual data with proper padding
+                    // For lower bound, use larger of absolute padding or zero (avoid negative on log scale)
+                    double yrange = ymax - ymin;
+                    double yminPadded = ymin - 0.1*yrange;  // 10% padding below
+                    if (yminPadded < 0 || ymin <= 0) yminPadded = ymin * 0.5;  // For log scale, use 50% of min
+                    hist->SetMinimum(yminPadded);
+                    hist->SetMaximum(ymax * 1.1);  // 10% above max
+                    
+                    // Don't change log scale - preserve whatever the user had set
+                    gPad->Modified();
+                }
+            }
+            
+            // Add chi2 and alpha text box if Oslo data is displayed
+            if (sett->doOslo) {
+                TPaveText *t = new TPaveText(0.8, 0.85, 0.95, 0.95, "brNDC");
+                t->SetTextSize(0.025);
+                t->SetTextAlign(13);
+                t->SetFillColor(10);
+                t->SetTextColor(61);
+                t->AddText(Form("slope #alpha: %4.2f", sett->lit_alpha));
+                t->AddText(Form("#chi^{2} value: %4.2f", gSFColl->getChi2()));
+                t->Draw();
+            }
+            
+            gDisplayMode = 0;
+            gHaveLastRange = false;
+            PushCanvasUpdate();
+        }
+    }
+    else if (arg == "REDRAW_GRAPH") {
+        std::cout << "DEBUG: REDRAW_GRAPH handler reached" << std::endl;
+        std::cout.flush();
+        
+        // Redraw the gSF graph with current transformation (mirrors TransGraph() from native code)
+        if (!gSFColl) {
+            window->Send(connid, "Run ShapeIt first before applying slope correction.");
+            return;
+        }
+        
+        std::cout << "Redrawing graph with current transformation..." << std::endl;
+        
+        // Get fresh graphs from collector (already transformed)
+        TMultiGraph *diagGraph = gSFColl->getMultGraph();
+        TList *graphList = diagGraph->GetListOfGraphs();
+        std::vector<double> allX, allY;
+
+        struct FreshGraph {
+            TGraph *graph;
+            bool isLiterature;
+            bool isAverage;
+        };
+        std::vector<FreshGraph> freshGraphs;
+        
+        // Get the literature graph pointer to reliably identify it
+        TGraph *litGraph = nullptr;
+        if ((sett->doOslo || sett->doMC) && !sett->osloFileName.empty()) {
+            litGraph = gSFColl->getLitGraph();
+        }
+        
+        // Get the average/smoothed graph pointer to identify it
+        TGraph *avgGraph = sett->displayAvg ? gSFColl->getAvgGraph() : nullptr;
+
+        if (graphList) {
+            TIter next(graphList);
+            TObject *obj;
+            while ((obj = next())) {
+                TGraph *g = dynamic_cast<TGraph *>(obj);
+                if (!g) continue;
+
+                bool isLit = (litGraph != nullptr && g == litGraph);
+                bool isAvg = (avgGraph != nullptr && g == avgGraph);
+
+                if (auto *ge = dynamic_cast<TGraphAsymmErrors *>(g)) {
+                    std::vector<double> x, y, exl, exh, eyl, eyh;
+                    for (int i = 0; i < ge->GetN(); i++) {
+                        x.push_back(ge->GetX()[i]); y.push_back(ge->GetY()[i]);
+                        exl.push_back(ge->GetEXlow()[i]); exh.push_back(ge->GetEXhigh()[i]);
+                        eyl.push_back(ge->GetEYlow()[i]); eyh.push_back(ge->GetEYhigh()[i]);
+                        allX.push_back(x.back()); allY.push_back(y.back());
+                    }
+                    auto *fresh = new TGraphAsymmErrors((int)x.size(), x.data(), y.data(),
+                                                         exl.data(), exh.data(), eyl.data(), eyh.data());
+                    fresh->Sort();
+                    freshGraphs.push_back({fresh, isLit, isAvg});
+                }
+                else if (auto *ge2 = dynamic_cast<TGraphErrors *>(g)) {
+                    std::vector<double> x, y, ex, ey;
+                    for (int i = 0; i < ge2->GetN(); i++) {
+                        x.push_back(ge2->GetX()[i]); y.push_back(ge2->GetY()[i]);
+                        ex.push_back(ge2->GetEX()[i]); ey.push_back(ge2->GetEY()[i]);
+                        allX.push_back(x.back()); allY.push_back(y.back());
+                    }
+                    auto *fresh = new TGraphErrors((int)x.size(), x.data(), y.data(), ex.data(), ey.data());
+                    fresh->Sort();
+                    freshGraphs.push_back({fresh, isLit, isAvg});
+                }
+                else {
+                    for (int i = 0; i < g->GetN(); i++) {
+                        allX.push_back(g->GetX()[i]); allY.push_back(g->GetY()[i]);
+                    }
+                }
+            }
+        }
+
+        // Clear and redraw
+        canvas->cd();
+        canvas->Clear();
+        for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
+
+        bool firstDrawn = false;
+        TGraph *firstGraph = nullptr;
+        int colorIdx = 0;
+        int color1 = 6;  // kMagenta
+        int color2 = sett->colour ? 7 : 6;  // kCyan if colour enabled
+        
+        for (auto &fg : freshGraphs) {
+            TGraph *g = fg.graph;
+
+            if (fg.isLiterature) {
+                g->SetFillColor(kBlue - 10);
+                g->SetFillStyle(3013);
+                g->SetLineColor(kBlue);
+                g->SetLineWidth(2);
+                g->Draw(firstDrawn ? "L3 SAME" : "AL3");
+                if (!firstDrawn) firstGraph = g;
+            } else if (fg.isAverage) {
+                g->SetMarkerStyle(22);
+                g->SetMarkerSize(2);
+                g->SetMarkerColor(1);
+                g->SetLineColor(1);
+                g->Draw(firstDrawn ? "P SAME" : "AP");
+                if (!firstDrawn) firstGraph = g;
+            } else {
+                g->SetMarkerStyle(22);
+                g->SetMarkerSize(2);
+                int color = (colorIdx % 2 == 0) ? color1 : color2;
+                g->SetMarkerColor(color);
+                g->SetLineColor(color);
+                g->Draw(firstDrawn ? "P SAME" : "AP");
+                if (!firstDrawn) firstGraph = g;
+                colorIdx++;
+            }
+            
+            firstDrawn = true;
+        }
+        
+        // Set axis labels
+        if (firstGraph) {
+            TH1F *hist = firstGraph->GetHistogram();
+            if (hist) {
+                hist->SetTitle("Gamma Ray Strength Function from Shape Method;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
+                hist->GetXaxis()->SetTitle("E_{#gamma} (keV)");
+                hist->GetYaxis()->SetTitle("f(E_{#gamma}) (MeV^{-3})");
+                hist->GetXaxis()->SetTitleSize(0.04);
+                hist->GetYaxis()->SetTitleSize(0.04);
+                hist->GetXaxis()->SetTitleOffset(1.0);
+                hist->GetYaxis()->SetTitleOffset(1.2);
+                firstGraph->SetTitle("Gamma Ray Strength Function from Shape Method");
+                gPad->Modified();
+            }
+        }
+        
+        // Add chi2 and alpha text box if Oslo data is displayed
+        if (sett->doOslo) {
+            TPaveText *t = new TPaveText(0.8, 0.85, 0.95, 0.95, "brNDC");
+            t->SetTextSize(0.025);
+            t->SetTextAlign(13);
+            t->SetFillColor(10);
+            t->SetTextColor(61);
+            t->AddText(Form("slope #alpha: %4.2f", sett->lit_alpha));
+            t->AddText(Form("#chi^{2} value: %4.2f", gSFColl->getChi2()));
+            t->Draw();
+        }
+        
+        gDisplayMode = 0;  // Results view
+        gHaveLastRange = false;
+        
+        PushCanvasUpdate();
+        window->Send(connid, "Graph redrawn with alpha=" + std::to_string(sett->lit_alpha));
+    }
+    else if (starts_with(arg, "RUN_MC_ALPHA:")) {
+        std::cout << "\n========================================" << std::endl;
+        std::cout << "RUN_MC_ALPHA HANDLER ENTERED" << std::endl;
+        std::cout << "========================================" << std::endl;
+        std::cout.flush();  // Force immediate output
+        
+        std::cout << "Raw message: " << arg << std::endl;
+        std::cout.flush();
+        
+        std::cout << "About to parse doubles..." << std::endl;
+        std::cout.flush();
+        
+        auto v = ParsePipeDoubles(after_prefix(arg, "RUN_MC_ALPHA:"));
+        
+        std::cout << "Parsing complete. Got " << v.size() << " values" << std::endl;
+        std::cout.flush();
+        
+        if (v.size() != 3) {
+            std::cout << "ERROR: Expected 3 values, got " << v.size() << std::endl;
+            std::cout.flush();
+            window->Send(connid, "Malformed RUN_MC_ALPHA message.");
+            return;
+        }
+        
+        std::cout << "Extracting parameters..." << std::endl;
+        std::cout.flush();
+        
+        int nIter = (int)v[0];
+        double exiMin = v[1];
+        double exiMax = v[2];
+        
+        std::cout << "Parameters extracted:" << std::endl;
+        std::cout << "  nIter = " << nIter << std::endl;
+        std::cout << "  exiMin = " << exiMin << std::endl;
+        std::cout << "  exiMax = " << exiMax << std::endl;
+        std::cout.flush();
+        
+        std::cout << "About to call RunMonteCarlo()..." << std::endl;
+        std::cout.flush();
+        
+        RunMonteCarlo(connid, nIter, exiMin, exiMax);
+        
+        std::cout << "RunMonteCarlo() returned successfully" << std::endl;
+        std::cout << "========================================" << std::endl;
+        std::cout.flush();
+    }
+    else if (starts_with(arg, "RUN:")) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|
         //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi|fix_width1|fix_width2
-        auto v = ParsePipeDoubles(arg.substr(4));
+        auto v = ParsePipeDoubles(after_prefix(arg, "RUN:"));
         if (v.size() != 14) {
             window->Send(connid, "Malformed RUN message.");
             return;
@@ -2060,29 +2862,19 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->fixDoubletWidth[0] = v[12] != 0.0;
         sett->fixDoubletWidth[1] = v[13] != 0.0;
 
-        // Keep stdout redirected to logBuffer so verbose output is captured
         std::cout << "*** About to call RunShapeIt() ***" << std::endl;
         
         RunShapeIt(connid);
         
         std::cout << "*** RunShapeIt() returned ***" << std::endl;
-        
-        // Restore stdout and send all captured output including verbose logs
-        std::cout.rdbuf(oldBuf);
-        std::string logs = logBuffer.str();
-        if (!logs.empty() && window) {
-            window->Send(connid, "LOGBATCH:" + logs);
-        }
-        
-        // Return early since we've already handled stdout restoration
-        return;
     }
-    
-    // Restore stdout and send batched log
-    std::cout.rdbuf(oldBuf);
-    std::string logs = logBuffer.str();
-    if (!logs.empty() && window) {
-        window->Send(connid, "LOGBATCH:" + logs);
+    else {
+        // CATCHALL for unhandled messages
+        std::cout << "\n!!!!! UNHANDLED MESSAGE !!!!!" << std::endl;
+        std::cout << "Message: '" << arg << "'" << std::endl;
+        std::cout << "Length: " << arg.length() << " chars" << std::endl;
+        std::cout << "First 50 chars: '" << arg.substr(0, std::min((size_t)50, arg.length())) << "'" << std::endl;
+        std::cout.flush();
     }
 }
 
@@ -2155,6 +2947,8 @@ void WebShapeIt()
             std::string settDir = DirName(cmdLineSettings);
             sett->dataFileName = ResolveRelativeTo(settDir, sett->dataFileName);
             sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
+            sett->rhoFileName = ResolveRelativeTo(settDir, sett->rhoFileName);
+            sett->discreteLevelFile = ResolveRelativeTo(settDir, sett->discreteLevelFile);
             
             std::cout << "Loaded settings from: " << cmdLineSettings << std::endl;
             
