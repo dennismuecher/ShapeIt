@@ -471,6 +471,7 @@ void DrawMarkers(bool usePadRange = false)
 // members -- used to detect zoom/pan so markers can be redrawn to match.
 double gLastUxmin = 0, gLastUxmax = 0, gLastUymin = 0, gLastUymax = 0;
 bool gHaveLastRange = false;
+int gSkipRangeChecks = 0;  // Skip this many polling cycles (for context menu operations)
 
 // Track last marker positions to detect when they're dragged
 double gLastLevEne[4] = {0, 0, 0, 0};
@@ -522,10 +523,10 @@ void MCTimerCallback()
             std::cout << "Best fit: alpha=" << bestAlpha << ", chi2=" << bestChi2 
                       << ", Ex_low=" << bestExLow << std::endl;
             
-            // Top left: chi2 vs alpha with best point marked
+            // Top left: chi2 vs delta alpha with best point marked
             canvas->cd(1);
             TGraph *gFinal = new TGraph(gMCState->alphas.size(), &gMCState->alphas[0], &gMCState->chi2s[0]);
-            gFinal->SetTitle("Chi^{2} vs #alpha (Final);#alpha [MeV^{-1}];#chi^{2}");
+            gFinal->SetTitle("Chi^{2} vs #Delta#alpha (Final);#Delta#alpha [MeV^{-1}];#chi^{2}");
             gFinal->SetMarkerStyle(20);
             gFinal->SetMarkerSize(0.8);
             gFinal->SetMarkerColor(kBlue);
@@ -536,10 +537,10 @@ void MCTimerCallback()
             bestPoint->SetMarkerSize(2);
             bestPoint->Draw();
             
-            // Top right: Ex_low vs alpha with best point marked
+            // Top right: Ex_low vs delta alpha with best point marked
             canvas->cd(2);
             TGraph *gExFinal = new TGraph(gMCState->exis.size(), &gMCState->exis[0], &gMCState->alphas[0]);
-            gExFinal->SetTitle("Ex_{low} vs #alpha;Ex_{low} [keV];#alpha [MeV^{-1}]");
+            gExFinal->SetTitle("Ex_{low} vs #Delta#alpha;Ex_{low} [keV];#Delta#alpha [MeV^{-1}]");
             gExFinal->SetMarkerStyle(20);
             gExFinal->SetMarkerSize(0.8);
             gExFinal->SetMarkerColor(kRed);
@@ -550,12 +551,12 @@ void MCTimerCallback()
             bestPointEx->SetMarkerSize(2);
             bestPointEx->Draw();
             
-            // Bottom left: alpha histogram with best line
+            // Bottom left: delta alpha histogram with best line
             canvas->cd(3);
             double aMin = *std::min_element(gMCState->alphas.begin(), gMCState->alphas.end());
             double aMax = *std::max_element(gMCState->alphas.begin(), gMCState->alphas.end());
             TH1D *hFinal = new TH1D("hAlphaFinal", 
-                                     Form("Alpha Distribution (Best: %.3f);#alpha [MeV^{-1}];Counts", bestAlpha),
+                                     Form("#Delta#alpha Distribution (Best: %.3f);#Delta#alpha [MeV^{-1}];Counts", bestAlpha),
                                      50, aMin, aMax);
             for (double a : gMCState->alphas) hFinal->Fill(a);
             hFinal->SetLineColor(kBlue);
@@ -589,6 +590,7 @@ void MCTimerCallback()
             // Restore settings
             sett->exiEne[0] = gMCState->savedExiLow;
             sett->exiEne[1] = gMCState->savedExiHigh;
+            sett->doMC = false;  // Disable MC mode after completion
             
             std::string msg = "MC_RESULT:" + std::to_string(bestAlpha) + "|" + std::to_string(bestChi2) 
                               + "|" + std::to_string(bestExLow);
@@ -596,6 +598,7 @@ void MCTimerCallback()
             
             std::cout << "Monte Carlo complete. Best alpha: " << bestAlpha 
                       << " (chi2: " << bestChi2 << ", Ex_low: " << bestExLow << " keV)" << std::endl;
+            std::cout << "MC mode disabled (doMC = false)" << std::endl;
             
             delete gMCState->graph;
             delete gMCState;
@@ -673,7 +676,7 @@ void MCTimerCallback()
         litCopy->SetFillColor(kRed-10);
         litCopy->SetFillStyle(3013);
         litCopy->Draw("AL3");
-        litCopy->SetTitle(Form("MC Iteration %d/%d (alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
+        litCopy->SetTitle(Form("MC Iteration %d/%d (#Delta#alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
                                gMCState->currentIter+1, gMCState->totalIters, alpha));
     }
     
@@ -687,7 +690,7 @@ void MCTimerCallback()
             freshGraph->Draw("P SAME");
         } else {
             freshGraph->Draw("AP");
-            freshGraph->SetTitle(Form("MC Iteration %d/%d (alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
+            freshGraph->SetTitle(Form("MC Iteration %d/%d (#Delta#alpha=%.3f);E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})", 
                                        gMCState->currentIter+1, gMCState->totalIters, alpha));
         }
     }
@@ -714,6 +717,10 @@ void RunMonteCarlo(unsigned connid, int nIterations, double exiLowMin, double ex
         window->Send(connid, "ERROR: Monte Carlo requires matrix and Oslo literature data loaded.");
         return;
     }
+    
+    // Enable MC mode for Gaussian randomization of literature and experimental data
+    sett->doMC = true;
+    std::cout << "MC mode enabled (doMC = true) - data will be randomized" << std::endl;
     
     std::cout << "Prerequisites OK, starting MC run..." << std::endl;
     
@@ -877,6 +884,12 @@ void CheckRangeChanged()
     if (!matrix || (gDisplayMode != 4 && gDisplayMode != 5) || !gPad)
         return;
 
+    // If we're skipping checks (context menu operation in progress), decrement and return
+    if (gSkipRangeChecks > 0) {
+        gSkipRangeChecks--;
+        return;
+    }
+
     double uxmin = gPad->GetUxmin(), uxmax = gPad->GetUxmax();
     double uymin = gPad->GetUymin(), uymax = gPad->GetUymax();
 
@@ -1033,6 +1046,14 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
 {
     if (!matrix || (gDisplayMode != 4 && gDisplayMode != 5))
         return;
+
+    // On right-click (context menu), pause polling for 3 cycles (~1.5 seconds)
+    // This gives ROOT's context menu operations (like unzoom) time to complete
+    // without our marker redrawing interfering
+    if (event == kButton3Down) {
+        gSkipRangeChecks = 3;  // Skip next 3 polling cycles
+        return;
+    }
 
     CheckRangeChanged();
 
@@ -2997,13 +3018,15 @@ void WebShapeIt()
     canvas->Connect("ProcessedEvent(Int_t,Int_t,Int_t,TObject*)", 0, 0,
                      "HandleCanvasEvent(Int_t,Int_t,Int_t,TObject*)");
 
-    // Polls the pad's axis range and marker positions every 200ms
+    // Polls the pad's axis range and marker positions every 500ms
     // - CheckRangeChanged() redraws markers when zoom/pan changes
     // - CheckMarkersChanged() updates settings when markers are dragged
+    // Longer interval (500ms vs 200ms) reduces interference with ROOT's own
+    // context menu operations (like unzoom), which need time to complete
     static TTimer *pollTimer = new TTimer();
     pollTimer->Connect("Timeout()", 0, 0, "CheckRangeChanged()");
     pollTimer->Connect("Timeout()", 0, 0, "CheckMarkersChanged()");
-    pollTimer->Start(200, kFALSE);
+    pollTimer->Start(500, kFALSE);
 
     window = ROOT::RWebWindow::Create();
     window->SetMaxQueueLength(100);  // Increase from default 10 to handle verbose output
