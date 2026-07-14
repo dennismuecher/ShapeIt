@@ -409,6 +409,18 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
         }
     }
     
+    //if fixPeakPos is set, fix peak position according to user setting
+    if (sett->fixPeakPos[level])
+    {
+        fit_result[level]->FixParameter(4, sett->peakPos[level]);
+    }
+    
+    //if fixDoubletPeakPos is set, fix doublet peak position according to user setting
+    if (is_doublet && sett->fixDoubletPeakPos[level])
+    {
+        fit_result[level]->FixParameter(7, sett->doubletPeakPos[level]);
+    }
+    
     //perform fit
     snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);

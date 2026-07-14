@@ -359,7 +359,11 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->verbose) + "|";
     msg += std::to_string(sett->widthCal[0][0]) + "|" + std::to_string(sett->widthCal[0][1]) + "|";
     msg += std::to_string(sett->widthCal[1][0]) + "|" + std::to_string(sett->widthCal[1][1]) + "|";
-    msg += std::to_string(sett->lit_alpha) + "|" + std::to_string(sett->lit_norm);
+    msg += std::to_string(sett->lit_alpha) + "|" + std::to_string(sett->lit_norm) + "|";
+    msg += std::to_string(sett->fixPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->peakPos[0]) + "|";
+    msg += std::to_string(sett->fixPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->peakPos[1]) + "|";
+    msg += std::to_string(sett->fixDoubletPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[0]) + "|";
+    msg += std::to_string(sett->fixDoubletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[1]);
     window->Send(connid, msg);
 }
 
@@ -375,6 +379,13 @@ void SendSettingsSync(unsigned connid)
 // should be used instead, so markers resize/reposition to match -- and
 // markers entirely outside the current X range are skipped rather than drawn
 // off in space.
+
+// Global markers for level 1 and level 2 peak positions
+TMarker *gLevel1PeakMarker = nullptr;
+TMarker *gLevel2PeakMarker = nullptr;
+TMarker *gDoublet1PeakMarker = nullptr;
+TMarker *gDoublet2PeakMarker = nullptr;
+
 void DrawMarkers(bool usePadRange = false)
 {
     for (int i = 0; i < 4; i++) {
@@ -382,6 +393,12 @@ void DrawMarkers(bool usePadRange = false)
         if (gDoubletLine[i]) canvas->GetListOfPrimitives()->Remove(gDoubletLine[i]);
         if (gBgBox[i]) canvas->GetListOfPrimitives()->Remove(gBgBox[i]);
     }
+    
+    // Remove the peak markers
+    if (gLevel1PeakMarker) canvas->GetListOfPrimitives()->Remove(gLevel1PeakMarker);
+    if (gLevel2PeakMarker) canvas->GetListOfPrimitives()->Remove(gLevel2PeakMarker);
+    if (gDoublet1PeakMarker) canvas->GetListOfPrimitives()->Remove(gDoublet1PeakMarker);
+    if (gDoublet2PeakMarker) canvas->GetListOfPrimitives()->Remove(gDoublet2PeakMarker);
 
     if (gDisplayMode != 4 && gDisplayMode != 5) {
         PushCanvasUpdate();
@@ -418,6 +435,54 @@ void DrawMarkers(bool usePadRange = false)
         gMarkerLine[i]->SetLineWidth(2);
         if (sett->levEne[i] >= xmin && sett->levEne[i] <= xmax)
             gMarkerLine[i]->Draw();
+    }
+    
+    // Draw a star at level 1 peak position if fix toggle is enabled
+    if (sett->fixPeakPos[0]) {
+        double level1PeakX = sett->peakPos[0];
+        double level1PeakY = y2 * 0.95;  // Position near top of plot
+        if (level1PeakX >= xmin && level1PeakX <= xmax) {
+            gLevel1PeakMarker = new TMarker(level1PeakX, level1PeakY, 29);  // 29 = star
+            gLevel1PeakMarker->SetMarkerColor(kRed);
+            gLevel1PeakMarker->SetMarkerSize(2.0);
+            gLevel1PeakMarker->Draw();
+        }
+    }
+    
+    // Draw a star at level 2 peak position if fix toggle is enabled
+    if (sett->fixPeakPos[1]) {
+        double level2PeakX = sett->peakPos[1];
+        double level2PeakY = y2 * 0.90;  // Position slightly lower than level 1
+        if (level2PeakX >= xmin && level2PeakX <= xmax) {
+            gLevel2PeakMarker = new TMarker(level2PeakX, level2PeakY, 29);  // 29 = star
+            gLevel2PeakMarker->SetMarkerColor(kBlue);
+            gLevel2PeakMarker->SetMarkerSize(2.0);
+            gLevel2PeakMarker->Draw();
+        }
+    }
+    
+    // Draw a star at doublet 1 peak position if fix toggle is enabled
+    if (sett->doDoublet[0] && sett->fixDoubletPeakPos[0]) {
+        double doublet1PeakX = sett->doubletPeakPos[0];
+        double doublet1PeakY = y2 * 0.85;  // Position lower than level 1
+        if (doublet1PeakX >= xmin && doublet1PeakX <= xmax) {
+            gDoublet1PeakMarker = new TMarker(doublet1PeakX, doublet1PeakY, 29);  // 29 = star
+            gDoublet1PeakMarker->SetMarkerColor(kOrange);
+            gDoublet1PeakMarker->SetMarkerSize(2.0);
+            gDoublet1PeakMarker->Draw();
+        }
+    }
+    
+    // Draw a star at doublet 2 peak position if fix toggle is enabled
+    if (sett->doDoublet[1] && sett->fixDoubletPeakPos[1]) {
+        double doublet2PeakX = sett->doubletPeakPos[1];
+        double doublet2PeakY = y2 * 0.80;  // Position lower than doublet 1
+        if (doublet2PeakX >= xmin && doublet2PeakX <= xmax) {
+            gDoublet2PeakMarker = new TMarker(doublet2PeakX, doublet2PeakY, 29);  // 29 = star
+            gDoublet2PeakMarker->SetMarkerColor(kOrange + 2);
+            gDoublet2PeakMarker->SetMarkerSize(2.0);
+            gDoublet2PeakMarker->Draw();
+        }
     }
 
     // Draw doublet markers (orange) if enabled via checkbox
@@ -2420,6 +2485,120 @@ void ProcessData(unsigned connid, const std::string &arg)
             PushCanvasUpdate();
         } else {
             // Just redraw markers (handles Integration mode or when not viewing projection)
+            DrawMarkers(true);
+        }
+    }
+    else if (starts_with(arg, "PEAKPOS:")) {
+        // Format: PEAKPOS:level|enable|position
+        // level: 0=level1, 1=level2
+        // enable: 0=off, 1=on
+        // position: peak position in keV
+        auto v = ParsePipeDoubles(after_prefix(arg, "PEAKPOS:"));
+        if (v.size() != 3) {
+            window->Send(connid, "Malformed PEAKPOS message.");
+            return;
+        }
+        
+        int level = (int)v[0];
+        bool enable = v[1] != 0.0;
+        double position = v[2];
+        
+        if (level < 0 || level > 1) {
+            window->Send(connid, "Invalid level in PEAKPOS message.");
+            return;
+        }
+        
+        sett->fixPeakPos[level] = enable;
+        sett->peakPos[level] = position;
+        
+        std::cout << "Peak position for level " << (level+1) << ": " 
+                  << (enable ? "ENABLED" : "DISABLED") 
+                  << " at " << position << " keV" << std::endl;
+        
+        // If in Autofit mode and viewing a bin projection, re-fit when peak position changes
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            // Just redraw markers
+            DrawMarkers(true);
+        }
+    }
+    else if (starts_with(arg, "DOUBLETPEAKPOS:")) {
+        // Format: DOUBLETPEAKPOS:level|enable|position
+        // level: 0=level1_doublet, 1=level2_doublet
+        // enable: 0=off, 1=on
+        // position: peak position in keV
+        auto v = ParsePipeDoubles(after_prefix(arg, "DOUBLETPEAKPOS:"));
+        if (v.size() != 3) {
+            window->Send(connid, "Malformed DOUBLETPEAKPOS message.");
+            return;
+        }
+        
+        int level = (int)v[0];
+        bool enable = v[1] != 0.0;
+        double position = v[2];
+        
+        if (level < 0 || level > 1) {
+            window->Send(connid, "Invalid level in DOUBLETPEAKPOS message.");
+            return;
+        }
+        
+        sett->fixDoubletPeakPos[level] = enable;
+        sett->doubletPeakPos[level] = position;
+        
+        std::cout << "Doublet peak position for level " << (level+1) << ": " 
+                  << (enable ? "ENABLED" : "DISABLED") 
+                  << " at " << position << " keV" << std::endl;
+        
+        // If in Autofit mode and viewing a bin projection, re-fit when doublet peak position changes
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Doublet peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            // Just redraw markers
             DrawMarkers(true);
         }
     }

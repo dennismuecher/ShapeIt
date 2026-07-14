@@ -80,6 +80,10 @@ public:
     double exiEneMC[2] = {2000, 3000};                        //range of values for lower excitation energy for MC simulation
     double exi_size[2] = {0, 0};					//bin size for shape method
     double widthCal[2][2];                  //parameters for width calibration
+    bool fixPeakPos[2] = {false, false};    //if true, fix peak position in autofit for level 1/2
+    double peakPos[2] = {0, 0};             //fixed peak position in keV for level 1 and 2
+    bool fixDoubletPeakPos[2] = {false, false};  //if true, fix doublet peak position in autofit for level 1/2
+    double doubletPeakPos[2] = {0, 0};      //fixed doublet peak position in keV for level 1 and 2
     int nOfBins = 1;
     double eff_corr = 1;					//correction factor for level 2;
     int minCounts = 0;                      //minimum number of counts required in a bin to be considered

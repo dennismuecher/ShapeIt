@@ -136,7 +136,6 @@ COMMUNICATION PROTOCOL:
 
           <div class="section-label">
             <span>Level 1</span>
-            <label style="font-size: 12px;"><input type="checkbox" id="doublet1"> Doublet</label>
           </div>
           <div class="field-row">
             <input type="number" id="lvl1-lo" value="685">
@@ -144,6 +143,16 @@ COMMUNICATION PROTOCOL:
             <input type="number" id="lvl1-hi" value="900">
             <span>keV</span>
           </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+            <input type="checkbox" id="fixPeakPos1" style="margin: 0;">
+            <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+            <input type="number" id="peakPos1" value="792" step="0.1" style="width: 80px; padding: 4px;" disabled>
+            <span style="font-size: 12px;">keV</span>
+          </div>
+          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #4a90e2;">
+            <input type="checkbox" id="doublet1" style="margin: 0;">
+            <span>Doublet</span>
+          </label>
           <div class="doublet-box" id="doublet1-fields" style="display: none;">
             <div class="field-row" style="margin-bottom: 0;">
               <input type="number" id="d1-lo" value="920">
@@ -151,15 +160,20 @@ COMMUNICATION PROTOCOL:
               <input type="number" id="d1-hi" value="960">
               <span>keV</span>
             </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="fixPeakPosD1" style="margin: 0;">
+              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+              <input type="number" id="peakPosD1" value="940" step="0.1" style="width: 80px; padding: 4px;" disabled>
+              <span style="font-size: 12px;">keV</span>
+            </div>
             <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
               <input type="checkbox" id="fixDoubletWidth1" checked style="margin-right: 8px;">
               <span>Fix doublet width to main peak</span>
             </label>
           </div>
 
-          <div class="section-label">
+          <div class="section-label" style="margin-top: 20px;">
             <span>Level 2</span>
-            <label style="font-size: 12px;"><input type="checkbox" id="doublet2"> Doublet</label>
           </div>
           <div class="field-row">
             <input type="number" id="lvl2-lo" value="1497">
@@ -167,12 +181,28 @@ COMMUNICATION PROTOCOL:
             <input type="number" id="lvl2-hi" value="1732">
             <span>keV</span>
           </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+            <input type="checkbox" id="fixPeakPos2" style="margin: 0;">
+            <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+            <input type="number" id="peakPos2" value="1614" step="0.1" style="width: 80px; padding: 4px;" disabled>
+            <span style="font-size: 12px;">keV</span>
+          </div>
+          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #4a90e2;">
+            <input type="checkbox" id="doublet2" style="margin: 0;">
+            <span>Doublet</span>
+          </label>
           <div class="doublet-box" id="doublet2-fields" style="display: none;">
             <div class="field-row" style="margin-bottom: 0;">
               <input type="number" id="d2-lo" value="1750">
               <span>to</span>
               <input type="number" id="d2-hi" value="1790">
               <span>keV</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="fixPeakPosD2" style="margin: 0;">
+              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+              <input type="number" id="peakPosD2" value="1770" step="0.1" style="width: 80px; padding: 4px;" disabled>
+              <span style="font-size: 12px;">keV</span>
             </div>
             <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
               <input type="checkbox" id="fixDoubletWidth2" checked style="margin-right: 8px;">
@@ -1171,6 +1201,58 @@ COMMUNICATION PROTOCOL:
             document.getElementById('alpha-slope').value = v[43];
             document.getElementById('lit-norm').value = v[44];
           }
+          
+          // Peak position settings (indices 45-48, if present)
+          if (v.length >= 49) {
+            const fixPeak1 = v[45] !== 0;
+            let peakPos1 = v[46];
+            const fixPeak2 = v[47] !== 0;
+            let peakPos2 = v[48];
+            
+            // If peak position is 0 (uninitialized), set to middle of level range
+            if (peakPos1 === 0) {
+              peakPos1 = (v[0] + v[1]) / 2;  // (lvl1-lo + lvl1-hi) / 2
+            }
+            if (peakPos2 === 0) {
+              peakPos2 = (v[2] + v[3]) / 2;  // (lvl2-lo + lvl2-hi) / 2
+            }
+            
+            document.getElementById('fixPeakPos1').checked = fixPeak1;
+            document.getElementById('peakPos1').value = peakPos1;
+            document.getElementById('peakPos1').disabled = !fixPeak1;
+            document.getElementById('peakPos1').style.color = fixPeak1 ? '' : '#999';
+            
+            document.getElementById('fixPeakPos2').checked = fixPeak2;
+            document.getElementById('peakPos2').value = peakPos2;
+            document.getElementById('peakPos2').disabled = !fixPeak2;
+            document.getElementById('peakPos2').style.color = fixPeak2 ? '' : '#999';
+          }
+          
+          // Doublet peak position settings (indices 49-52, if present)
+          if (v.length >= 53) {
+            const fixPeakD1 = v[49] !== 0;
+            let peakPosD1 = v[50];
+            const fixPeakD2 = v[51] !== 0;
+            let peakPosD2 = v[52];
+            
+            // If doublet peak position is 0 (uninitialized), set to middle of doublet range
+            if (peakPosD1 === 0) {
+              peakPosD1 = (v[6] + v[7]) / 2;  // (d1-lo + d1-hi) / 2
+            }
+            if (peakPosD2 === 0) {
+              peakPosD2 = (v[8] + v[9]) / 2;  // (d2-lo + d2-hi) / 2
+            }
+            
+            document.getElementById('fixPeakPosD1').checked = fixPeakD1;
+            document.getElementById('peakPosD1').value = peakPosD1;
+            document.getElementById('peakPosD1').disabled = !fixPeakD1;
+            document.getElementById('peakPosD1').style.color = fixPeakD1 ? '' : '#999';
+            
+            document.getElementById('fixPeakPosD2').checked = fixPeakD2;
+            document.getElementById('peakPosD2').value = peakPosD2;
+            document.getElementById('peakPosD2').disabled = !fixPeakD2;
+            document.getElementById('peakPosD2').style.color = fixPeakD2 ? '' : '#999';
+          }
         }
         
         // Starting directory
@@ -1357,6 +1439,64 @@ COMMUNICATION PROTOCOL:
     document.getElementById('doublet2-fields').style.display = e.target.checked ? 'block' : 'none';
     sendLevelEnergies();
   });
+
+  // Peak position toggles enable/disable position fields and update markers
+  document.getElementById('fixPeakPos1').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPos1');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendPeakPosition(0);
+  });
+  document.getElementById('fixPeakPos2').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPos2');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendPeakPosition(1);
+  });
+
+  // Peak position values trigger immediate update
+  document.getElementById('peakPos1').addEventListener('change', () => sendPeakPosition(0));
+  document.getElementById('peakPos2').addEventListener('change', () => sendPeakPosition(1));
+
+  // Doublet peak position toggles
+  document.getElementById('fixPeakPosD1').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPosD1');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendDoubletPeakPosition(0);
+  });
+  document.getElementById('fixPeakPosD2').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPosD2');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendDoubletPeakPosition(1);
+  });
+
+  // Doublet peak position values trigger immediate update
+  document.getElementById('peakPosD1').addEventListener('change', () => sendDoubletPeakPosition(0));
+  document.getElementById('peakPosD2').addEventListener('change', () => sendDoubletPeakPosition(1));
+
+  function sendPeakPosition(level) {
+    const checkbox = document.getElementById('fixPeakPos' + (level + 1));
+    const input = document.getElementById('peakPos' + (level + 1));
+    const enable = checkbox.checked ? 1 : 0;
+    const position = input.value;
+    if (conn_handle) {
+      conn_handle.send('PEAKPOS:' + level + '|' + enable + '|' + position);
+    }
+    markSettingsDirty();
+  }
+
+  function sendDoubletPeakPosition(level) {
+    const checkbox = document.getElementById('fixPeakPosD' + (level + 1));
+    const input = document.getElementById('peakPosD' + (level + 1));
+    const enable = checkbox.checked ? 1 : 0;
+    const position = input.value;
+    if (conn_handle) {
+      conn_handle.send('DOUBLETPEAKPOS:' + level + '|' + enable + '|' + position);
+    }
+    markSettingsDirty();
+  }
 
   // Width fix toggles trigger re-send of level energies
   document.getElementById('fixDoubletWidth1').addEventListener('change', sendLevelEnergies);

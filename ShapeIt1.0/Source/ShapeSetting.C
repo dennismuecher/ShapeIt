@@ -22,6 +22,18 @@ ShapeSetting::ShapeSetting(void)
         parityFlag[i] = false;
         formatFlag[i] = false;
     }
+    
+    // Initialize peak position settings
+    fixPeakPos[0] = false;
+    fixPeakPos[1] = false;
+    peakPos[0] = (levEne[0] + levEne[1]) / 2.0;  // Default: center of level 1 range
+    peakPos[1] = (levEne[2] + levEne[3]) / 2.0;  // Default: center of level 2 range
+    
+    // Initialize doublet peak position settings
+    fixDoubletPeakPos[0] = false;
+    fixDoubletPeakPos[1] = false;
+    doubletPeakPos[0] = (levEne_2[0] + levEne_2[1]) / 2.0;  // Default: center of doublet 1 range
+    doubletPeakPos[1] = (levEne_2[2] + levEne_2[3]) / 2.0;  // Default: center of doublet 2 range
 }
 
 //resets the width calibration to zero
@@ -187,6 +199,14 @@ void ShapeSetting::SaveSettings() {
     outfile << "minCounts " << minCounts <<"\n";
     outfile << "doWidthCal " << doWidthCal <<"\n";
     outfile << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
+    outfile << "fixPeakPos1 " << fixPeakPos[0] <<"\n";
+    outfile << "peakPos1 " << peakPos[0] <<"\n";
+    outfile << "fixPeakPos2 " << fixPeakPos[1] <<"\n";
+    outfile << "peakPos2 " << peakPos[1] <<"\n";
+    outfile << "fixDoubletPeakPos1 " << fixDoubletPeakPos[0] <<"\n";
+    outfile << "doubletPeakPos1 " << doubletPeakPos[0] <<"\n";
+    outfile << "fixDoubletPeakPos2 " << fixDoubletPeakPos[1] <<"\n";
+    outfile << "doubletPeakPos2 " << doubletPeakPos[1] <<"\n";
     outfile << "rhoFileName " << rhoFileName <<"\n";
     outfile << "rhoScale " << rhoScale <<"\n";
     outfile << "spinLow " << spinLow <<"\n";
@@ -295,6 +315,14 @@ void ShapeSetting::ReadSettings() {
             if (word == "minCounts" ) isstr >> minCounts ;
             if (word == "doWidthCal" ) isstr >> doWidthCal ;
             if (word == "widthCal" ){ isstr >> widthCal[0][0]; isstr >> widthCal[0][1]; isstr >> widthCal[1][0]; isstr >> widthCal[1][1];}
+            if (word == "fixPeakPos1" ) isstr >> fixPeakPos[0];
+            if (word == "peakPos1" ) isstr >> peakPos[0];
+            if (word == "fixPeakPos2" ) isstr >> fixPeakPos[1];
+            if (word == "peakPos2" ) isstr >> peakPos[1];
+            if (word == "fixDoubletPeakPos1" ) isstr >> fixDoubletPeakPos[0];
+            if (word == "doubletPeakPos1" ) isstr >> doubletPeakPos[0];
+            if (word == "fixDoubletPeakPos2" ) isstr >> fixDoubletPeakPos[1];
+            if (word == "doubletPeakPos2" ) isstr >> doubletPeakPos[1];
             if (word == "discreteLevelFile" ) { isstr >>discreteLevelFile; isstr >>discreteBins;}
             if (word == "rhoScale" ) isstr >> rhoScale ;
             if (word == "spinLow" ) isstr >> spinLow ;
@@ -391,7 +419,14 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "spinHigh " << spinHigh <<"\n";
     std::cout  << "doWidthCal " << doWidthCal <<"\n";
     std::cout  << "widthCal " << widthCal[0][0] <<" "<< widthCal[0][1] <<" "<< widthCal[1][0] <<" "<< widthCal[1][1] <<"\n";
-    
+    std::cout  << "fixPeakPos1 " << fixPeakPos[0] <<"\n";
+    std::cout  << "peakPos1 " << peakPos[0] <<"\n";
+    std::cout  << "fixPeakPos2 " << fixPeakPos[1] <<"\n";
+    std::cout  << "peakPos2 " << peakPos[1] <<"\n";
+    std::cout  << "fixDoubletPeakPos1 " << fixDoubletPeakPos[0] <<"\n";
+    std::cout  << "doubletPeakPos1 " << doubletPeakPos[0] <<"\n";
+    std::cout  << "fixDoubletPeakPos2 " << fixDoubletPeakPos[1] <<"\n";
+    std::cout  << "doubletPeakPos2 " << doubletPeakPos[1] <<"\n";
   
 }
 
