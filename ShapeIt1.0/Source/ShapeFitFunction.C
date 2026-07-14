@@ -18,11 +18,11 @@
 class  ShapeFitFunction {
     
 private:
-    int multip;								//number of multiplet peaks
+    int multip;								//number of multiplet peaks (1=doublet, 2=triplet)
     bool fix_width;							//keep the width of all peaks the same during fit
     double bgRanges[4];						//ranges of the background (left and right region)
     double peakRanges[2];					//ranges of the peak
-    double multi_gaus[4];					//guass of multiplet peaks
+    double multi_gaus[4];					//gauss of multiplet peaks (supports up to 4 additional peaks)
     double gauss;							//gauss of main peak
     bool do_reject;							// flag to control if events outside the background ranges should be rejected
     
@@ -43,11 +43,9 @@ public:
     
     //Constructor
     
-    ShapeFitFunction (bool is_doublet, bool fix_doublet_width = true ) {
-		if ( is_doublet) 
-			multip = 1;
-		else
-			multip = 0;
+    ShapeFitFunction (int multiplet_type, bool fix_multiplet_width = true ) {
+		// multiplet_type: 0 = single peak, 1 = doublet, 2 = triplet
+		multip = multiplet_type;
 		
         for (int j = 0; j < 4; j++) {
             bgRanges[j] = 0;
@@ -56,7 +54,7 @@ public:
         gauss = 0;
         peakRanges[0] = 0; peakRanges[1] = 0;
         do_reject = true;
-        fix_width = fix_doublet_width;
+        fix_width = fix_multiplet_width;
     }
     
     void SetReject (bool ddo_reject) {do_reject = ddo_reject;}
@@ -84,8 +82,10 @@ public:
             TF1::RejectPoint();
             return 0;
         }
-        //define one gaussian for each multiplet peak
-        //the first gaussian has parameters par[3], par[4], par[5], the second peak has par[6], par[7]
+        //define one gaussian for main peak and additional peaks for multiplets
+        //Main peak: par[3] (amplitude), par[4] (position), par[5] (width)
+        //For doublet (multip=1): par[6] (ampl), par[7] (pos), par[8] (width if not fixed)
+        //For triplet (multip=2): adds par[9] (ampl), par[10] (pos), par[11] (width if not fixed)
         gauss = par[3]*exp(-0.5*TMath::Power(((x[0]-par[4])/par[5]),2));
         for (int j = 0; j < multip; j++) {
             if (fix_width)

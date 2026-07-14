@@ -34,6 +34,12 @@ ShapeSetting::ShapeSetting(void)
     fixDoubletPeakPos[1] = false;
     doubletPeakPos[0] = (levEne_2[0] + levEne_2[1]) / 2.0;  // Default: center of doublet 1 range
     doubletPeakPos[1] = (levEne_2[2] + levEne_2[3]) / 2.0;  // Default: center of doublet 2 range
+    
+    // Initialize triplet peak position settings
+    fixTripletPeakPos[0] = false;
+    fixTripletPeakPos[1] = false;
+    tripletPeakPos[0] = (levEne_3[0] + levEne_3[1]) / 2.0;  // Default: center of triplet 1 range
+    tripletPeakPos[1] = (levEne_3[2] + levEne_3[3]) / 2.0;  // Default: center of triplet 2 range
 }
 
 //resets the width calibration to zero
@@ -182,14 +188,20 @@ void ShapeSetting::SaveSettings() {
     outfile << "lit_alpha_error " << lit_alpha_error[0] <<" "<<lit_alpha_error[1] <<"\n";
     outfile << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
     outfile << "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
+    outfile << "level1_3 " << levEne_3[0] <<" "<<levEne_3[1] <<"\n";
     outfile << "doDoublet1 " << doDoublet[0] <<"\n";
+    outfile << "doTriplet1 " << doTriplet[0] <<"\n";
     outfile << "fixDoubletWidth1 " << fixDoubletWidth[0] <<"\n";
+    outfile << "fixTripletWidth1 " << fixTripletWidth[0] <<"\n";
     outfile << "bg_level1 " << bgEne[0][0] <<" "<< bgEne[0][1] <<" "<< bgEne[0][2] <<" "<< bgEne[0][3] <<"\n";
     outfile << "bg_level2 " << bgEne[1][0] <<" "<< bgEne[1][1] <<" "<< bgEne[1][2] <<" "<< bgEne[1][3] <<"\n";
     outfile << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
     outfile << "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
+    outfile << "level2_3 " << levEne_3[2] <<" "<<levEne_3[3] <<"\n";
     outfile << "doDoublet2 " << doDoublet[1] <<"\n";
+    outfile << "doTriplet2 " << doTriplet[1] <<"\n";
     outfile << "fixDoubletWidth2 " << fixDoubletWidth[1] <<"\n";
+    outfile << "fixTripletWidth2 " << fixTripletWidth[1] <<"\n";
 	outfile << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     outfile << "excitationMCLimits " << exiEneMC[0] <<" "<<exiEneMC[1] <<"\n";
     outfile << "excitation_bin_1 " << exi_size[0] <<"\n";
@@ -207,6 +219,10 @@ void ShapeSetting::SaveSettings() {
     outfile << "doubletPeakPos1 " << doubletPeakPos[0] <<"\n";
     outfile << "fixDoubletPeakPos2 " << fixDoubletPeakPos[1] <<"\n";
     outfile << "doubletPeakPos2 " << doubletPeakPos[1] <<"\n";
+    outfile << "fixTripletPeakPos1 " << fixTripletPeakPos[0] <<"\n";
+    outfile << "tripletPeakPos1 " << tripletPeakPos[0] <<"\n";
+    outfile << "fixTripletPeakPos2 " << fixTripletPeakPos[1] <<"\n";
+    outfile << "tripletPeakPos2 " << tripletPeakPos[1] <<"\n";
     outfile << "rhoFileName " << rhoFileName <<"\n";
     outfile << "rhoScale " << rhoScale <<"\n";
     outfile << "spinLow " << spinLow <<"\n";
@@ -298,12 +314,18 @@ void ShapeSetting::ReadSettings() {
             if (word == "lit_alpha_error" ) { isstr >> lit_alpha_error[0]; isstr >> lit_alpha_error[1];}
             if (word == "level1" ) { isstr >> levEne[0]; isstr >>levEne[1];}
 			if (word == "level1_2" ) { isstr >> levEne_2[0]; isstr >>levEne_2[1];}
+			if (word == "level1_3" ) { isstr >> levEne_3[0]; isstr >>levEne_3[1];}
             if (word == "doDoublet1" ) isstr >> doDoublet[0];
+            if (word == "doTriplet1" ) isstr >> doTriplet[0];
             if (word == "fixDoubletWidth1" ) isstr >> fixDoubletWidth[0];
+            if (word == "fixTripletWidth1" ) isstr >> fixTripletWidth[0];
             if (word == "level2" ) { isstr >> levEne[2]; isstr >>levEne[3];}
 			if (word == "level2_2" ) { isstr >> levEne_2[2]; isstr >>levEne_2[3];}
+			if (word == "level2_3" ) { isstr >> levEne_3[2]; isstr >>levEne_3[3];}
             if (word == "doDoublet2" ) isstr >> doDoublet[1];
+            if (word == "doTriplet2" ) isstr >> doTriplet[1];
             if (word == "fixDoubletWidth2" ) isstr >> fixDoubletWidth[1];
+            if (word == "fixTripletWidth2" ) isstr >> fixTripletWidth[1];
             if (word == "bg_level1" ){ isstr >> bgEne[0][0]; isstr >> bgEne[0][1]; isstr >> bgEne[0][2]; isstr >> bgEne[0][3];}
             if (word == "bg_level2" ){ isstr >> bgEne[1][0]; isstr >> bgEne[1][1]; isstr >> bgEne[1][2]; isstr >> bgEne[1][3];}
             if (word == "excitation" ) { isstr >> exiEne[0]; isstr >>exiEne[1];}
@@ -323,6 +345,10 @@ void ShapeSetting::ReadSettings() {
             if (word == "doubletPeakPos1" ) isstr >> doubletPeakPos[0];
             if (word == "fixDoubletPeakPos2" ) isstr >> fixDoubletPeakPos[1];
             if (word == "doubletPeakPos2" ) isstr >> doubletPeakPos[1];
+            if (word == "fixTripletPeakPos1" ) isstr >> fixTripletPeakPos[0];
+            if (word == "tripletPeakPos1" ) isstr >> tripletPeakPos[0];
+            if (word == "fixTripletPeakPos2" ) isstr >> fixTripletPeakPos[1];
+            if (word == "tripletPeakPos2" ) isstr >> tripletPeakPos[1];
             if (word == "discreteLevelFile" ) { isstr >>discreteLevelFile; isstr >>discreteBins;}
             if (word == "rhoScale" ) isstr >> rhoScale ;
             if (word == "spinLow" ) isstr >> spinLow ;
@@ -397,16 +423,22 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "lit alpha_error " << lit_alpha_error[0] << " "<<lit_alpha_error[1] <<"\n";
     std::cout  << "level1 " << levEne[0] <<" "<<levEne[1] <<"\n";
 	std::cout  <<  "level1_2 " << levEne_2[0] <<" "<<levEne_2[1] <<"\n";
+	std::cout  <<  "level1_3 " << levEne_3[0] <<" "<<levEne_3[1] <<"\n";
     std::cout  <<  "doDoublet1 " << doDoublet[0] <<"\n";
+    std::cout  <<  "doTriplet1 " << doTriplet[0] <<"\n";
     std::cout  <<  "fixDoubletWidth1 " << fixDoubletWidth[0] <<"\n";
+    std::cout  <<  "fixTripletWidth1 " << fixTripletWidth[0] <<"\n";
     std::cout  << "left background level1 " << bgEne[0][0] <<"-" << bgEne[0][1] <<"\n";
     std::cout  << "right background level1 " << bgEne[0][2] <<"-" << bgEne[0][3] <<"\n";
     std::cout  << "left background level2 " << bgEne[1][0] <<"-" << bgEne[1][1] <<"\n";
     std::cout  << "right background level2 " << bgEne[1][2] <<"-" << bgEne[1][3] <<"\n";
     std::cout  << "level2 " << levEne[2] <<" "<<levEne[3] <<"\n";
 	std::cout  <<  "level2_2 " << levEne_2[2] <<" "<<levEne_2[3] <<"\n";
+	std::cout  <<  "level2_3 " << levEne_3[2] <<" "<<levEne_3[3] <<"\n";
     std::cout  <<  "doDoublet2 " << doDoublet[1] <<"\n";
+    std::cout  <<  "doTriplet2 " << doTriplet[1] <<"\n";
     std::cout  <<  "fixDoubletWidth2 " << fixDoubletWidth[1] <<"\n";
+    std::cout  <<  "fixTripletWidth2 " << fixTripletWidth[1] <<"\n";
     std::cout  << "excitation " << exiEne[0] <<" "<<exiEne[1] <<"\n";
     std::cout  << "excitation range for lower energies in MC " << exiEneMC[0] <<" "<<exiEneMC[1] <<"\n";
     std::cout  << "excitation_bin_1 " << exi_size[0] <<"\n";
@@ -427,6 +459,10 @@ void ShapeSetting::PrintSettings(){
     std::cout  << "doubletPeakPos1 " << doubletPeakPos[0] <<"\n";
     std::cout  << "fixDoubletPeakPos2 " << fixDoubletPeakPos[1] <<"\n";
     std::cout  << "doubletPeakPos2 " << doubletPeakPos[1] <<"\n";
+    std::cout  << "fixTripletPeakPos1 " << fixTripletPeakPos[0] <<"\n";
+    std::cout  << "tripletPeakPos1 " << tripletPeakPos[0] <<"\n";
+    std::cout  << "fixTripletPeakPos2 " << fixTripletPeakPos[1] <<"\n";
+    std::cout  << "tripletPeakPos2 " << tripletPeakPos[1] <<"\n";
   
 }
 

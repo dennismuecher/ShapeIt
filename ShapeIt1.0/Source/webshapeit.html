@@ -171,6 +171,28 @@ COMMUNICATION PROTOCOL:
               <span>Fix doublet width to main peak</span>
             </label>
           </div>
+          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #e27d4a;">
+            <input type="checkbox" id="triplet1" style="margin: 0;">
+            <span>Triplet</span>
+          </label>
+          <div class="doublet-box" id="triplet1-fields" style="display: none;">
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="t1-lo" value="980">
+              <span>to</span>
+              <input type="number" id="t1-hi" value="1020">
+              <span>keV</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="fixPeakPosT1" style="margin: 0;">
+              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+              <input type="number" id="peakPosT1" value="1000" step="0.1" style="width: 80px; padding: 4px;" disabled>
+              <span style="font-size: 12px;">keV</span>
+            </div>
+            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
+              <input type="checkbox" id="fixTripletWidth1" checked style="margin-right: 8px;">
+              <span>Fix triplet width to main peak</span>
+            </label>
+          </div>
 
           <div class="section-label" style="margin-top: 20px;">
             <span>Level 2</span>
@@ -207,6 +229,28 @@ COMMUNICATION PROTOCOL:
             <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
               <input type="checkbox" id="fixDoubletWidth2" checked style="margin-right: 8px;">
               <span>Fix doublet width to main peak</span>
+            </label>
+          </div>
+          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #e27d4a;">
+            <input type="checkbox" id="triplet2" style="margin: 0;">
+            <span>Triplet</span>
+          </label>
+          <div class="doublet-box" id="triplet2-fields" style="display: none;">
+            <div class="field-row" style="margin-bottom: 0;">
+              <input type="number" id="t2-lo" value="1810">
+              <span>to</span>
+              <input type="number" id="t2-hi" value="1850">
+              <span>keV</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+              <input type="checkbox" id="fixPeakPosT2" style="margin: 0;">
+              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
+              <input type="number" id="peakPosT2" value="1830" step="0.1" style="width: 80px; padding: 4px;" disabled>
+              <span style="font-size: 12px;">keV</span>
+            </div>
+            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
+              <input type="checkbox" id="fixTripletWidth2" checked style="margin-right: 8px;">
+              <span>Fix triplet width to main peak</span>
             </label>
           </div>
 
@@ -1120,6 +1164,9 @@ COMMUNICATION PROTOCOL:
           // v[6-7] are doublet 1 energies, v[8-9] are doublet 2 energies
           // v[10] is doDoublet[0] flag, v[11] is doDoublet[1] flag
           // v[12] is fixDoubletWidth[0], v[13] is fixDoubletWidth[1]
+          // v[14-15] are triplet 1 energies, v[16-17] are triplet 2 energies
+          // v[18] is doTriplet[0] flag, v[19] is doTriplet[1] flag
+          // v[20] is fixTripletWidth[0], v[21] is fixTripletWidth[1]
           document.getElementById('d1-lo').value = v[6];
           document.getElementById('d1-hi').value = v[7];
           document.getElementById('d2-lo').value = v[8];
@@ -1137,77 +1184,97 @@ COMMUNICATION PROTOCOL:
           document.getElementById('fixDoubletWidth1').checked = v[12] !== 0;
           document.getElementById('fixDoubletWidth2').checked = v[13] !== 0;
           
-          document.getElementById('opt-interpol').checked = v[14] !== 0;
-          document.getElementById('opt-oslo').checked = v[15] !== 0;
-          document.getElementById('opt-sliding').checked = v[16] !== 0;
-          document.getElementById('opt-background').checked = v[17] !== 0;
-          document.getElementById('min-counts').value = v[18];
-          document.getElementById('gsf-scaling').value = v[19];
-          document.getElementById('auto-scale').checked = v[20] !== 0;
-          document.getElementById('eff-corr').value = v[21];
+          // Triplet energies and flags (indices 14-21, if present)
+          if (v.length >= 22) {
+            document.getElementById('t1-lo').value = v[14];
+            document.getElementById('t1-hi').value = v[15];
+            document.getElementById('t2-lo').value = v[16];
+            document.getElementById('t2-hi').value = v[17];
+            
+            const hasTriplet1 = v[18] !== 0;
+            document.getElementById('triplet1').checked = hasTriplet1;
+            document.getElementById('triplet1-fields').style.display = hasTriplet1 ? 'block' : 'none';
+            
+            const hasTriplet2 = v[19] !== 0;
+            document.getElementById('triplet2').checked = hasTriplet2;
+            document.getElementById('triplet2-fields').style.display = hasTriplet2 ? 'block' : 'none';
+            
+            // Set triplet width fix toggles
+            document.getElementById('fixTripletWidth1').checked = v[20] !== 0;
+            document.getElementById('fixTripletWidth2').checked = v[21] !== 0;
+          }
           
-          const mode = v[22];
+          document.getElementById('opt-interpol').checked = v[22] !== 0;
+          document.getElementById('opt-oslo').checked = v[23] !== 0;
+          document.getElementById('opt-sliding').checked = v[24] !== 0;
+          document.getElementById('opt-background').checked = v[25] !== 0;
+          document.getElementById('min-counts').value = v[26];
+          document.getElementById('gsf-scaling').value = v[27];
+          document.getElementById('auto-scale').checked = v[28] !== 0;
+          document.getElementById('eff-corr').value = v[29];
+          
+          const mode = v[30];
           document.getElementById('mode-integration').checked = (mode !== 2);
           document.getElementById('mode-autofit').checked = (mode === 2);
           
-          document.getElementById('bg1-lo1').value = v[23];
-          document.getElementById('bg1-hi1').value = v[24];
-          document.getElementById('bg1-lo2').value = v[25];
-          document.getElementById('bg1-hi2').value = v[26];
-          document.getElementById('bg2-lo1').value = v[27];
-          document.getElementById('bg2-hi1').value = v[28];
-          document.getElementById('bg2-lo2').value = v[29];
-          document.getElementById('bg2-hi2').value = v[30];
+          document.getElementById('bg1-lo1').value = v[31];
+          document.getElementById('bg1-hi1').value = v[32];
+          document.getElementById('bg1-lo2').value = v[33];
+          document.getElementById('bg1-hi2').value = v[34];
+          document.getElementById('bg2-lo1').value = v[35];
+          document.getElementById('bg2-hi1').value = v[36];
+          document.getElementById('bg2-lo2').value = v[37];
+          document.getElementById('bg2-hi2').value = v[38];
           
           // Display options
-          if (v.length >= 34) {
-            document.getElementById('opt-display-single').checked = v[31] !== 0;
-            document.getElementById('opt-display-avg').checked = v[32] !== 0;
-            document.getElementById('opt-colour').checked = v[33] !== 0;
+          if (v.length >= 42) {
+            document.getElementById('opt-display-single').checked = v[39] !== 0;
+            document.getElementById('opt-display-avg').checked = v[40] !== 0;
+            document.getElementById('opt-colour').checked = v[41] !== 0;
           }
           
-          // Width calibration (index 34, if present)
-          if (v.length >= 35) {
-            document.getElementById('opt-width-calib').checked = v[34] !== 0;
+          // Width calibration (index 42, if present)
+          if (v.length >= 43) {
+            document.getElementById('opt-width-calib').checked = v[42] !== 0;
           }
           
-          // Bin size variation and bin sizes (indices 35-37, if present)
-          if (v.length >= 38) {
-            const doBinVariation = v[35] !== 0;
+          // Bin size variation and bin sizes (indices 43-45, if present)
+          if (v.length >= 46) {
+            const doBinVariation = v[43] !== 0;
             document.getElementById('bin-variation').checked = doBinVariation;
-            document.getElementById('binsize-lo').value = v[36];
-            document.getElementById('binsize-hi').value = v[37];
+            document.getElementById('binsize-lo').value = v[44];
+            document.getElementById('binsize-hi').value = v[45];
             // Enable/disable the high bin size field based on variation setting
             document.getElementById('binsize-hi').disabled = !doBinVariation;
             document.getElementById('nbins-hi').disabled = !doBinVariation;
           }
           
-          // Verbose level (index 38, if present)
-          if (v.length >= 39) {
-            const verboseLevel = v[38];
+          // Verbose level (index 46, if present)
+          if (v.length >= 47) {
+            const verboseLevel = v[46];
             document.getElementById('verbose-toggle').checked = (verboseLevel !== 0);
           }
           
-          // Width calibration parameters (indices 39-42, if present)
-          if (v.length >= 43) {
-            document.getElementById('wc-l1-offset').value = v[39];
-            document.getElementById('wc-l1-slope').value = v[40];
-            document.getElementById('wc-l2-offset').value = v[41];
-            document.getElementById('wc-l2-slope').value = v[42];
+          // Width calibration parameters (indices 47-50, if present)
+          if (v.length >= 51) {
+            document.getElementById('wc-l1-offset').value = v[47];
+            document.getElementById('wc-l1-slope').value = v[48];
+            document.getElementById('wc-l2-offset').value = v[49];
+            document.getElementById('wc-l2-slope').value = v[50];
           }
           
-          // Alpha transformation parameters (indices 43-44, if present)
-          if (v.length >= 45) {
-            document.getElementById('alpha-slope').value = v[43];
-            document.getElementById('lit-norm').value = v[44];
+          // Alpha transformation parameters (indices 51-52, if present)
+          if (v.length >= 53) {
+            document.getElementById('alpha-slope').value = v[51];
+            document.getElementById('lit-norm').value = v[52];
           }
           
-          // Peak position settings (indices 45-48, if present)
-          if (v.length >= 49) {
-            const fixPeak1 = v[45] !== 0;
-            let peakPos1 = v[46];
-            const fixPeak2 = v[47] !== 0;
-            let peakPos2 = v[48];
+          // Peak position settings (indices 53-56, if present)
+          if (v.length >= 57) {
+            const fixPeak1 = v[53] !== 0;
+            let peakPos1 = v[54];
+            const fixPeak2 = v[55] !== 0;
+            let peakPos2 = v[56];
             
             // If peak position is 0 (uninitialized), set to middle of level range
             if (peakPos1 === 0) {
@@ -1228,12 +1295,12 @@ COMMUNICATION PROTOCOL:
             document.getElementById('peakPos2').style.color = fixPeak2 ? '' : '#999';
           }
           
-          // Doublet peak position settings (indices 49-52, if present)
-          if (v.length >= 53) {
-            const fixPeakD1 = v[49] !== 0;
-            let peakPosD1 = v[50];
-            const fixPeakD2 = v[51] !== 0;
-            let peakPosD2 = v[52];
+          // Doublet peak position settings (indices 57-60, if present)
+          if (v.length >= 61) {
+            const fixPeakD1 = v[57] !== 0;
+            let peakPosD1 = v[58];
+            const fixPeakD2 = v[59] !== 0;
+            let peakPosD2 = v[60];
             
             // If doublet peak position is 0 (uninitialized), set to middle of doublet range
             if (peakPosD1 === 0) {
@@ -1252,6 +1319,32 @@ COMMUNICATION PROTOCOL:
             document.getElementById('peakPosD2').value = peakPosD2;
             document.getElementById('peakPosD2').disabled = !fixPeakD2;
             document.getElementById('peakPosD2').style.color = fixPeakD2 ? '' : '#999';
+          }
+          
+          // Triplet peak position settings (indices 61-64, if present)
+          if (v.length >= 65) {
+            const fixPeakT1 = v[61] !== 0;
+            let peakPosT1 = v[62];
+            const fixPeakT2 = v[63] !== 0;
+            let peakPosT2 = v[64];
+            
+            // If triplet peak position is 0 (uninitialized), set to middle of triplet range
+            if (peakPosT1 === 0) {
+              peakPosT1 = (v[14] + v[15]) / 2;  // (t1-lo + t1-hi) / 2
+            }
+            if (peakPosT2 === 0) {
+              peakPosT2 = (v[16] + v[17]) / 2;  // (t2-lo + t2-hi) / 2
+            }
+            
+            document.getElementById('fixPeakPosT1').checked = fixPeakT1;
+            document.getElementById('peakPosT1').value = peakPosT1;
+            document.getElementById('peakPosT1').disabled = !fixPeakT1;
+            document.getElementById('peakPosT1').style.color = fixPeakT1 ? '' : '#999';
+            
+            document.getElementById('fixPeakPosT2').checked = fixPeakT2;
+            document.getElementById('peakPosT2').value = peakPosT2;
+            document.getElementById('peakPosT2').disabled = !fixPeakT2;
+            document.getElementById('peakPosT2').style.color = fixPeakT2 ? '' : '#999';
           }
         }
         
@@ -1440,6 +1533,16 @@ COMMUNICATION PROTOCOL:
     sendLevelEnergies();
   });
 
+  // Triplet toggles show/hide extra energy ranges
+  document.getElementById('triplet1').addEventListener('change', (e) => {
+    document.getElementById('triplet1-fields').style.display = e.target.checked ? 'block' : 'none';
+    sendLevelEnergies();
+  });
+  document.getElementById('triplet2').addEventListener('change', (e) => {
+    document.getElementById('triplet2-fields').style.display = e.target.checked ? 'block' : 'none';
+    sendLevelEnergies();
+  });
+
   // Peak position toggles enable/disable position fields and update markers
   document.getElementById('fixPeakPos1').addEventListener('change', (e) => {
     const input = document.getElementById('peakPos1');
@@ -1476,6 +1579,24 @@ COMMUNICATION PROTOCOL:
   document.getElementById('peakPosD1').addEventListener('change', () => sendDoubletPeakPosition(0));
   document.getElementById('peakPosD2').addEventListener('change', () => sendDoubletPeakPosition(1));
 
+  // Triplet peak position toggles
+  document.getElementById('fixPeakPosT1').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPosT1');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendTripletPeakPosition(0);
+  });
+  document.getElementById('fixPeakPosT2').addEventListener('change', (e) => {
+    const input = document.getElementById('peakPosT2');
+    input.disabled = !e.target.checked;
+    input.style.color = e.target.checked ? '' : '#999';
+    sendTripletPeakPosition(1);
+  });
+
+  // Triplet peak position values trigger immediate update
+  document.getElementById('peakPosT1').addEventListener('change', () => sendTripletPeakPosition(0));
+  document.getElementById('peakPosT2').addEventListener('change', () => sendTripletPeakPosition(1));
+
   function sendPeakPosition(level) {
     const checkbox = document.getElementById('fixPeakPos' + (level + 1));
     const input = document.getElementById('peakPos' + (level + 1));
@@ -1498,23 +1619,43 @@ COMMUNICATION PROTOCOL:
     markSettingsDirty();
   }
 
+  function sendTripletPeakPosition(level) {
+    const checkbox = document.getElementById('fixPeakPosT' + (level + 1));
+    const input = document.getElementById('peakPosT' + (level + 1));
+    const enable = checkbox.checked ? 1 : 0;
+    const position = input.value;
+    if (conn_handle) {
+      conn_handle.send('TRIPLETPEAKPOS:' + level + '|' + enable + '|' + position);
+    }
+    markSettingsDirty();
+  }
+
   // Width fix toggles trigger re-send of level energies
   document.getElementById('fixDoubletWidth1').addEventListener('change', sendLevelEnergies);
   document.getElementById('fixDoubletWidth2').addEventListener('change', sendLevelEnergies);
+  document.getElementById('fixTripletWidth1').addEventListener('change', sendLevelEnergies);
+  document.getElementById('fixTripletWidth2').addEventListener('change', sendLevelEnergies);
 
   // Send level energies to server
   function sendLevelEnergies() {
     const val = id => document.getElementById(id).value;
     const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
     const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+    const isTriplet1 = document.getElementById('triplet1').checked ? 1 : 0;
+    const isTriplet2 = document.getElementById('triplet2').checked ? 1 : 0;
     const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
     const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
+    const fixTripletWidth1 = document.getElementById('fixTripletWidth1').checked ? 1 : 0;
+    const fixTripletWidth2 = document.getElementById('fixTripletWidth2').checked ? 1 : 0;
     const msg = [
       val('lvl1-lo'), val('lvl1-hi'),
       val('lvl2-lo'), val('lvl2-hi'),
       isDoublet1, val('d1-lo'), val('d1-hi'),
       isDoublet2, val('d2-lo'), val('d2-hi'),
       fixWidth1, fixWidth2,
+      isTriplet1, val('t1-lo'), val('t1-hi'),
+      isTriplet2, val('t2-lo'), val('t2-hi'),
+      fixTripletWidth1, fixTripletWidth2,
     ].join('|');
     if (conn_handle) {
       conn_handle.send('LEVELENERGIES:' + msg);
@@ -1523,7 +1664,7 @@ COMMUNICATION PROTOCOL:
     markSettingsDirty();
   }
   
-  ['lvl1-lo', 'lvl1-hi', 'lvl2-lo', 'lvl2-hi', 'd1-lo', 'd1-hi', 'd2-lo', 'd2-hi'].forEach(id => {
+  ['lvl1-lo', 'lvl1-hi', 'lvl2-lo', 'lvl2-hi', 'd1-lo', 'd1-hi', 'd2-lo', 'd2-hi', 't1-lo', 't1-hi', 't2-lo', 't2-hi'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendLevelEnergies);
   });
 
@@ -1885,8 +2026,12 @@ COMMUNICATION PROTOCOL:
       const val = id => document.getElementById(id).value;
       const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
       const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
+      const isTriplet1 = document.getElementById('triplet1').checked ? 1 : 0;
+      const isTriplet2 = document.getElementById('triplet2').checked ? 1 : 0;
       const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
       const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
+      const fixTripletWidth1 = document.getElementById('fixTripletWidth1').checked ? 1 : 0;
+      const fixTripletWidth2 = document.getElementById('fixTripletWidth2').checked ? 1 : 0;
       const msg = [
         val('lvl1-lo'), val('lvl1-hi'),
         val('lvl2-lo'), val('lvl2-hi'),
@@ -1894,6 +2039,9 @@ COMMUNICATION PROTOCOL:
         isDoublet1, val('d1-lo'), val('d1-hi'),
         isDoublet2, val('d2-lo'), val('d2-hi'),
         fixWidth1, fixWidth2,
+        isTriplet1, val('t1-lo'), val('t1-hi'),
+        isTriplet2, val('t2-lo'), val('t2-hi'),
+        fixTripletWidth1, fixTripletWidth2,
       ].join('|');
       conn_handle.send('RUN:' + msg);
       setStatus('Running...');

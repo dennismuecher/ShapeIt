@@ -72,8 +72,11 @@ public:
     double lit_alpha_error[2]={0,0} ;   //error in slop parameter alpha
 	double levEne[4] = {0, 0, 0, 0};						//energies for level 1 and level 2 (upper, lower)	
 	double levEne_2[4] = {0, 0, 0, 0};						//energies for doublet peaks level 1 and level 2 (upper, lower)	
+	double levEne_3[4] = {0, 0, 0, 0};						//energies for triplet peaks level 1 and level 2 (upper, lower)	
 	bool doDoublet[2] = {false, false};		//if true, fit doublet for level 1/2 (controlled by checkbox, not by zero-detection)
+	bool doTriplet[2] = {false, false};		//if true, fit triplet for level 1/2 (controlled by checkbox, not by zero-detection)
 	bool fixDoubletWidth[2] = {true, true};	//if true, doublet peak width is fixed to main peak width; if false, width is free parameter
+	bool fixTripletWidth[2] = {true, true};	//if true, triplet peak width is fixed to main peak width; if false, width is free parameter
 	double bgEne[2][4];                      //background regions for level 1 and level 2
     double bgWidth = 100;                   //width of each background window
     double exiEne[2] = {0, 0};						//lower and upper excitation energy considered
@@ -84,6 +87,8 @@ public:
     double peakPos[2] = {0, 0};             //fixed peak position in keV for level 1 and 2
     bool fixDoubletPeakPos[2] = {false, false};  //if true, fix doublet peak position in autofit for level 1/2
     double doubletPeakPos[2] = {0, 0};      //fixed doublet peak position in keV for level 1 and 2
+    bool fixTripletPeakPos[2] = {false, false};  //if true, fix triplet peak position in autofit for level 1/2
+    double tripletPeakPos[2] = {0, 0};      //fixed triplet peak position in keV for level 1 and 2
     int nOfBins = 1;
     double eff_corr = 1;					//correction factor for level 2;
     int minCounts = 0;                      //minimum number of counts required in a bin to be considered

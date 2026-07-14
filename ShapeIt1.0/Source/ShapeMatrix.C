@@ -278,8 +278,16 @@ void ShapeMatrix::FitIntegral(){
 //performs a gauss fit to histo of bin "bin" for level 1 (level =0) or level 2 (level =1)
 void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     char name[50];
-    // Use explicit doublet flag instead of zero-detection
-    bool is_doublet = sett->doDoublet[level];
+    // Determine multiplet type: 0=single, 1=doublet, 2=triplet
+    int multiplet_type = 0;
+    if (sett->doTriplet[level]) {
+        multiplet_type = 2;  // triplet takes precedence
+    } else if (sett->doDoublet[level]) {
+        multiplet_type = 1;  // doublet
+    }
+    
+    bool fix_multiplet_width = (multiplet_type == 1) ? sett->fixDoubletWidth[level] : 
+                               (multiplet_type == 2) ? sett->fixTripletWidth[level] : true;
     
     //background regions
     double bgRange[4];
@@ -289,33 +297,47 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //peak region
     double peakRange[2];
 	
-	//no doublet for this level
-	if (!is_doublet)
+	//no multiplet for this level
+	if (multiplet_type == 0)
 	{
 		peakRange[0] = sett->levEne[2*level];
     	peakRange[1] = sett->levEne[2*level+1];
 	}
     
-	//doublet present
+	//multiplet present (doublet or triplet)
 	else {
-		peakRange[0] = fmin(sett->levEne[2*level], sett->levEne_2[2*level]);
-		peakRange[1] = fmax(sett->levEne[2*level+1], sett->levEne_2[2*level+1]);
+		peakRange[0] = sett->levEne[2*level];
+		peakRange[1] = sett->levEne[2*level+1];
+		
+		// Extend range to include doublet
+		if (sett->doDoublet[level]) {
+			peakRange[0] = fmin(peakRange[0], sett->levEne_2[2*level]);
+			peakRange[1] = fmax(peakRange[1], sett->levEne_2[2*level+1]);
+		}
+		
+		// Extend range to include triplet
+		if (sett->doTriplet[level]) {
+			peakRange[0] = fmin(peakRange[0], sett->levEne_3[2*level]);
+			peakRange[1] = fmax(peakRange[1], sett->levEne_3[2*level+1]);
+		}
 	}
 			
     //peak energy
     double p = ( sett->levEne[2*level] + sett->levEne[2*level + 1] )/2;
     double p_2 = ( sett->levEne_2[2*level] + sett->levEne_2[2*level + 1] )/2;
+    double p_3 = ( sett->levEne_3[2*level] + sett->levEne_3[2*level + 1] )/2;
 	
 
     //initital guess for sigma: 1/6th of width of integration range
     double dp = ( sett->levEne[2*level+1] - sett->levEne[2*level] )/6;
 	double dp_2 = ( sett->levEne_2[2*level+1] - sett->levEne_2[2*level] )/6;
+	double dp_3 = ( sett->levEne_3[2*level+1] - sett->levEne_3[2*level] )/6;
 
     //define fit function and set ranges
     //free the previous fit's functor and TF1 before overwriting fit_result[level]/fit_func[level] --
     //this used to just overwrite the pointers, leaking both every single call (i.e. every bin, every level, every iteration)
     delete fit_func[level];
-	ShapeFitFunction *fitfunc = new ShapeFitFunction(is_doublet, sett->fixDoubletWidth[level]);
+	ShapeFitFunction *fitfunc = new ShapeFitFunction(multiplet_type, fix_multiplet_width);
     fit_func[level] = fitfunc;
     fitfunc->SetPeakRanges(peakRange);
     fitfunc->SetBgRanges(bgRange);
@@ -323,18 +345,28 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     //TF1 object for the fit
     snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     delete fit_result[level];
-    if (is_doublet) {
-        // If doublet width is free parameter, need 9 params (bg:0-2, main:3-5, doublet:6-8)
-        // If doublet width is fixed to main peak, need 8 params (bg:0-2, main:3-5, doublet:6-7)
-        int nParams = sett->fixDoubletWidth[level] ? 8 : 9;
-		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, nParams );
+    
+    // Calculate number of parameters based on multiplet type and width fixing
+    // Background: 3 params (0-2)
+    // Main peak: 3 params (3-5: amplitude, position, width)
+    // Doublet: +3 params (6-8) if width free, +2 params (6-7) if width fixed
+    // Triplet: +3 params (9-11) if width free, +2 params (9-10) if width fixed
+    int nParams = 6;  // bg (3) + main peak (3)
+    if (multiplet_type >= 1) {
+        // Add doublet parameters
+        nParams += fix_multiplet_width ? 2 : 3;
     }
-	else
-		fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, 6 );
+    if (multiplet_type >= 2) {
+        // Add triplet parameters
+        nParams += fix_multiplet_width ? 2 : 3;
+    }
+    
+    fit_result[level] = new TF1(name,fitfunc ,eMin_y,eMax_y, nParams );
 	
     //get bin content at peak and bgRange[1] as starting value for fit amplitude
     double amplitude_init = histo->GetBinContent(energyToBinX(p));
     double amplitude_init_2 = histo->GetBinContent(energyToBinX(p_2));
+    double amplitude_init_3 = histo->GetBinContent(energyToBinX(p_3));
     
 	double amplitude_init_bg = histo->GetBinContent(energyToBinX(bgRange[1]));
     
@@ -349,8 +381,10 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 	fit_result[level]->SetLineColor(kCyan-6);
 	fit_result[level]->SetLineWidth(3);
 	fit_result[level]->FixParameter(3, 0);
-	if (is_doublet) 
+	if (multiplet_type >= 1) 
 			fit_result[level]->FixParameter(6, 0);
+	if (multiplet_type >= 2) 
+			fit_result[level]->FixParameter(9, 0);
 	//set peakrange to zero
 	double peakRange_temp[2]={0,0};
 	fitfunc->SetPeakRanges(peakRange_temp);
@@ -368,12 +402,22 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     fit_result[level]->SetParameter(4, p);
     fit_result[level]->SetParameter(5, dp);
     
-	if (is_doublet) {
+	if (multiplet_type >= 1) {
 		fit_result[level]->SetParameter(6, amplitude_init_2);
 		fit_result[level]->SetParameter(7, p_2);
-		if (!sett->fixDoubletWidth[level]) {
+		if (!fix_multiplet_width) {
 			// Set initial value for doublet width (parameter 8) when it's a free parameter
 			fit_result[level]->SetParameter(8, dp_2);
+		}
+	}
+	
+	if (multiplet_type >= 2) {
+		int base_idx = fix_multiplet_width ? 9 : 9;  // triplet starts at index 9
+		fit_result[level]->SetParameter(base_idx, amplitude_init_3);
+		fit_result[level]->SetParameter(base_idx + 1, p_3);
+		if (!fix_multiplet_width) {
+			// Set initial value for triplet width when it's a free parameter
+			fit_result[level]->SetParameter(base_idx + 2, dp_3);
 		}
 	}
 	
@@ -383,12 +427,22 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
 
     fit_result[level]->SetParLimits(5, 0.5*dp, 2*dp);
 	
-	if (is_doublet) {
+	if (multiplet_type >= 1) {
 		fit_result[level]->SetParLimits(6,0.01*amplitude_init_2, 100*amplitude_init_2);
 		fit_result[level]->SetParLimits(7, sett->levEne_2[2*level], sett->levEne_2[2*level+1]);
-		if (!sett->fixDoubletWidth[level]) {
+		if (!fix_multiplet_width) {
 			// Set limits for doublet width (parameter 8) when it's a free parameter
 			fit_result[level]->SetParLimits(8, 0.5*dp_2, 2*dp_2);
+		}
+	}
+	
+	if (multiplet_type >= 2) {
+		int base_idx = fix_multiplet_width ? 9 : 9;
+		fit_result[level]->SetParLimits(base_idx, 0.01*amplitude_init_3, 100*amplitude_init_3);
+		fit_result[level]->SetParLimits(base_idx + 1, sett->levEne_3[2*level], sett->levEne_3[2*level+1]);
+		if (!fix_multiplet_width) {
+			// Set limits for triplet width when it's a free parameter
+			fit_result[level]->SetParLimits(base_idx + 2, 0.5*dp_3, 2*dp_3);
 		}
 	}
 
@@ -416,17 +470,24 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
     }
     
     //if fixDoubletPeakPos is set, fix doublet peak position according to user setting
-    if (is_doublet && sett->fixDoubletPeakPos[level])
+    if (multiplet_type >= 1 && sett->fixDoubletPeakPos[level])
     {
         fit_result[level]->FixParameter(7, sett->doubletPeakPos[level]);
+    }
+    
+    //if fixTripletPeakPos is set, fix triplet peak position according to user setting
+    if (multiplet_type >= 2 && sett->fixTripletPeakPos[level])
+    {
+        int base_idx = fix_multiplet_width ? 10 : 10;  // triplet position parameter
+        fit_result[level]->FixParameter(base_idx, sett->tripletPeakPos[level]);
     }
     
     //perform fit
     snprintf(name,50,"fit_level%d_bin%d",level+1, bin);
     histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
-	//fix all fit parameters and refitfit function without rejection for a nicer display
-	for (int i = 0; i < 8; i++) 
+	//fix all fit parameters and refit function without rejection for a nicer display
+	for (int i = 0; i < nParams; i++) 
 		fit_result[level]->FixParameter(i, fit_result[level]->GetParameter(i));
 	fitfunc->SetReject(false);
     fit_result[level]->SetLineColor(6);
@@ -436,10 +497,13 @@ void ShapeMatrix::FitGauss(TH1D *histo, int bin, int level) {
         histo->Fit(name,"RQ+","",bgRange[0],bgRange[3]);
 	
 
-	//set amplitude of doublet peak to zero as we only want the peak content of the peak of interest
-	
-	if (is_doublet) 
+	//set amplitude of doublet and triplet peaks to zero as we only want the peak content of the peak of interest
+	if (multiplet_type >= 1) 
 		fit_result[level]->FixParameter(6,0);
+	if (multiplet_type >= 2) {
+		int base_idx = fix_multiplet_width ? 9 : 9;
+		fit_result[level]->FixParameter(base_idx,0);
+	}
 }
 
 

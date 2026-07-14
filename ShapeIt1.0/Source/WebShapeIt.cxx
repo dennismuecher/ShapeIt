@@ -337,6 +337,12 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->doDoublet[1] ? 1 : 0) + "|";
     msg += std::to_string(sett->fixDoubletWidth[0] ? 1 : 0) + "|";  // Add doublet width fix toggles
     msg += std::to_string(sett->fixDoubletWidth[1] ? 1 : 0) + "|";
+    msg += std::to_string(sett->levEne_3[0]) + "|" + std::to_string(sett->levEne_3[1]) + "|";
+    msg += std::to_string(sett->levEne_3[2]) + "|" + std::to_string(sett->levEne_3[3]) + "|";
+    msg += std::to_string(sett->doTriplet[0] ? 1 : 0) + "|";  // Add triplet checkbox states
+    msg += std::to_string(sett->doTriplet[1] ? 1 : 0) + "|";
+    msg += std::to_string(sett->fixTripletWidth[0] ? 1 : 0) + "|";  // Add triplet width fix toggles
+    msg += std::to_string(sett->fixTripletWidth[1] ? 1 : 0) + "|";
     msg += std::to_string(sett->doInterpol ? 1 : 0) + "|";
     msg += std::to_string(sett->doOslo ? 1 : 0) + "|";
     msg += std::to_string(sett->doSlidingWindow ? 1 : 0) + "|";
@@ -363,7 +369,9 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->fixPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->peakPos[0]) + "|";
     msg += std::to_string(sett->fixPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->peakPos[1]) + "|";
     msg += std::to_string(sett->fixDoubletPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[0]) + "|";
-    msg += std::to_string(sett->fixDoubletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[1]);
+    msg += std::to_string(sett->fixDoubletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[1]) + "|";
+    msg += std::to_string(sett->fixTripletPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[0]) + "|";
+    msg += std::to_string(sett->fixTripletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[1]);
     window->Send(connid, msg);
 }
 
@@ -2414,37 +2422,55 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** LEVELENERGIES HANDLER CALLED ***" << std::endl;
         auto v = ParsePipeDoubles(after_prefix(arg, "LEVELENERGIES:"));
         std::cout << "*** Parsed " << v.size() << " values ***" << std::endl;
-        if (v.size() != 12) {
-            std::cout << "*** ERROR: Expected 12 values, got " << v.size() << " ***" << std::endl;
+        if (v.size() != 20) {
+            std::cout << "*** ERROR: Expected 20 values (with triplet support), got " << v.size() << " ***" << std::endl;
             return;
         }
         std::cout << "*** Setting levEne[0-3] to: " << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << " ***" << std::endl;
         
-        // Store previous doublet checkbox states to detect changes
+        // Store previous multiplet checkbox states to detect changes
         bool hadDoublet1 = sett->doDoublet[0];
         bool hadDoublet2 = sett->doDoublet[1];
-        bool hadFixWidth1 = sett->fixDoubletWidth[0];
-        bool hadFixWidth2 = sett->fixDoubletWidth[1];
+        bool hadTriplet1 = sett->doTriplet[0];
+        bool hadTriplet2 = sett->doTriplet[1];
+        bool hadFixDoubletWidth1 = sett->fixDoubletWidth[0];
+        bool hadFixDoubletWidth2 = sett->fixDoubletWidth[1];
+        bool hadFixTripletWidth1 = sett->fixTripletWidth[0];
+        bool hadFixTripletWidth2 = sett->fixTripletWidth[1];
         
-        // Update main peak energies
+        // Update main peak energies (indices 0-3)
         sett->levEne[0] = v[0]; 
         sett->levEne[1] = v[1];
         sett->levEne[2] = v[2]; 
         sett->levEne[3] = v[3];
         
-        // Update doublet checkbox states
+        // Update doublet checkbox states (indices 4, 7)
         sett->doDoublet[0] = v[4] != 0.0;
         sett->doDoublet[1] = v[7] != 0.0;
         
-        // Update doublet width fix toggles
-        sett->fixDoubletWidth[0] = v[10] != 0.0;
-        sett->fixDoubletWidth[1] = v[11] != 0.0;
-        
-        // ALWAYS update doublet energy values regardless of checkbox state
+        // Update doublet energies (indices 5-6, 8-9)
         sett->levEne_2[0] = v[5];
         sett->levEne_2[1] = v[6];
         sett->levEne_2[2] = v[8];
         sett->levEne_2[3] = v[9];
+        
+        // Update doublet width fix toggles (indices 10-11)
+        sett->fixDoubletWidth[0] = v[10] != 0.0;
+        sett->fixDoubletWidth[1] = v[11] != 0.0;
+        
+        // Update triplet checkbox states (indices 12, 15)
+        sett->doTriplet[0] = v[12] != 0.0;
+        sett->doTriplet[1] = v[15] != 0.0;
+        
+        // Update triplet energies (indices 13-14, 16-17)
+        sett->levEne_3[0] = v[13];
+        sett->levEne_3[1] = v[14];
+        sett->levEne_3[2] = v[16];
+        sett->levEne_3[3] = v[17];
+        
+        // Update triplet width fix toggles (indices 18-19)
+        sett->fixTripletWidth[0] = v[18] != 0.0;
+        sett->fixTripletWidth[1] = v[19] != 0.0;
         
         std::cout << "*** Level energies updated successfully ***" << std::endl;
         std::cout << "*** Doublet 1: " << (sett->doDoublet[0] ? "ENABLED" : "DISABLED") 
@@ -2453,14 +2479,24 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** Doublet 2: " << (sett->doDoublet[1] ? "ENABLED" : "DISABLED") 
                   << ", values: " << sett->levEne_2[2] << ", " << sett->levEne_2[3] 
                   << ", fix width: " << (sett->fixDoubletWidth[1] ? "YES" : "NO") << " ***" << std::endl;
+        std::cout << "*** Triplet 1: " << (sett->doTriplet[0] ? "ENABLED" : "DISABLED") 
+                  << ", values: " << sett->levEne_3[0] << ", " << sett->levEne_3[1] 
+                  << ", fix width: " << (sett->fixTripletWidth[0] ? "YES" : "NO") << " ***" << std::endl;
+        std::cout << "*** Triplet 2: " << (sett->doTriplet[1] ? "ENABLED" : "DISABLED") 
+                  << ", values: " << sett->levEne_3[2] << ", " << sett->levEne_3[3] 
+                  << ", fix width: " << (sett->fixTripletWidth[1] ? "YES" : "NO") << " ***" << std::endl;
         
-        // Detect if doublet state or width fix state changed
-        bool doubletStateChanged = (hadDoublet1 != sett->doDoublet[0]) || (hadDoublet2 != sett->doDoublet[1]);
-        bool widthFixChanged = (hadFixWidth1 != sett->fixDoubletWidth[0]) || (hadFixWidth2 != sett->fixDoubletWidth[1]);
+        // Detect if multiplet state or width fix state changed
+        bool multipletStateChanged = (hadDoublet1 != sett->doDoublet[0]) || (hadDoublet2 != sett->doDoublet[1]) ||
+                                     (hadTriplet1 != sett->doTriplet[0]) || (hadTriplet2 != sett->doTriplet[1]);
+        bool widthFixChanged = (hadFixDoubletWidth1 != sett->fixDoubletWidth[0]) || 
+                               (hadFixDoubletWidth2 != sett->fixDoubletWidth[1]) ||
+                               (hadFixTripletWidth1 != sett->fixTripletWidth[0]) || 
+                               (hadFixTripletWidth2 != sett->fixTripletWidth[1]);
         
-        // If in Autofit mode and viewing a bin projection, re-fit when doublet checkbox or width fix changes
-        if ((doubletStateChanged || widthFixChanged) && sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
-            std::cout << "Doublet settings changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+        // If in Autofit mode and viewing a bin projection, re-fit when multiplet checkbox or width fix changes
+        if ((multipletStateChanged || widthFixChanged) && sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Multiplet settings changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
             // Save current axis ranges before redrawing
             double xmin = gPad->GetUxmin();
@@ -2575,6 +2611,63 @@ void ProcessData(unsigned connid, const std::string &arg)
         // If in Autofit mode and viewing a bin projection, re-fit when doublet peak position changes
         if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
             std::cout << "Doublet peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            // Just redraw markers
+            DrawMarkers(true);
+        }
+    }
+    else if (starts_with(arg, "TRIPLETPEAKPOS:")) {
+        // Format: TRIPLETPEAKPOS:level|enable|position
+        // level: 0=level1_triplet, 1=level2_triplet
+        // enable: 0=off, 1=on
+        // position: peak position in keV
+        auto v = ParsePipeDoubles(after_prefix(arg, "TRIPLETPEAKPOS:"));
+        if (v.size() != 3) {
+            window->Send(connid, "Malformed TRIPLETPEAKPOS message.");
+            return;
+        }
+        
+        int level = (int)v[0];
+        bool enable = v[1] != 0.0;
+        double position = v[2];
+        
+        if (level < 0 || level > 1) {
+            window->Send(connid, "Invalid level in TRIPLETPEAKPOS message.");
+            return;
+        }
+        
+        sett->fixTripletPeakPos[level] = enable;
+        sett->tripletPeakPos[level] = position;
+        
+        std::cout << "Triplet peak position for level " << (level+1) << ": " 
+                  << (enable ? "ENABLED" : "DISABLED") 
+                  << " at " << position << " keV" << std::endl;
+        
+        // If in Autofit mode and viewing a bin projection, re-fit when triplet peak position changes
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Triplet peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
             // Save current axis ranges before redrawing
             double xmin = gPad->GetUxmin();
@@ -3037,10 +3130,11 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (starts_with(arg, "RUN:")) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|
-        //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi|fix_width1|fix_width2
+        //                  is_doublet1|d1_lo|d1_hi|is_doublet2|d2_lo|d2_hi|fix_doublet_width1|fix_doublet_width2|
+        //                  is_triplet1|t1_lo|t1_hi|is_triplet2|t2_lo|t2_hi|fix_triplet_width1|fix_triplet_width2
         auto v = ParsePipeDoubles(after_prefix(arg, "RUN:"));
-        if (v.size() != 14) {
-            window->Send(connid, "Malformed RUN message.");
+        if (v.size() != 22) {
+            window->Send(connid, "Malformed RUN message (expected 22 values with triplet support).");
             return;
         }
 
@@ -3061,8 +3155,26 @@ void ProcessData(unsigned connid, const std::string &arg)
         // Set doublet width fix toggles
         sett->fixDoubletWidth[0] = v[12] != 0.0;
         sett->fixDoubletWidth[1] = v[13] != 0.0;
+        
+        // Set triplet checkbox states
+        sett->doTriplet[0] = v[14] != 0.0;
+        sett->doTriplet[1] = v[17] != 0.0;
+        
+        // ALWAYS store triplet energy values regardless of checkbox state
+        sett->levEne_3[0] = v[15];
+        sett->levEne_3[1] = v[16];
+        sett->levEne_3[2] = v[18];
+        sett->levEne_3[3] = v[19];
+        
+        // Set triplet width fix toggles
+        sett->fixTripletWidth[0] = v[20] != 0.0;
+        sett->fixTripletWidth[1] = v[21] != 0.0;
 
         std::cout << "*** About to call RunShapeIt() ***" << std::endl;
+        std::cout << "*** Doublet 1: " << (sett->doDoublet[0] ? "ENABLED" : "DISABLED") << " ***" << std::endl;
+        std::cout << "*** Doublet 2: " << (sett->doDoublet[1] ? "ENABLED" : "DISABLED") << " ***" << std::endl;
+        std::cout << "*** Triplet 1: " << (sett->doTriplet[0] ? "ENABLED" : "DISABLED") << " ***" << std::endl;
+        std::cout << "*** Triplet 2: " << (sett->doTriplet[1] ? "ENABLED" : "DISABLED") << " ***" << std::endl;
         
         RunShapeIt(connid);
         
