@@ -130,12 +130,12 @@ COMMUNICATION PROTOCOL:
 
       <div id="sidebar-scroll">
 
-        <!-- TAB 1: Levels - Define energy ranges for Level 1, Level 2, and backgrounds -->
+        <!-- TAB 1: Levels - Define fit regions and peak positions for Level 1, Level 2, and backgrounds -->
         <div id="panel-levels">
           <h3>Levels</h3>
 
           <div class="section-label">
-            <span>Level 1</span>
+            <span>Level 1 fit region</span>
           </div>
           <div class="field-row">
             <input type="number" id="lvl1-lo" value="685">
@@ -143,59 +143,73 @@ COMMUNICATION PROTOCOL:
             <input type="number" id="lvl1-hi" value="900">
             <span>keV</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-            <input type="checkbox" id="fixPeakPos1" style="margin: 0;">
-            <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-            <input type="number" id="peakPos1" value="792" step="0.1" style="width: 80px; padding: 4px;" disabled>
-            <span style="font-size: 12px;">keV</span>
-          </div>
-          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #4a90e2;">
-            <input type="checkbox" id="doublet1" style="margin: 0;">
-            <span>Doublet</span>
-          </label>
-          <div class="doublet-box" id="doublet1-fields" style="display: none;">
-            <div class="field-row" style="margin-bottom: 0;">
-              <input type="number" id="d1-lo" value="920">
-              <span>to</span>
-              <input type="number" id="d1-hi" value="960">
-              <span>keV</span>
+
+          <!-- Peak 1 (always active) -->
+          <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4a90e2;">
+            <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px;">Peak 1</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                <input type="number" id="peakPos1" value="792" step="0.1" style="width: 80px; padding: 4px;">
+                <span style="font-size: 12px;">keV</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="fixPeakPos1" style="margin: 0;">
+                <label style="font-size: 12px; margin: 0;">Fix position</label>
+              </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-              <input type="checkbox" id="fixPeakPosD1" style="margin: 0;">
-              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-              <input type="number" id="peakPosD1" value="940" step="0.1" style="width: 80px; padding: 4px;" disabled>
-              <span style="font-size: 12px;">keV</span>
-            </div>
-            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
-              <input type="checkbox" id="fixDoubletWidth1" checked style="margin-right: 8px;">
-              <span>Fix doublet width to main peak</span>
-            </label>
-          </div>
-          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #e27d4a;">
-            <input type="checkbox" id="triplet1" style="margin: 0;">
-            <span>Triplet</span>
-          </label>
-          <div class="doublet-box" id="triplet1-fields" style="display: none;">
-            <div class="field-row" style="margin-bottom: 0;">
-              <input type="number" id="t1-lo" value="980">
-              <span>to</span>
-              <input type="number" id="t1-hi" value="1020">
-              <span>keV</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-              <input type="checkbox" id="fixPeakPosT1" style="margin: 0;">
-              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-              <input type="number" id="peakPosT1" value="1000" step="0.1" style="width: 80px; padding: 4px;" disabled>
-              <span style="font-size: 12px;">keV</span>
-            </div>
-            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
-              <input type="checkbox" id="fixTripletWidth1" checked style="margin-right: 8px;">
-              <span>Fix triplet width to main peak</span>
-            </label>
           </div>
 
+          <!-- Peak 2 (toggleable) -->
+          <div style="margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4a90e2;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <input type="checkbox" id="enablePeak2L1" style="margin: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #333;">Peak 2</div>
+            </div>
+            <div id="peak2L1-fields" style="display: none;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                  <input type="number" id="peakPos2L1" value="940" step="0.1" style="width: 80px; padding: 4px;">
+                  <span style="font-size: 12px;">keV</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="fixPeakPos2L1" style="margin: 0;">
+                  <label style="font-size: 12px; margin: 0;">Fix position</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Peak 3 (toggleable) -->
+          <div style="margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4a90e2;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <input type="checkbox" id="enablePeak3L1" style="margin: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #333;">Peak 3</div>
+            </div>
+            <div id="peak3L1-fields" style="display: none;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                  <input type="number" id="peakPos3L1" value="1000" step="0.1" style="width: 80px; padding: 4px;">
+                  <span style="font-size: 12px;">keV</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="fixPeakPos3L1" style="margin: 0;">
+                  <label style="font-size: 12px; margin: 0;">Fix position</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Keep widths equal -->
+          <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px;">
+            <input type="checkbox" id="keepWidthsEqual1" checked style="margin: 0;" disabled>
+            <span id="keepWidthsEqual1-label" style="color: #999;">Keep widths equal</span>
+          </label>
+
           <div class="section-label" style="margin-top: 20px;">
-            <span>Level 2</span>
+            <span>Level 2 fit region</span>
           </div>
           <div class="field-row">
             <input type="number" id="lvl2-lo" value="1497">
@@ -203,56 +217,70 @@ COMMUNICATION PROTOCOL:
             <input type="number" id="lvl2-hi" value="1732">
             <span>keV</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-            <input type="checkbox" id="fixPeakPos2" style="margin: 0;">
-            <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-            <input type="number" id="peakPos2" value="1614" step="0.1" style="width: 80px; padding: 4px;" disabled>
-            <span style="font-size: 12px;">keV</span>
+
+          <!-- Peak 1 (always active) -->
+          <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #e27d4a;">
+            <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px;">Peak 1</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                <input type="number" id="peakPos2" value="1614" step="0.1" style="width: 80px; padding: 4px;">
+                <span style="font-size: 12px;">keV</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="fixPeakPos2" style="margin: 0;">
+                <label style="font-size: 12px; margin: 0;">Fix position</label>
+              </div>
+            </div>
           </div>
-          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #4a90e2;">
-            <input type="checkbox" id="doublet2" style="margin: 0;">
-            <span>Doublet</span>
+
+          <!-- Peak 2 (toggleable) -->
+          <div style="margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #e27d4a;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <input type="checkbox" id="enablePeak2L2" style="margin: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #333;">Peak 2</div>
+            </div>
+            <div id="peak2L2-fields" style="display: none;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                  <input type="number" id="peakPos2L2" value="1770" step="0.1" style="width: 80px; padding: 4px;">
+                  <span style="font-size: 12px;">keV</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="fixPeakPos2L2" style="margin: 0;">
+                  <label style="font-size: 12px; margin: 0;">Fix position</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Peak 3 (toggleable) -->
+          <div style="margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #e27d4a;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <input type="checkbox" id="enablePeak3L2" style="margin: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #333;">Peak 3</div>
+            </div>
+            <div id="peak3L2-fields" style="display: none;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; margin: 0; width: 70px;">Position:</label>
+                  <input type="number" id="peakPos3L2" value="1830" step="0.1" style="width: 80px; padding: 4px;">
+                  <span style="font-size: 12px;">keV</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="fixPeakPos3L2" style="margin: 0;">
+                  <label style="font-size: 12px; margin: 0;">Fix position</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Keep widths equal -->
+          <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px;">
+            <input type="checkbox" id="keepWidthsEqual2" checked style="margin: 0;" disabled>
+            <span id="keepWidthsEqual2-label" style="color: #999;">Keep widths equal</span>
           </label>
-          <div class="doublet-box" id="doublet2-fields" style="display: none;">
-            <div class="field-row" style="margin-bottom: 0;">
-              <input type="number" id="d2-lo" value="1750">
-              <span>to</span>
-              <input type="number" id="d2-hi" value="1790">
-              <span>keV</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-              <input type="checkbox" id="fixPeakPosD2" style="margin: 0;">
-              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-              <input type="number" id="peakPosD2" value="1770" step="0.1" style="width: 80px; padding: 4px;" disabled>
-              <span style="font-size: 12px;">keV</span>
-            </div>
-            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
-              <input type="checkbox" id="fixDoubletWidth2" checked style="margin-right: 8px;">
-              <span>Fix doublet width to main peak</span>
-            </label>
-          </div>
-          <label style="display: flex; align-items: center; gap: 6px; margin-top: 12px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #e27d4a;">
-            <input type="checkbox" id="triplet2" style="margin: 0;">
-            <span>Triplet</span>
-          </label>
-          <div class="doublet-box" id="triplet2-fields" style="display: none;">
-            <div class="field-row" style="margin-bottom: 0;">
-              <input type="number" id="t2-lo" value="1810">
-              <span>to</span>
-              <input type="number" id="t2-hi" value="1850">
-              <span>keV</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
-              <input type="checkbox" id="fixPeakPosT2" style="margin: 0;">
-              <label style="font-size: 12px; margin: 0;">Fix peak position at</label>
-              <input type="number" id="peakPosT2" value="1830" step="0.1" style="width: 80px; padding: 4px;" disabled>
-              <span style="font-size: 12px;">keV</span>
-            </div>
-            <label style="display: flex; align-items: center; margin-top: 8px; font-size: 12px;">
-              <input type="checkbox" id="fixTripletWidth2" checked style="margin-right: 8px;">
-              <span>Fix triplet width to main peak</span>
-            </label>
-          </div>
 
           <div class="section-label"><span>Background (Level 1)</span></div>
           <div class="bg-box">
@@ -1161,48 +1189,28 @@ COMMUNICATION PROTOCOL:
           document.getElementById('exc-lo').value = v[4];
           document.getElementById('exc-hi').value = v[5];
           
-          // v[6-7] are doublet 1 energies, v[8-9] are doublet 2 energies
-          // v[10] is doDoublet[0] flag, v[11] is doDoublet[1] flag
+          // v[6] is doDoublet[0] flag, v[7] is doDoublet[1] flag
+          // v[18] is doTriplet[0] flag, v[19] is doTriplet[1] flag (if present)
           // v[12] is fixDoubletWidth[0], v[13] is fixDoubletWidth[1]
-          // v[14-15] are triplet 1 energies, v[16-17] are triplet 2 energies
-          // v[18] is doTriplet[0] flag, v[19] is doTriplet[1] flag
-          // v[20] is fixTripletWidth[0], v[21] is fixTripletWidth[1]
-          document.getElementById('d1-lo').value = v[6];
-          document.getElementById('d1-hi').value = v[7];
-          document.getElementById('d2-lo').value = v[8];
-          document.getElementById('d2-hi').value = v[9];
           
-          const hasDoublet1 = v[10] !== 0;
-          document.getElementById('doublet1').checked = hasDoublet1;
-          document.getElementById('doublet1-fields').style.display = hasDoublet1 ? 'block' : 'none';
+          const hasDoublet1 = v[6] !== 0;
+          const hasDoublet2 = v[7] !== 0;
+          const hasTriplet1 = (v.length >= 22 && v[18] !== 0);
+          const hasTriplet2 = (v.length >= 22 && v[19] !== 0);
           
-          const hasDoublet2 = v[11] !== 0;
-          document.getElementById('doublet2').checked = hasDoublet2;
-          document.getElementById('doublet2-fields').style.display = hasDoublet2 ? 'block' : 'none';
+          document.getElementById('enablePeak2L1').checked = hasDoublet1;
+          document.getElementById('peak2L1-fields').style.display = hasDoublet1 ? 'block' : 'none';
+          document.getElementById('enablePeak2L2').checked = hasDoublet2;
+          document.getElementById('peak2L2-fields').style.display = hasDoublet2 ? 'block' : 'none';
           
-          // Set doublet width fix toggles
-          document.getElementById('fixDoubletWidth1').checked = v[12] !== 0;
-          document.getElementById('fixDoubletWidth2').checked = v[13] !== 0;
+          document.getElementById('enablePeak3L1').checked = hasTriplet1;
+          document.getElementById('peak3L1-fields').style.display = hasTriplet1 ? 'block' : 'none';
+          document.getElementById('enablePeak3L2').checked = hasTriplet2;
+          document.getElementById('peak3L2-fields').style.display = hasTriplet2 ? 'block' : 'none';
           
-          // Triplet energies and flags (indices 14-21, if present)
-          if (v.length >= 22) {
-            document.getElementById('t1-lo').value = v[14];
-            document.getElementById('t1-hi').value = v[15];
-            document.getElementById('t2-lo').value = v[16];
-            document.getElementById('t2-hi').value = v[17];
-            
-            const hasTriplet1 = v[18] !== 0;
-            document.getElementById('triplet1').checked = hasTriplet1;
-            document.getElementById('triplet1-fields').style.display = hasTriplet1 ? 'block' : 'none';
-            
-            const hasTriplet2 = v[19] !== 0;
-            document.getElementById('triplet2').checked = hasTriplet2;
-            document.getElementById('triplet2-fields').style.display = hasTriplet2 ? 'block' : 'none';
-            
-            // Set triplet width fix toggles
-            document.getElementById('fixTripletWidth1').checked = v[20] !== 0;
-            document.getElementById('fixTripletWidth2').checked = v[21] !== 0;
-          }
+          // Set width fix toggles (applies to both doublet and triplet)
+          document.getElementById('keepWidthsEqual1').checked = v[12] !== 0;
+          document.getElementById('keepWidthsEqual2').checked = v[13] !== 0;
           
           document.getElementById('opt-interpol').checked = v[22] !== 0;
           document.getElementById('opt-oslo').checked = v[23] !== 0;
@@ -1286,13 +1294,9 @@ COMMUNICATION PROTOCOL:
             
             document.getElementById('fixPeakPos1').checked = fixPeak1;
             document.getElementById('peakPos1').value = peakPos1;
-            document.getElementById('peakPos1').disabled = !fixPeak1;
-            document.getElementById('peakPos1').style.color = fixPeak1 ? '' : '#999';
             
             document.getElementById('fixPeakPos2').checked = fixPeak2;
             document.getElementById('peakPos2').value = peakPos2;
-            document.getElementById('peakPos2').disabled = !fixPeak2;
-            document.getElementById('peakPos2').style.color = fixPeak2 ? '' : '#999';
           }
           
           // Doublet peak position settings (indices 57-60, if present)
@@ -1302,23 +1306,14 @@ COMMUNICATION PROTOCOL:
             const fixPeakD2 = v[59] !== 0;
             let peakPosD2 = v[60];
             
-            // If doublet peak position is 0 (uninitialized), set to middle of doublet range
-            if (peakPosD1 === 0) {
-              peakPosD1 = (v[6] + v[7]) / 2;  // (d1-lo + d1-hi) / 2
-            }
-            if (peakPosD2 === 0) {
-              peakPosD2 = (v[8] + v[9]) / 2;  // (d2-lo + d2-hi) / 2
-            }
+            // Set Peak 2 positions and fix toggles (checkbox state already set above)
+            document.getElementById('fixPeakPos2L1').checked = fixPeakD1;
+            document.getElementById('peakPos2L1').value = peakPosD1;
+            document.getElementById('fixPeakPos2L2').checked = fixPeakD2;
+            document.getElementById('peakPos2L2').value = peakPosD2;
             
-            document.getElementById('fixPeakPosD1').checked = fixPeakD1;
-            document.getElementById('peakPosD1').value = peakPosD1;
-            document.getElementById('peakPosD1').disabled = !fixPeakD1;
-            document.getElementById('peakPosD1').style.color = fixPeakD1 ? '' : '#999';
-            
-            document.getElementById('fixPeakPosD2').checked = fixPeakD2;
-            document.getElementById('peakPosD2').value = peakPosD2;
-            document.getElementById('peakPosD2').disabled = !fixPeakD2;
-            document.getElementById('peakPosD2').style.color = fixPeakD2 ? '' : '#999';
+            updateKeepWidthsEqualState(1);
+            updateKeepWidthsEqualState(2);
           }
           
           // Triplet peak position settings (indices 61-64, if present)
@@ -1328,23 +1323,22 @@ COMMUNICATION PROTOCOL:
             const fixPeakT2 = v[63] !== 0;
             let peakPosT2 = v[64];
             
-            // If triplet peak position is 0 (uninitialized), set to middle of triplet range
-            if (peakPosT1 === 0) {
-              peakPosT1 = (v[14] + v[15]) / 2;  // (t1-lo + t1-hi) / 2
-            }
-            if (peakPosT2 === 0) {
-              peakPosT2 = (v[16] + v[17]) / 2;  // (t2-lo + t2-hi) / 2
-            }
+            // Set Peak 3 positions and fix toggles (checkbox state already set above)
+            document.getElementById('fixPeakPos3L1').checked = fixPeakT1;
+            document.getElementById('peakPos3L1').value = peakPosT1;
+            document.getElementById('fixPeakPos3L2').checked = fixPeakT2;
+            document.getElementById('peakPos3L2').value = peakPosT2;
             
-            document.getElementById('fixPeakPosT1').checked = fixPeakT1;
-            document.getElementById('peakPosT1').value = peakPosT1;
-            document.getElementById('peakPosT1').disabled = !fixPeakT1;
-            document.getElementById('peakPosT1').style.color = fixPeakT1 ? '' : '#999';
-            
-            document.getElementById('fixPeakPosT2').checked = fixPeakT2;
-            document.getElementById('peakPosT2').value = peakPosT2;
-            document.getElementById('peakPosT2').disabled = !fixPeakT2;
-            document.getElementById('peakPosT2').style.color = fixPeakT2 ? '' : '#999';
+            updateKeepWidthsEqualState(1);
+            updateKeepWidthsEqualState(2);
+          }
+          
+          // Set "keep widths equal" checkboxes from fixDoubletWidth/fixTripletWidth flags
+          if (v.length >= 14) {
+            document.getElementById('keepWidthsEqual1').checked = v[12] !== 0;  // fixDoubletWidth[0]
+            document.getElementById('keepWidthsEqual2').checked = v[13] !== 0;  // fixDoubletWidth[1]
+            updateKeepWidthsEqualState(1);
+            updateKeepWidthsEqualState(2);
           }
         }
         
@@ -1379,25 +1373,15 @@ COMMUNICATION PROTOCOL:
           document.getElementById('lvl2-lo').value = v[2];
           document.getElementById('lvl2-hi').value = v[3];
           
-          // Update doublet positions if they exist (checkbox states are NOT changed)
-          if (document.getElementById('doublet1').checked) {
-            document.getElementById('d1-lo').value = v[4];
-            document.getElementById('d1-hi').value = v[5];
-          }
-          if (document.getElementById('doublet2').checked) {
-            document.getElementById('d2-lo').value = v[6];
-            document.getElementById('d2-hi').value = v[7];
-          }
-          
           // Update background regions
-          document.getElementById('bg1-lo1').value = v[8];
-          document.getElementById('bg1-hi1').value = v[9];
-          document.getElementById('bg1-lo2').value = v[10];
-          document.getElementById('bg1-hi2').value = v[11];
-          document.getElementById('bg2-lo1').value = v[12];
-          document.getElementById('bg2-hi1').value = v[13];
-          document.getElementById('bg2-lo2').value = v[14];
-          document.getElementById('bg2-hi2').value = v[15];
+          document.getElementById('bg1-lo1').value = v[4];
+          document.getElementById('bg1-hi1').value = v[5];
+          document.getElementById('bg1-lo2').value = v[6];
+          document.getElementById('bg1-hi2').value = v[7];
+          document.getElementById('bg2-lo1').value = v[8];
+          document.getElementById('bg2-hi1').value = v[9];
+          document.getElementById('bg2-lo2').value = v[10];
+          document.getElementById('bg2-hi2').value = v[11];
         }
         
         // Bin count update (after running ShapeIt)
@@ -1523,138 +1507,130 @@ COMMUNICATION PROTOCOL:
     document.getElementById('logpanel-content').innerHTML = '';
   });
 
-  // Doublet toggles show/hide extra energy ranges
-  document.getElementById('doublet1').addEventListener('change', (e) => {
-    document.getElementById('doublet1-fields').style.display = e.target.checked ? 'block' : 'none';
-    sendLevelEnergies();
+  // NEW: Enable/disable Peak 2 and Peak 3 for Level 1
+  document.getElementById('enablePeak2L1').addEventListener('change', (e) => {
+    document.getElementById('peak2L1-fields').style.display = e.target.checked ? 'block' : 'none';
+    updateKeepWidthsEqualState(1);
+    sendNewPeakConfig();
   });
-  document.getElementById('doublet2').addEventListener('change', (e) => {
-    document.getElementById('doublet2-fields').style.display = e.target.checked ? 'block' : 'none';
-    sendLevelEnergies();
-  });
-
-  // Triplet toggles show/hide extra energy ranges
-  document.getElementById('triplet1').addEventListener('change', (e) => {
-    document.getElementById('triplet1-fields').style.display = e.target.checked ? 'block' : 'none';
-    sendLevelEnergies();
-  });
-  document.getElementById('triplet2').addEventListener('change', (e) => {
-    document.getElementById('triplet2-fields').style.display = e.target.checked ? 'block' : 'none';
-    sendLevelEnergies();
+  document.getElementById('enablePeak3L1').addEventListener('change', (e) => {
+    document.getElementById('peak3L1-fields').style.display = e.target.checked ? 'block' : 'none';
+    updateKeepWidthsEqualState(1);
+    sendNewPeakConfig();
   });
 
-  // Peak position toggles enable/disable position fields and update markers
-  document.getElementById('fixPeakPos1').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPos1');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendPeakPosition(0);
+  // NEW: Enable/disable Peak 2 and Peak 3 for Level 2
+  document.getElementById('enablePeak2L2').addEventListener('change', (e) => {
+    document.getElementById('peak2L2-fields').style.display = e.target.checked ? 'block' : 'none';
+    updateKeepWidthsEqualState(2);
+    sendNewPeakConfig();
   });
-  document.getElementById('fixPeakPos2').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPos2');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendPeakPosition(1);
+  document.getElementById('enablePeak3L2').addEventListener('change', (e) => {
+    document.getElementById('peak3L2-fields').style.display = e.target.checked ? 'block' : 'none';
+    updateKeepWidthsEqualState(2);
+    sendNewPeakConfig();
   });
 
-  // Peak position values trigger immediate update
-  document.getElementById('peakPos1').addEventListener('change', () => sendPeakPosition(0));
-  document.getElementById('peakPos2').addEventListener('change', () => sendPeakPosition(1));
-
-  // Doublet peak position toggles
-  document.getElementById('fixPeakPosD1').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPosD1');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendDoubletPeakPosition(0);
+  // NEW: Fix peak position toggles for Level 1 peaks
+  document.getElementById('fixPeakPos2L1').addEventListener('change', (e) => {
+    sendNewPeakConfig();
   });
-  document.getElementById('fixPeakPosD2').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPosD2');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendDoubletPeakPosition(1);
+  document.getElementById('fixPeakPos3L1').addEventListener('change', (e) => {
+    sendNewPeakConfig();
   });
 
-  // Doublet peak position values trigger immediate update
-  document.getElementById('peakPosD1').addEventListener('change', () => sendDoubletPeakPosition(0));
-  document.getElementById('peakPosD2').addEventListener('change', () => sendDoubletPeakPosition(1));
-
-  // Triplet peak position toggles
-  document.getElementById('fixPeakPosT1').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPosT1');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendTripletPeakPosition(0);
+  // NEW: Fix peak position toggles for Level 2 peaks
+  document.getElementById('fixPeakPos2L2').addEventListener('change', (e) => {
+    sendNewPeakConfig();
   });
-  document.getElementById('fixPeakPosT2').addEventListener('change', (e) => {
-    const input = document.getElementById('peakPosT2');
-    input.disabled = !e.target.checked;
-    input.style.color = e.target.checked ? '' : '#999';
-    sendTripletPeakPosition(1);
+  document.getElementById('fixPeakPos3L2').addEventListener('change', (e) => {
+    sendNewPeakConfig();
   });
 
-  // Triplet peak position values trigger immediate update
-  document.getElementById('peakPosT1').addEventListener('change', () => sendTripletPeakPosition(0));
-  document.getElementById('peakPosT2').addEventListener('change', () => sendTripletPeakPosition(1));
+  // NEW: Peak position value changes
+  document.getElementById('peakPos2L1').addEventListener('change', () => sendNewPeakConfig());
+  document.getElementById('peakPos3L1').addEventListener('change', () => sendNewPeakConfig());
+  document.getElementById('peakPos2L2').addEventListener('change', () => sendNewPeakConfig());
+  document.getElementById('peakPos3L2').addEventListener('change', () => sendNewPeakConfig());
 
-  function sendPeakPosition(level) {
-    const checkbox = document.getElementById('fixPeakPos' + (level + 1));
-    const input = document.getElementById('peakPos' + (level + 1));
-    const enable = checkbox.checked ? 1 : 0;
-    const position = input.value;
+  // NEW: Keep widths equal toggles
+  document.getElementById('keepWidthsEqual1').addEventListener('change', () => sendNewPeakConfig());
+  document.getElementById('keepWidthsEqual2').addEventListener('change', () => sendNewPeakConfig());
+
+  // NEW: Send new peak configuration to backend
+  // Maps to settings file: doDoublet[0-1], doTriplet[0-1], fixDoubletPeakPos[0-1], doubletPeakPos[0-1], 
+  //                        fixTripletPeakPos[0-1], tripletPeakPos[0-1], fixDoubletWidth[0-1], fixTripletWidth[0-1]
+  function sendNewPeakConfig() {
+    const enablePeak2L1 = document.getElementById('enablePeak2L1').checked ? 1 : 0;
+    const enablePeak3L1 = document.getElementById('enablePeak3L1').checked ? 1 : 0;
+    const enablePeak2L2 = document.getElementById('enablePeak2L2').checked ? 1 : 0;
+    const enablePeak3L2 = document.getElementById('enablePeak3L2').checked ? 1 : 0;
+    
+    const fixPeak2L1 = document.getElementById('fixPeakPos2L1').checked ? 1 : 0;
+    const fixPeak3L1 = document.getElementById('fixPeakPos3L1').checked ? 1 : 0;
+    const fixPeak2L2 = document.getElementById('fixPeakPos2L2').checked ? 1 : 0;
+    const fixPeak3L2 = document.getElementById('fixPeakPos3L2').checked ? 1 : 0;
+    
+    const peakPos2L1 = document.getElementById('peakPos2L1').value;
+    const peakPos3L1 = document.getElementById('peakPos3L1').value;
+    const peakPos2L2 = document.getElementById('peakPos2L2').value;
+    const peakPos3L2 = document.getElementById('peakPos3L2').value;
+    
+    const keepWidths1 = document.getElementById('keepWidthsEqual1').checked ? 1 : 0;
+    const keepWidths2 = document.getElementById('keepWidthsEqual2').checked ? 1 : 0;
+    
+    const msg = [
+      enablePeak2L1, fixPeak2L1, peakPos2L1,
+      enablePeak3L1, fixPeak3L1, peakPos3L1,
+      keepWidths1,
+      enablePeak2L2, fixPeak2L2, peakPos2L2,
+      enablePeak3L2, fixPeak3L2, peakPos3L2,
+      keepWidths2
+    ].join('|');
+    
     if (conn_handle) {
-      conn_handle.send('PEAKPOS:' + level + '|' + enable + '|' + position);
+      conn_handle.send('NEW_PEAK_CONFIG:' + msg);
     }
     markSettingsDirty();
   }
 
-  function sendDoubletPeakPosition(level) {
-    const checkbox = document.getElementById('fixPeakPosD' + (level + 1));
-    const input = document.getElementById('peakPosD' + (level + 1));
-    const enable = checkbox.checked ? 1 : 0;
-    const position = input.value;
-    if (conn_handle) {
-      conn_handle.send('DOUBLETPEAKPOS:' + level + '|' + enable + '|' + position);
-    }
-    markSettingsDirty();
+  // NEW: Update "Keep widths equal" checkbox state based on active peaks
+  function updateKeepWidthsEqualState(level) {
+    const enablePeak2 = document.getElementById('enablePeak2L' + level).checked;
+    const enablePeak3 = document.getElementById('enablePeak3L' + level).checked;
+    const hasMultiplePeaks = enablePeak2 || enablePeak3;
+    
+    const checkbox = document.getElementById('keepWidthsEqual' + level);
+    const label = document.getElementById('keepWidthsEqual' + level + '-label');
+    
+    checkbox.disabled = !hasMultiplePeaks;
+    label.style.color = hasMultiplePeaks ? '' : '#999';
   }
 
-  function sendTripletPeakPosition(level) {
-    const checkbox = document.getElementById('fixPeakPosT' + (level + 1));
-    const input = document.getElementById('peakPosT' + (level + 1));
-    const enable = checkbox.checked ? 1 : 0;
-    const position = input.value;
-    if (conn_handle) {
-      conn_handle.send('TRIPLETPEAKPOS:' + level + '|' + enable + '|' + position);
-    }
-    markSettingsDirty();
-  }
-
-  // Width fix toggles trigger re-send of level energies
-  document.getElementById('fixDoubletWidth1').addEventListener('change', sendLevelEnergies);
-  document.getElementById('fixDoubletWidth2').addEventListener('change', sendLevelEnergies);
-  document.getElementById('fixTripletWidth1').addEventListener('change', sendLevelEnergies);
-  document.getElementById('fixTripletWidth2').addEventListener('change', sendLevelEnergies);
+  // Doublet toggles - removed, now using NEW peak configuration UI
+  // Triplet toggles - removed, now using NEW peak configuration UI
+  // Width fix toggles - removed, now using NEW peak configuration UI
+  // Peak position toggles - removed, now using dedicated handlers
 
   // Send level energies to server
   function sendLevelEnergies() {
     const val = id => document.getElementById(id).value;
-    const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
-    const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
-    const isTriplet1 = document.getElementById('triplet1').checked ? 1 : 0;
-    const isTriplet2 = document.getElementById('triplet2').checked ? 1 : 0;
-    const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
-    const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
-    const fixTripletWidth1 = document.getElementById('fixTripletWidth1').checked ? 1 : 0;
-    const fixTripletWidth2 = document.getElementById('fixTripletWidth2').checked ? 1 : 0;
+    const isDoublet1 = document.getElementById('enablePeak2L1').checked ? 1 : 0;
+    const isDoublet2 = document.getElementById('enablePeak2L2').checked ? 1 : 0;
+    const isTriplet1 = document.getElementById('enablePeak3L1').checked ? 1 : 0;
+    const isTriplet2 = document.getElementById('enablePeak3L2').checked ? 1 : 0;
+    const fixWidth1 = document.getElementById('keepWidthsEqual1').checked ? 1 : 0;
+    const fixWidth2 = document.getElementById('keepWidthsEqual2').checked ? 1 : 0;
+    const fixTripletWidth1 = fixWidth1;  // Same as doublet for now
+    const fixTripletWidth2 = fixWidth2;  // Same as doublet for now
     const msg = [
       val('lvl1-lo'), val('lvl1-hi'),
       val('lvl2-lo'), val('lvl2-hi'),
-      isDoublet1, val('d1-lo'), val('d1-hi'),
-      isDoublet2, val('d2-lo'), val('d2-hi'),
+      isDoublet1, val('peakPos2L1'), val('peakPos2L1'),  // Using peak position instead of range
+      isDoublet2, val('peakPos2L2'), val('peakPos2L2'),  // Using peak position instead of range
       fixWidth1, fixWidth2,
-      isTriplet1, val('t1-lo'), val('t1-hi'),
-      isTriplet2, val('t2-lo'), val('t2-hi'),
+      isTriplet1, val('peakPos3L1'), val('peakPos3L1'),  // Using peak position instead of range
+      isTriplet2, val('peakPos3L2'), val('peakPos3L2'),  // Using peak position instead of range
       fixTripletWidth1, fixTripletWidth2,
     ].join('|');
     if (conn_handle) {
@@ -1664,7 +1640,7 @@ COMMUNICATION PROTOCOL:
     markSettingsDirty();
   }
   
-  ['lvl1-lo', 'lvl1-hi', 'lvl2-lo', 'lvl2-hi', 'd1-lo', 'd1-hi', 'd2-lo', 'd2-hi', 't1-lo', 't1-hi', 't2-lo', 't2-hi'].forEach(id => {
+  ['lvl1-lo', 'lvl1-hi', 'lvl2-lo', 'lvl2-hi'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendLevelEnergies);
   });
 
@@ -2024,23 +2000,23 @@ COMMUNICATION PROTOCOL:
   document.querySelector('.btn-run').addEventListener('click', () => {
       if (!conn_handle) return;
       const val = id => document.getElementById(id).value;
-      const isDoublet1 = document.getElementById('doublet1').checked ? 1 : 0;
-      const isDoublet2 = document.getElementById('doublet2').checked ? 1 : 0;
-      const isTriplet1 = document.getElementById('triplet1').checked ? 1 : 0;
-      const isTriplet2 = document.getElementById('triplet2').checked ? 1 : 0;
-      const fixWidth1 = document.getElementById('fixDoubletWidth1').checked ? 1 : 0;
-      const fixWidth2 = document.getElementById('fixDoubletWidth2').checked ? 1 : 0;
-      const fixTripletWidth1 = document.getElementById('fixTripletWidth1').checked ? 1 : 0;
-      const fixTripletWidth2 = document.getElementById('fixTripletWidth2').checked ? 1 : 0;
+      const isDoublet1 = document.getElementById('enablePeak2L1').checked ? 1 : 0;
+      const isDoublet2 = document.getElementById('enablePeak2L2').checked ? 1 : 0;
+      const isTriplet1 = document.getElementById('enablePeak3L1').checked ? 1 : 0;
+      const isTriplet2 = document.getElementById('enablePeak3L2').checked ? 1 : 0;
+      const fixWidth1 = document.getElementById('keepWidthsEqual1').checked ? 1 : 0;
+      const fixWidth2 = document.getElementById('keepWidthsEqual2').checked ? 1 : 0;
+      const fixTripletWidth1 = fixWidth1;  // Same as doublet for now
+      const fixTripletWidth2 = fixWidth2;  // Same as doublet for now
       const msg = [
         val('lvl1-lo'), val('lvl1-hi'),
         val('lvl2-lo'), val('lvl2-hi'),
         val('exc-lo'), val('exc-hi'),
-        isDoublet1, val('d1-lo'), val('d1-hi'),
-        isDoublet2, val('d2-lo'), val('d2-hi'),
+        isDoublet1, val('peakPos2L1'), val('peakPos2L1'),  // Using peak position instead of range
+        isDoublet2, val('peakPos2L2'), val('peakPos2L2'),  // Using peak position instead of range
         fixWidth1, fixWidth2,
-        isTriplet1, val('t1-lo'), val('t1-hi'),
-        isTriplet2, val('t2-lo'), val('t2-hi'),
+        isTriplet1, val('peakPos3L1'), val('peakPos3L1'),  // Using peak position instead of range
+        isTriplet2, val('peakPos3L2'), val('peakPos3L2'),  // Using peak position instead of range
         fixTripletWidth1, fixTripletWidth2,
       ].join('|');
       conn_handle.send('RUN:' + msg);

@@ -219,6 +219,9 @@ void DumpSettings()
               << "  matrixName: " << sett->matrixName << "\n"
               << "  levEne: " << sett->levEne[0] << " " << sett->levEne[1] << " "
                                << sett->levEne[2] << " " << sett->levEne[3] << "\n"
+              << "  peakPos: " << sett->peakPos[0] << " " << sett->peakPos[1] << "\n"
+              << "  doubletPeakPos: " << sett->doubletPeakPos[0] << " " << sett->doubletPeakPos[1] << "\n"
+              << "  tripletPeakPos: " << sett->tripletPeakPos[0] << " " << sett->tripletPeakPos[1] << "\n"
               << "  exiEne: " << sett->exiEne[0] << " " << sett->exiEne[1] << "\n"
               << "  exi_size: " << sett->exi_size[0] << " " << sett->exi_size[1] << "\n"
               << "  doOslo: " << sett->doOslo << "  doAutoScale: " << sett->doAutoScale
@@ -331,14 +334,10 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->levEne[0]) + "|" + std::to_string(sett->levEne[1]) + "|";
     msg += std::to_string(sett->levEne[2]) + "|" + std::to_string(sett->levEne[3]) + "|";
     msg += std::to_string(sett->exiEne[0]) + "|" + std::to_string(sett->exiEne[1]) + "|";
-    msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
-    msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
     msg += std::to_string(sett->doDoublet[0] ? 1 : 0) + "|";  // Add doublet checkbox states
     msg += std::to_string(sett->doDoublet[1] ? 1 : 0) + "|";
     msg += std::to_string(sett->fixDoubletWidth[0] ? 1 : 0) + "|";  // Add doublet width fix toggles
     msg += std::to_string(sett->fixDoubletWidth[1] ? 1 : 0) + "|";
-    msg += std::to_string(sett->levEne_3[0]) + "|" + std::to_string(sett->levEne_3[1]) + "|";
-    msg += std::to_string(sett->levEne_3[2]) + "|" + std::to_string(sett->levEne_3[3]) + "|";
     msg += std::to_string(sett->doTriplet[0] ? 1 : 0) + "|";  // Add triplet checkbox states
     msg += std::to_string(sett->doTriplet[1] ? 1 : 0) + "|";
     msg += std::to_string(sett->fixTripletWidth[0] ? 1 : 0) + "|";  // Add triplet width fix toggles
@@ -393,6 +392,8 @@ TMarker *gLevel1PeakMarker = nullptr;
 TMarker *gLevel2PeakMarker = nullptr;
 TMarker *gDoublet1PeakMarker = nullptr;
 TMarker *gDoublet2PeakMarker = nullptr;
+TMarker *gTriplet1PeakMarker = nullptr;
+TMarker *gTriplet2PeakMarker = nullptr;
 
 void DrawMarkers(bool usePadRange = false)
 {
@@ -407,6 +408,8 @@ void DrawMarkers(bool usePadRange = false)
     if (gLevel2PeakMarker) canvas->GetListOfPrimitives()->Remove(gLevel2PeakMarker);
     if (gDoublet1PeakMarker) canvas->GetListOfPrimitives()->Remove(gDoublet1PeakMarker);
     if (gDoublet2PeakMarker) canvas->GetListOfPrimitives()->Remove(gDoublet2PeakMarker);
+    if (gTriplet1PeakMarker) canvas->GetListOfPrimitives()->Remove(gTriplet1PeakMarker);
+    if (gTriplet2PeakMarker) canvas->GetListOfPrimitives()->Remove(gTriplet2PeakMarker);
 
     if (gDisplayMode != 4 && gDisplayMode != 5) {
         PushCanvasUpdate();
@@ -433,90 +436,105 @@ void DrawMarkers(bool usePadRange = false)
         // a new histogram. The histogram's own data range is independent of
         // that pad-painting timing and reflects the real data on first draw.
         y1 = 0;
-        y2 = gCurrentHist ? gCurrentHist->GetMaximum() * 1.05 : 100;
+        // Use 1.15 (15%) padding to ensure star markers at 110% amplitude are visible
+        y2 = gCurrentHist ? gCurrentHist->GetMaximum() * 1.15 : 100;
     }
+    
+    // Helper function to get peak amplitude at a given X position
+    auto getPeakAmplitude = [&](double xPos) -> double {
+        if (!gCurrentHist) return (y1 + y2) / 2.0;  // fallback to mid-point
+        int bin = gCurrentHist->FindBin(xPos);
+        double amplitude = gCurrentHist->GetBinContent(bin);
+        return amplitude > 0 ? amplitude : (y1 + y2) / 2.0;  // fallback if bin is empty
+    };
 
-    // Draw main peak markers (red)
+    // Draw ONLY the main fit region markers (Level 1 and Level 2 boundaries)
+    // NO MORE doublet/triplet level markers - only fit regions
     for (int i = 0; i < 4; i++) {
         gMarkerLine[i] = new TLine(sett->levEne[i], y1, sett->levEne[i], y2);
-        gMarkerLine[i]->SetLineColor(kRed);
+        if (i < 2) {
+            gMarkerLine[i]->SetLineColor(kRed);  // Level 1 boundaries
+        } else {
+            gMarkerLine[i]->SetLineColor(kOrange);  // Level 2 boundaries
+        }
         gMarkerLine[i]->SetLineWidth(2);
         if (sett->levEne[i] >= xmin && sett->levEne[i] <= xmax)
             gMarkerLine[i]->Draw();
     }
     
-    // Draw a star at level 1 peak position if fix toggle is enabled
-    if (sett->fixPeakPos[0]) {
-        double level1PeakX = sett->peakPos[0];
-        double level1PeakY = y2 * 0.95;  // Position near top of plot
-        if (level1PeakX >= xmin && level1PeakX <= xmax) {
-            gLevel1PeakMarker = new TMarker(level1PeakX, level1PeakY, 29);  // 29 = star
-            gLevel1PeakMarker->SetMarkerColor(kRed);
-            gLevel1PeakMarker->SetMarkerSize(2.0);
-            gLevel1PeakMarker->Draw();
-        }
-    }
+    // Draw star markers for ALL active peak positions
+    // Star Y-position is at 110% of peak amplitude
+    // Star X-position uses the input field values directly
     
-    // Draw a star at level 2 peak position if fix toggle is enabled
-    if (sett->fixPeakPos[1]) {
-        double level2PeakX = sett->peakPos[1];
-        double level2PeakY = y2 * 0.90;  // Position slightly lower than level 1
-        if (level2PeakX >= xmin && level2PeakX <= xmax) {
-            gLevel2PeakMarker = new TMarker(level2PeakX, level2PeakY, 29);  // 29 = star
-            gLevel2PeakMarker->SetMarkerColor(kBlue);
-            gLevel2PeakMarker->SetMarkerSize(2.0);
-            gLevel2PeakMarker->Draw();
-        }
-    }
+    // Peak 1 Level 1 (always active - always show)
+    // X-position: Use peakPos directly from settings file (sett->peakPos[0])
+    double peak1Pos = sett->peakPos[0];
+    double peak1Amp = getPeakAmplitude(peak1Pos);
+    gLevel1PeakMarker = new TMarker(peak1Pos, 1.1 * peak1Amp, 29);  // 29 = star, Y at 110% amplitude
+    gLevel1PeakMarker->SetMarkerColor(kRed);
+    gLevel1PeakMarker->SetMarkerSize(2.0);
+    if (peak1Pos >= xmin && peak1Pos <= xmax)
+        gLevel1PeakMarker->Draw();
     
-    // Draw a star at doublet 1 peak position if fix toggle is enabled
-    if (sett->doDoublet[0] && sett->fixDoubletPeakPos[0]) {
-        double doublet1PeakX = sett->doubletPeakPos[0];
-        double doublet1PeakY = y2 * 0.85;  // Position lower than level 1
-        if (doublet1PeakX >= xmin && doublet1PeakX <= xmax) {
-            gDoublet1PeakMarker = new TMarker(doublet1PeakX, doublet1PeakY, 29);  // 29 = star
-            gDoublet1PeakMarker->SetMarkerColor(kOrange);
-            gDoublet1PeakMarker->SetMarkerSize(2.0);
-            gDoublet1PeakMarker->Draw();
-        }
-    }
+    // Peak 1 Level 2 (always active - always show)
+    // X-position: Use peakPos directly from settings file (sett->peakPos[1])
+    double peak2Pos = sett->peakPos[1];
+    double peak2Amp = getPeakAmplitude(peak2Pos);
+    gLevel2PeakMarker = new TMarker(peak2Pos, 1.1 * peak2Amp, 29);  // Y at 110% amplitude
+    gLevel2PeakMarker->SetMarkerColor(kOrange);
+    gLevel2PeakMarker->SetMarkerSize(2.0);
+    if (peak2Pos >= xmin && peak2Pos <= xmax)
+        gLevel2PeakMarker->Draw();
     
-    // Draw a star at doublet 2 peak position if fix toggle is enabled
-    if (sett->doDoublet[1] && sett->fixDoubletPeakPos[1]) {
-        double doublet2PeakX = sett->doubletPeakPos[1];
-        double doublet2PeakY = y2 * 0.80;  // Position lower than doublet 1
-        if (doublet2PeakX >= xmin && doublet2PeakX <= xmax) {
-            gDoublet2PeakMarker = new TMarker(doublet2PeakX, doublet2PeakY, 29);  // 29 = star
-            gDoublet2PeakMarker->SetMarkerColor(kOrange + 2);
-            gDoublet2PeakMarker->SetMarkerSize(2.0);
-            gDoublet2PeakMarker->Draw();
-        }
-    }
-
-    // Draw doublet markers (orange) if enabled via checkbox
-    // levEne_2[0-1] are for level 1 doublet, levEne_2[2-3] are for level 2 doublet
-    // Use doDoublet flag, not zero-detection of energy values
-    
+    // Peak 2 Level 1 (doublet - show star if active)
+    // X-position: Use doubletPeakPos directly from settings file (sett->doubletPeakPos[0])
     if (sett->doDoublet[0]) {
-        for (int i = 0; i < 2; i++) {
-            gDoubletLine[i] = new TLine(sett->levEne_2[i], y1, sett->levEne_2[i], y2);
-            gDoubletLine[i]->SetLineColor(kOrange);
-            gDoubletLine[i]->SetLineWidth(2);
-            if (sett->levEne_2[i] >= xmin && sett->levEne_2[i] <= xmax)
-                gDoubletLine[i]->Draw();
-        }
+        double doublet1Pos = sett->doubletPeakPos[0];
+        double doublet1Amp = getPeakAmplitude(doublet1Pos);
+        gDoublet1PeakMarker = new TMarker(doublet1Pos, 1.1 * doublet1Amp, 29);  // Y at 110% amplitude
+        gDoublet1PeakMarker->SetMarkerColor(kRed);
+        gDoublet1PeakMarker->SetMarkerSize(2.0);
+        if (doublet1Pos >= xmin && doublet1Pos <= xmax)
+            gDoublet1PeakMarker->Draw();
     }
     
+    // Peak 2 Level 2 (doublet - show star if active)
+    // X-position: Use doubletPeakPos directly from settings file (sett->doubletPeakPos[1])
     if (sett->doDoublet[1]) {
-        for (int i = 2; i < 4; i++) {
-            gDoubletLine[i] = new TLine(sett->levEne_2[i], y1, sett->levEne_2[i], y2);
-            gDoubletLine[i]->SetLineColor(kOrange);
-            gDoubletLine[i]->SetLineWidth(2);
-            if (sett->levEne_2[i] >= xmin && sett->levEne_2[i] <= xmax)
-                gDoubletLine[i]->Draw();
-        }
+        double doublet2Pos = sett->doubletPeakPos[1];
+        double doublet2Amp = getPeakAmplitude(doublet2Pos);
+        gDoublet2PeakMarker = new TMarker(doublet2Pos, 1.1 * doublet2Amp, 29);  // Y at 110% amplitude
+        gDoublet2PeakMarker->SetMarkerColor(kOrange);
+        gDoublet2PeakMarker->SetMarkerSize(2.0);
+        if (doublet2Pos >= xmin && doublet2Pos <= xmax)
+            gDoublet2PeakMarker->Draw();
+    }
+    
+    // Peak 3 Level 1 (triplet - show star if active)
+    // X-position: Use tripletPeakPos directly from settings file (sett->tripletPeakPos[0])
+    if (sett->doTriplet[0]) {
+        double triplet1Pos = sett->tripletPeakPos[0];
+        double triplet1Amp = getPeakAmplitude(triplet1Pos);
+        gTriplet1PeakMarker = new TMarker(triplet1Pos, 1.1 * triplet1Amp, 29);  // Y at 110% amplitude
+        gTriplet1PeakMarker->SetMarkerColor(kRed);
+        gTriplet1PeakMarker->SetMarkerSize(2.0);
+        if (triplet1Pos >= xmin && triplet1Pos <= xmax)
+            gTriplet1PeakMarker->Draw();
+    }
+    
+    // Peak 3 Level 2 (triplet - show star if active)
+    // X-position: Use tripletPeakPos directly from settings file (sett->tripletPeakPos[1])
+    if (sett->doTriplet[1]) {
+        double triplet2Pos = sett->tripletPeakPos[1];
+        double triplet2Amp = getPeakAmplitude(triplet2Pos);
+        gTriplet2PeakMarker = new TMarker(triplet2Pos, 1.1 * triplet2Amp, 29);  // Y at 110% amplitude
+        gTriplet2PeakMarker->SetMarkerColor(kOrange);
+        gTriplet2PeakMarker->SetMarkerSize(2.0);
+        if (triplet2Pos >= xmin && triplet2Pos <= xmax)
+            gTriplet2PeakMarker->Draw();
     }
 
+    // Background boxes
     gBgBox[0] = new TBox(sett->bgEne[0][0], y1, sett->bgEne[0][1], y2);
     gBgBox[1] = new TBox(sett->bgEne[0][2], y1, sett->bgEne[0][3], y2);
     gBgBox[2] = new TBox(sett->bgEne[1][0], y1, sett->bgEne[1][1], y2);
@@ -548,7 +566,6 @@ int gSkipRangeChecks = 0;  // Skip this many polling cycles (for context menu op
 
 // Track last marker positions to detect when they're dragged
 double gLastLevEne[4] = {0, 0, 0, 0};
-double gLastLevEne_2[4] = {0, 0, 0, 0}; // Doublet positions
 double gLastBgEne[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 bool gHaveLastMarkers = false;
 
@@ -986,20 +1003,10 @@ void CheckMarkersChanged()
     
     // Read current marker positions
     double levEne[4];
-    double levEne_2[4];
     double bgEne[2][4];
     
     for (int i = 0; i < 4; i++)
         levEne[i] = gMarkerLine[i]->GetX1();
-    
-    // Read doublet positions ONLY if they were actually drawn (checkbox is ON)
-    // If checkbox is OFF (lines not drawn), preserve existing stored values unchanged
-    for (int i = 0; i < 4; i++) {
-        if (gDoubletLine[i])
-            levEne_2[i] = gDoubletLine[i]->GetX1();  // User dragged it, use new position
-        else
-            levEne_2[i] = sett->levEne_2[i];  // Checkbox off, preserve stored value (don't modify)
-    }
     
     bgEne[0][0] = gBgBox[0]->GetX1(); bgEne[0][1] = gBgBox[0]->GetX2();
     bgEne[0][2] = gBgBox[1]->GetX1(); bgEne[0][3] = gBgBox[1]->GetX2();
@@ -1011,10 +1018,6 @@ void CheckMarkersChanged()
     if (gHaveLastMarkers) {
         for (int i = 0; i < 4; i++) {
             if (std::abs(levEne[i] - gLastLevEne[i]) > 0.01) {
-                changed = true;
-                break;
-            }
-            if (std::abs(levEne_2[i] - gLastLevEne_2[i]) > 0.01) {
                 changed = true;
                 break;
             }
@@ -1035,7 +1038,6 @@ void CheckMarkersChanged()
     // Update stored values
     for (int i = 0; i < 4; i++) {
         gLastLevEne[i] = levEne[i];
-        gLastLevEne_2[i] = levEne_2[i];
     }
     for (int i = 0; i < 2; i++)
         for (int j = 0; j < 4; j++)
@@ -1048,7 +1050,6 @@ void CheckMarkersChanged()
         
         for (int i = 0; i < 4; i++) {
             sett->levEne[i] = levEne[i];
-            sett->levEne_2[i] = levEne_2[i];  // This now preserves the stored value when doublet is off
         }
         
         for (int i = 0; i < 2; i++)
@@ -1061,8 +1062,6 @@ void CheckMarkersChanged()
         std::string msg = "MARKER_UPDATE:";
         msg += std::to_string(sett->levEne[0]) + "|" + std::to_string(sett->levEne[1]) + "|";
         msg += std::to_string(sett->levEne[2]) + "|" + std::to_string(sett->levEne[3]) + "|";
-        msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
-        msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
         msg += std::to_string(sett->bgEne[0][0]) + "|" + std::to_string(sett->bgEne[0][1]) + "|";
         msg += std::to_string(sett->bgEne[0][2]) + "|" + std::to_string(sett->bgEne[0][3]) + "|";
         msg += std::to_string(sett->bgEne[1][0]) + "|" + std::to_string(sett->bgEne[1][1]) + "|";
@@ -1134,13 +1133,6 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
         for (int i = 0; i < 4; i++)
             sett->levEne[i] = gMarkerLine[i]->GetX1();
 
-        // Update doublet positions if they exist (only if doublet lines were drawn)
-        for (int i = 0; i < 4; i++) {
-            if (gDoubletLine[i])
-                sett->levEne_2[i] = gDoubletLine[i]->GetX1();
-            // else: preserve existing sett->levEne_2[i] value unchanged
-        }
-
         sett->bgEne[0][0] = gBgBox[0]->GetX1(); sett->bgEne[0][1] = gBgBox[0]->GetX2();
         sett->bgEne[0][2] = gBgBox[1]->GetX1(); sett->bgEne[0][3] = gBgBox[1]->GetX2();
         sett->bgEne[1][0] = gBgBox[2]->GetX1(); sett->bgEne[1][1] = gBgBox[2]->GetX2();
@@ -1154,8 +1146,6 @@ void HandleCanvasEvent(Int_t event, Int_t /*x*/, Int_t /*y*/, TObject * /*obj*/)
         std::string msg = "MARKER_UPDATE:";
         msg += std::to_string(sett->levEne[0]) + "|" + std::to_string(sett->levEne[1]) + "|";
         msg += std::to_string(sett->levEne[2]) + "|" + std::to_string(sett->levEne[3]) + "|";
-        msg += std::to_string(sett->levEne_2[0]) + "|" + std::to_string(sett->levEne_2[1]) + "|";
-        msg += std::to_string(sett->levEne_2[2]) + "|" + std::to_string(sett->levEne_2[3]) + "|";
         msg += std::to_string(sett->bgEne[0][0]) + "|" + std::to_string(sett->bgEne[0][1]) + "|";
         msg += std::to_string(sett->bgEne[0][2]) + "|" + std::to_string(sett->bgEne[0][3]) + "|";
         msg += std::to_string(sett->bgEne[1][0]) + "|" + std::to_string(sett->bgEne[1][1]) + "|";
@@ -1793,7 +1783,35 @@ void ProcessData(unsigned connid, const std::string &arg)
         }
         for (int i = 0; i < 4; i++) sett->bgEne[0][i] = v[i];
         for (int i = 0; i < 4; i++) sett->bgEne[1][i] = v[4 + i];
-        DrawMarkers(); // refreshes the draggable boxes to match, if a projection is shown
+        
+        // If in Autofit mode and viewing a bin projection, refit with new background regions
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "Background energies changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            DrawMarkers(); // refreshes the draggable boxes to match, if a projection is shown
+        }
     }
     else if (arg == "UPDATE_MARKERS") {
         // Redraw markers with current settings (triggered by energy changes in UI)
@@ -2422,8 +2440,8 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** LEVELENERGIES HANDLER CALLED ***" << std::endl;
         auto v = ParsePipeDoubles(after_prefix(arg, "LEVELENERGIES:"));
         std::cout << "*** Parsed " << v.size() << " values ***" << std::endl;
-        if (v.size() != 20) {
-            std::cout << "*** ERROR: Expected 20 values (with triplet support), got " << v.size() << " ***" << std::endl;
+        if (v.size() != 12) {
+            std::cout << "*** ERROR: Expected 12 values, got " << v.size() << " ***" << std::endl;
             return;
         }
         std::cout << "*** Setting levEne[0-3] to: " << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << " ***" << std::endl;
@@ -2444,46 +2462,30 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->levEne[2] = v[2]; 
         sett->levEne[3] = v[3];
         
-        // Update doublet checkbox states (indices 4, 7)
+        // Update doublet checkbox states (indices 4, 5)
         sett->doDoublet[0] = v[4] != 0.0;
-        sett->doDoublet[1] = v[7] != 0.0;
+        sett->doDoublet[1] = v[5] != 0.0;
         
-        // Update doublet energies (indices 5-6, 8-9)
-        sett->levEne_2[0] = v[5];
-        sett->levEne_2[1] = v[6];
-        sett->levEne_2[2] = v[8];
-        sett->levEne_2[3] = v[9];
+        // Update doublet width fix toggles (indices 6-7)
+        sett->fixDoubletWidth[0] = v[6] != 0.0;
+        sett->fixDoubletWidth[1] = v[7] != 0.0;
         
-        // Update doublet width fix toggles (indices 10-11)
-        sett->fixDoubletWidth[0] = v[10] != 0.0;
-        sett->fixDoubletWidth[1] = v[11] != 0.0;
+        // Update triplet checkbox states (indices 8, 9)
+        sett->doTriplet[0] = v[8] != 0.0;
+        sett->doTriplet[1] = v[9] != 0.0;
         
-        // Update triplet checkbox states (indices 12, 15)
-        sett->doTriplet[0] = v[12] != 0.0;
-        sett->doTriplet[1] = v[15] != 0.0;
-        
-        // Update triplet energies (indices 13-14, 16-17)
-        sett->levEne_3[0] = v[13];
-        sett->levEne_3[1] = v[14];
-        sett->levEne_3[2] = v[16];
-        sett->levEne_3[3] = v[17];
-        
-        // Update triplet width fix toggles (indices 18-19)
-        sett->fixTripletWidth[0] = v[18] != 0.0;
-        sett->fixTripletWidth[1] = v[19] != 0.0;
+        // Update triplet width fix toggles (indices 10-11)
+        sett->fixTripletWidth[0] = v[10] != 0.0;
+        sett->fixTripletWidth[1] = v[11] != 0.0;
         
         std::cout << "*** Level energies updated successfully ***" << std::endl;
         std::cout << "*** Doublet 1: " << (sett->doDoublet[0] ? "ENABLED" : "DISABLED") 
-                  << ", values: " << sett->levEne_2[0] << ", " << sett->levEne_2[1] 
                   << ", fix width: " << (sett->fixDoubletWidth[0] ? "YES" : "NO") << " ***" << std::endl;
         std::cout << "*** Doublet 2: " << (sett->doDoublet[1] ? "ENABLED" : "DISABLED") 
-                  << ", values: " << sett->levEne_2[2] << ", " << sett->levEne_2[3] 
                   << ", fix width: " << (sett->fixDoubletWidth[1] ? "YES" : "NO") << " ***" << std::endl;
         std::cout << "*** Triplet 1: " << (sett->doTriplet[0] ? "ENABLED" : "DISABLED") 
-                  << ", values: " << sett->levEne_3[0] << ", " << sett->levEne_3[1] 
                   << ", fix width: " << (sett->fixTripletWidth[0] ? "YES" : "NO") << " ***" << std::endl;
         std::cout << "*** Triplet 2: " << (sett->doTriplet[1] ? "ENABLED" : "DISABLED") 
-                  << ", values: " << sett->levEne_3[2] << ", " << sett->levEne_3[3] 
                   << ", fix width: " << (sett->fixTripletWidth[1] ? "YES" : "NO") << " ***" << std::endl;
         
         // Detect if multiplet state or width fix state changed
@@ -2494,8 +2496,8 @@ void ProcessData(unsigned connid, const std::string &arg)
                                (hadFixTripletWidth1 != sett->fixTripletWidth[0]) || 
                                (hadFixTripletWidth2 != sett->fixTripletWidth[1]);
         
-        // If in Autofit mode and viewing a bin projection, re-fit when multiplet checkbox or width fix changes
-        if ((multipletStateChanged || widthFixChanged) && sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+        // If in Autofit mode and viewing a bin projection, ALWAYS re-fit when any level energy changes
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
             std::cout << "Multiplet settings changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
             // Save current axis ranges before redrawing
@@ -2551,7 +2553,7 @@ void ProcessData(unsigned connid, const std::string &arg)
                   << (enable ? "ENABLED" : "DISABLED") 
                   << " at " << position << " keV" << std::endl;
         
-        // If in Autofit mode and viewing a bin projection, re-fit when peak position changes
+        // If in Autofit mode and viewing a bin projection, ALWAYS re-fit when peak position changes
         if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
             std::cout << "Peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
@@ -2608,7 +2610,7 @@ void ProcessData(unsigned connid, const std::string &arg)
                   << (enable ? "ENABLED" : "DISABLED") 
                   << " at " << position << " keV" << std::endl;
         
-        // If in Autofit mode and viewing a bin projection, re-fit when doublet peak position changes
+        // If in Autofit mode and viewing a bin projection, ALWAYS re-fit when doublet peak position changes
         if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
             std::cout << "Doublet peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
@@ -2665,7 +2667,7 @@ void ProcessData(unsigned connid, const std::string &arg)
                   << (enable ? "ENABLED" : "DISABLED") 
                   << " at " << position << " keV" << std::endl;
         
-        // If in Autofit mode and viewing a bin projection, re-fit when triplet peak position changes
+        // If in Autofit mode and viewing a bin projection, ALWAYS re-fit when triplet peak position changes
         if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
             std::cout << "Triplet peak position changed in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
             
@@ -2692,6 +2694,94 @@ void ProcessData(unsigned connid, const std::string &arg)
             PushCanvasUpdate();
         } else {
             // Just redraw markers
+            DrawMarkers(true);
+        }
+    }
+    else if (starts_with(arg, "NEW_PEAK_CONFIG:")) {
+        // Format: NEW_PEAK_CONFIG:enablePeak2L1|fixPeak2L1|peakPos2L1|enablePeak3L1|fixPeak3L1|peakPos3L1|keepWidths1|
+        //                          enablePeak2L2|fixPeak2L2|peakPos2L2|enablePeak3L2|fixPeak3L2|peakPos3L2|keepWidths2
+        // This maps to:
+        //   - doDoublet[0-1], fixDoubletPeakPos[0-1], doubletPeakPos[0-1]
+        //   - doTriplet[0-1], fixTripletPeakPos[0-1], tripletPeakPos[0-1]
+        //   - fixDoubletWidth[0-1] (via keepWidths flags)
+        auto v = ParsePipeDoubles(after_prefix(arg, "NEW_PEAK_CONFIG:"));
+        if (v.size() != 14) {
+            std::cout << "ERROR: NEW_PEAK_CONFIG expected 14 values, got " << v.size() << std::endl;
+            window->Send(connid, "Malformed NEW_PEAK_CONFIG message.");
+            return;
+        }
+        
+        std::cout << "Processing NEW_PEAK_CONFIG message..." << std::endl;
+        
+        // Level 1 Peak 2 (doublet)
+        sett->doDoublet[0] = v[0] != 0.0;
+        sett->fixDoubletPeakPos[0] = v[1] != 0.0;
+        sett->doubletPeakPos[0] = v[2];
+        
+        // Level 1 Peak 3 (triplet)
+        sett->doTriplet[0] = v[3] != 0.0;
+        sett->fixTripletPeakPos[0] = v[4] != 0.0;
+        sett->tripletPeakPos[0] = v[5];
+        
+        // Level 1 keep widths equal
+        sett->fixDoubletWidth[0] = v[6] != 0.0;
+        sett->fixTripletWidth[0] = v[6] != 0.0;  // Both controlled by same checkbox
+        
+        // Level 2 Peak 2 (doublet)
+        sett->doDoublet[1] = v[7] != 0.0;
+        sett->fixDoubletPeakPos[1] = v[8] != 0.0;
+        sett->doubletPeakPos[1] = v[9];
+        
+        // Level 2 Peak 3 (triplet)
+        sett->doTriplet[1] = v[10] != 0.0;
+        sett->fixTripletPeakPos[1] = v[11] != 0.0;
+        sett->tripletPeakPos[1] = v[12];
+        
+        // Level 2 keep widths equal
+        sett->fixDoubletWidth[1] = v[13] != 0.0;
+        sett->fixTripletWidth[1] = v[13] != 0.0;  // Both controlled by same checkbox
+        
+        std::cout << "NEW_PEAK_CONFIG applied:" << std::endl;
+        std::cout << "  Level 1 Peak 2: " << (sett->doDoublet[0] ? "ON" : "OFF") 
+                  << " at " << sett->doubletPeakPos[0] << " keV" 
+                  << (sett->fixDoubletPeakPos[0] ? " (FIXED)" : " (FREE)") << std::endl;
+        std::cout << "  Level 1 Peak 3: " << (sett->doTriplet[0] ? "ON" : "OFF") 
+                  << " at " << sett->tripletPeakPos[0] << " keV"
+                  << (sett->fixTripletPeakPos[0] ? " (FIXED)" : " (FREE)") << std::endl;
+        std::cout << "  Level 2 Peak 2: " << (sett->doDoublet[1] ? "ON" : "OFF") 
+                  << " at " << sett->doubletPeakPos[1] << " keV"
+                  << (sett->fixDoubletPeakPos[1] ? " (FIXED)" : " (FREE)") << std::endl;
+        std::cout << "  Level 2 Peak 3: " << (sett->doTriplet[1] ? "ON" : "OFF") 
+                  << " at " << sett->tripletPeakPos[1] << " keV"
+                  << (sett->fixTripletPeakPos[1] ? " (FIXED)" : " (FREE)") << std::endl;
+        
+        // If in Autofit mode and viewing a bin projection, refit with new peak configuration
+        if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
+            std::cout << "NEW_PEAK_CONFIG in Autofit mode: re-fitting bin " << gCurrentBin << "..." << std::endl;
+            
+            // Save current axis ranges before redrawing
+            double xmin = gPad->GetUxmin();
+            double xmax = gPad->GetUxmax();
+            double ymin = gPad->GetUymin();
+            double ymax = gPad->GetUymax();
+            bool isLogy = gPad->GetLogy();
+            
+            canvas->cd();
+            gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
+            
+            // Restore axis ranges
+            gCurrentHist->GetXaxis()->SetRangeUser(xmin, xmax);
+            if (isLogy)
+                gCurrentHist->GetYaxis()->SetRangeUser(TMath::Power(10, ymin), TMath::Power(10, ymax));
+            else
+                gCurrentHist->GetYaxis()->SetRangeUser(ymin, ymax);
+            
+            gCurrentHist->Draw();
+            CleanupAutofitDisplay();
+            DrawMarkers(true);
+            PushCanvasUpdate();
+        } else {
+            // Just redraw markers if not in the right mode/view
             DrawMarkers(true);
         }
     }

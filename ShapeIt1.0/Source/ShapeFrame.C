@@ -653,14 +653,28 @@ void ShapeFrame::MessageBox(std::string title, std::string message)
 void ShapeFrame::DrawMarker() {
     
     TCanvas *fCanvas = fEcanvas->GetCanvas();
+    
+    // Remove old markers (only 4 fit region lines now - no more doublet/triplet lines)
     for (int i = 0; i < 4; i++) {
         fCanvas->GetListOfPrimitives()->Remove(l[i]);
         fCanvas->GetListOfPrimitives()->Remove(bgBox[i]);
     }
+    
+    // Remove any old peak position markers (stars)
+    TList *primitives = fCanvas->GetListOfPrimitives();
+    TIter next(primitives);
+    TObject *obj;
+    while ((obj = next())) {
+        if (obj->InheritsFrom("TMarker")) {
+            primitives->Remove(obj);
+        }
+    }
+    
     fCanvas->Modified();
     fCanvas->Update();
+    
     if (displayMode == 4 || displayMode == 5) {
-        //draw verticl lines; there is a bug (feature?) when using log-y scale, discussed here:
+        //draw vertical lines; there is a bug (feature?) when using log-y scale, discussed here:
         // https://root-forum.cern.ch/t/getuymax-has-problems-with-log-scale/10511/4
         //hence the lower and upper y coordinates are calculated differently for lin and log scale
         double y1 = gPad->GetUymin();
@@ -671,14 +685,85 @@ void ShapeFrame::DrawMarker() {
             y2 = TMath::Power(10,y2);
         }
         
-        for (int i = 0; i < 4; i++) {
-            
-            l[i] = new TLine(sett->levEne[i], y1,sett->levEne[i],y2);
-            l[i]->SetLineColor(kRed);
-            l[i]->SetLineWidth(2);
-            l[i]->SetLineColorAlpha(kRed, 0.45);
-            l[i]->Draw();
+        // Calculate mid-point for star markers
+        double yMid = (y1 + y2) / 2.0;
+        if (gPad->GetLogy()) {
+            yMid = TMath::Sqrt(y1 * y2);  // Geometric mean for log scale
         }
+        
+        // Draw ONLY the main fit region markers (Level 1 and Level 2 boundaries)
+        // Level 1 fit region: left and right boundaries
+        l[0] = new TLine(sett->levEne[0], y1, sett->levEne[0], y2);
+        l[0]->SetLineColor(kRed);
+        l[0]->SetLineWidth(2);
+        l[0]->SetLineColorAlpha(kRed, 0.45);
+        l[0]->Draw();
+        
+        l[1] = new TLine(sett->levEne[1], y1, sett->levEne[1], y2);
+        l[1]->SetLineColor(kRed);
+        l[1]->SetLineWidth(2);
+        l[1]->SetLineColorAlpha(kRed, 0.45);
+        l[1]->Draw();
+        
+        // Level 2 fit region: left and right boundaries
+        l[2] = new TLine(sett->levEne[2], y1, sett->levEne[2], y2);
+        l[2]->SetLineColor(kOrange);
+        l[2]->SetLineWidth(2);
+        l[2]->SetLineColorAlpha(kOrange, 0.45);
+        l[2]->Draw();
+        
+        l[3] = new TLine(sett->levEne[3], y1, sett->levEne[3], y2);
+        l[3]->SetLineColor(kOrange);
+        l[3]->SetLineWidth(2);
+        l[3]->SetLineColorAlpha(kOrange, 0.45);
+        l[3]->Draw();
+        
+        // Draw star markers for ALL active peak positions (not just when "fixed")
+        // Peak 1 Level 1 (always active)
+        TMarker *star1 = new TMarker(sett->peakPos[0], yMid, 29);  // 29 = star
+        star1->SetMarkerColor(kRed);
+        star1->SetMarkerSize(2.0);
+        star1->Draw();
+        
+        // Peak 1 Level 2 (always active)
+        TMarker *star2 = new TMarker(sett->peakPos[1], yMid, 29);
+        star2->SetMarkerColor(kOrange);
+        star2->SetMarkerSize(2.0);
+        star2->Draw();
+        
+        // Peak 2 Level 1 (doublet - show star if active)
+        if (sett->doDoublet[0]) {
+            TMarker *star3 = new TMarker(sett->doubletPeakPos[0], yMid, 29);
+            star3->SetMarkerColor(kRed);
+            star3->SetMarkerSize(2.0);
+            star3->Draw();
+        }
+        
+        // Peak 2 Level 2 (doublet - show star if active)
+        if (sett->doDoublet[1]) {
+            TMarker *star4 = new TMarker(sett->doubletPeakPos[1], yMid, 29);
+            star4->SetMarkerColor(kOrange);
+            star4->SetMarkerSize(2.0);
+            star4->Draw();
+        }
+        
+        // Peak 3 Level 1 (triplet - show star if active)
+        if (sett->doTriplet[0]) {
+            TMarker *star5 = new TMarker(sett->tripletPeakPos[0], yMid, 29);
+            star5->SetMarkerColor(kRed);
+            star5->SetMarkerSize(2.0);
+            star5->Draw();
+        }
+        
+        // Peak 3 Level 2 (triplet - show star if active)
+        if (sett->doTriplet[1]) {
+            TMarker *star6 = new TMarker(sett->tripletPeakPos[1], yMid, 29);
+            star6->SetMarkerColor(kOrange);
+            star6->SetMarkerSize(2.0);
+            star6->Draw();
+        }
+        
+        // Background boxes (unchanged)
         bgBox[0] = new TBox(sett->bgEne[0][0],y1,sett->bgEne[0][1],y2);
         bgBox[1] = new TBox(sett->bgEne[0][2],y1,sett->bgEne[0][3],y2);
         bgBox[2] = new TBox(sett->bgEne[1][0],y1,sett->bgEne[1][1],y2);

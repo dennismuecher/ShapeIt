@@ -44,7 +44,7 @@ public:
     //Constructor
     
     ShapeFitFunction (int multiplet_type, bool fix_multiplet_width = true ) {
-		// multiplet_type: 0 = single peak, 1 = doublet, 2 = triplet
+		// multiplet_type: 0 = single peak, 1 = doublet only, 2 = triplet only, 3 = both doublet and triplet
 		multip = multiplet_type;
 		
         for (int j = 0; j < 4; j++) {
@@ -82,20 +82,53 @@ public:
             TF1::RejectPoint();
             return 0;
         }
-        //define one gaussian for main peak and additional peaks for multiplets
-        //Main peak: par[3] (amplitude), par[4] (position), par[5] (width)
-        //For doublet (multip=1): par[6] (ampl), par[7] (pos), par[8] (width if not fixed)
-        //For triplet (multip=2): adds par[9] (ampl), par[10] (pos), par[11] (width if not fixed)
-        gauss = par[3]*exp(-0.5*TMath::Power(((x[0]-par[4])/par[5]),2));
-        for (int j = 0; j < multip; j++) {
-            if (fix_width)
-                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power(((x[0]-par[3*j + 7])/par[5]),2));
-            else
-                multi_gaus[j] = par[3*j + 6]*exp(-0.5*TMath::Power(((x[0]-par[3*j + 7])/par[3*j + 8]),2));
-            gauss = gauss + multi_gaus[j];
-            
-        }
-        return  this->fitFunction_bg(x, par) + gauss;
         
+        // Background: par[0-2]
+        // Main peak: par[3] (amplitude), par[4] (position), par[5] (width)
+        gauss = par[3]*exp(-0.5*TMath::Power(((x[0]-par[4])/par[5]),2));
+        
+        // Single peak (multip=0): no additional peaks
+        if (multip == 0) {
+            return this->fitFunction_bg(x, par) + gauss;
+        }
+        
+        // Parameter layout depends on fix_width and which peaks are enabled:
+        // multip=1: doublet only
+        // multip=2: triplet only (skip doublet params, triplet uses 6-7 or 6-8)
+        // multip=3: both doublet and triplet
+        //
+        // If fix_width=true:
+        //   Doublet: par[6] (amp), par[7] (pos), uses par[5] for width
+        //   Triplet: par[8] (amp), par[9] (pos), uses par[5] for width
+        // If fix_width=false:
+        //   Doublet: par[6] (amp), par[7] (pos), par[8] (width)
+        //   Triplet: par[9] (amp), par[10] (pos), par[11] (width)
+        
+        // Doublet peak (if multip==1 or multip==3)
+        if (multip == 1 || multip == 3) {
+            if (fix_width)
+                gauss += par[6]*exp(-0.5*TMath::Power(((x[0]-par[7])/par[5]),2));
+            else
+                gauss += par[6]*exp(-0.5*TMath::Power(((x[0]-par[7])/par[8]),2));
+        }
+        
+        // Triplet peak (if multip==2 or multip==3)
+        if (multip == 2 || multip == 3) {
+            if (multip == 2) {
+                // Triplet only - use params 6-7 (fixed width) or 6-8 (free width)
+                if (fix_width)
+                    gauss += par[6]*exp(-0.5*TMath::Power(((x[0]-par[7])/par[5]),2));
+                else
+                    gauss += par[6]*exp(-0.5*TMath::Power(((x[0]-par[7])/par[8]),2));
+            } else {
+                // Both peaks - triplet uses params 8-9 (fixed width) or 9-11 (free width)
+                if (fix_width)
+                    gauss += par[8]*exp(-0.5*TMath::Power(((x[0]-par[9])/par[5]),2));
+                else
+                    gauss += par[9]*exp(-0.5*TMath::Power(((x[0]-par[10])/par[11]),2));
+            }
+        }
+        
+        return this->fitFunction_bg(x, par) + gauss;
     }
 };
