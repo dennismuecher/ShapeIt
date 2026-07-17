@@ -372,11 +372,7 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->fixTripletPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[0]) + "|";
     msg += std::to_string(sett->fixTripletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[1]);
     
-    // DEBUG: Log peak positions being sent
-    std::cout << "\n=== SendSettingsSync DEBUG ===" << std::endl;
-    std::cout << "peakPos[0] = " << sett->peakPos[0] << " (should be 786.5)" << std::endl;
-    std::cout << "peakPos[1] = " << sett->peakPos[1] << std::endl;
-    std::cout << "Full SETTINGS_SYNC message length: " << msg.length() << " chars" << std::endl;
+
     
     window->Send(connid, msg);
 }
@@ -1053,8 +1049,6 @@ void CheckMarkersChanged()
     
     // If changed, update settings and UI
     if (changed) {
-        std::cout << "Marker position changed, updating settings..." << std::endl;
-        
         for (int i = 0; i < 4; i++) {
             sett->levEne[i] = levEne[i];
         }
@@ -1078,8 +1072,6 @@ void CheckMarkersChanged()
         // If in Autofit mode (mode 2), re-fit and redraw the current projection
         // This updates the Gaussian fits on the histogram without recalculating all gSF
         if (sett->mode == 2 && gDisplayMode == 5 && gCurrentBin > 0) {
-            std::cout << "Autofit mode: updating fits for bin " << gCurrentBin << "..." << std::endl;
-            
             // Save current axis ranges before redrawing
             double xmin = gPad->GetUxmin();
             double xmax = gPad->GetUxmax();
@@ -1489,7 +1481,11 @@ void ProcessData(unsigned connid, const std::string &arg)
     // Just print directly to terminal like a normal C++ program
     
     // Suppress noisy debug messages for channel setup and width calibration updates
-    if (!starts_with(arg, "channel:") && !starts_with(arg, "UPDATE_WIDTH_CALIB_LINES:")) {
+    // (Also suppress common messages like SHOWPROJ, EXIT to reduce console noise)
+    if (!starts_with(arg, "channel:") && 
+        !starts_with(arg, "UPDATE_WIDTH_CALIB_LINES:") &&
+        !starts_with(arg, "SHOWPROJ") &&
+        !starts_with(arg, "EXIT")) {
         std::cout << "Got message from browser: " << arg << std::endl;
     }
 
@@ -1891,8 +1887,6 @@ void ProcessData(unsigned connid, const std::string &arg)
             window->Send(connid, "No matrix loaded yet -- open one first.");
             return;
         }
-        std::cout << "SHOWPROJ: Displaying bin 1 projection" << std::endl;
-        // Show bin 1 projection instead of summed diagonal
         gCurrentBin = 1;
         gDisplayMode = 5;
         canvas->cd();
@@ -1900,18 +1894,14 @@ void ProcessData(unsigned connid, const std::string &arg)
         for (int i = 0; i < 4; i++) { gMarkerLine[i] = nullptr; gDoubletLine[i] = nullptr; gBgBox[i] = nullptr; }
         gCurrentHist = matrix->GetDiagEx(gCurrentBin, BaseName(currentMatrixPath));
         if (!gCurrentHist) {
-            std::cout << "ERROR: GetDiagEx returned null!" << std::endl;
             window->Send(connid, "ERROR: Failed to get projection histogram");
             return;
         }
-        std::cout << "Got histogram, drawing..." << std::endl;
         gCurrentHist->Draw();
         gHaveLastRange = false;
         CleanupAutofitDisplay();
         DrawMarkers();
-        std::cout << "About to push canvas update..." << std::endl;
         PushCanvasUpdate();
-        std::cout << "Canvas updated." << std::endl;
         window->Send(connid, "Showing bin 1 projection");
     }
     else if (arg == "SHOW_WIDTH_CALIB") {
@@ -3278,12 +3268,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "*** RunShapeIt() returned ***" << std::endl;
     }
     else {
-        // CATCHALL for unhandled messages
-        std::cout << "\n!!!!! UNHANDLED MESSAGE !!!!!" << std::endl;
-        std::cout << "Message: '" << arg << "'" << std::endl;
-        std::cout << "Length: " << arg.length() << " chars" << std::endl;
-        std::cout << "First 50 chars: '" << arg.substr(0, std::min((size_t)50, arg.length())) << "'" << std::endl;
-        std::cout.flush();
+        // Message not recognized - silently ignore
     }
 }
 
