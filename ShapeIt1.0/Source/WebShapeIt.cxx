@@ -1533,6 +1533,14 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (starts_with(arg, "OPEN:")) {
         std::string path = after_prefix(arg, "OPEN:");
+        
+        // Use ROOT's ExpandPathName to resolve relative paths and canonicalize
+        // ExpandPathName returns a new char* with the expanded path
+        char* expandedPath = gSystem->ExpandPathName(path.c_str());
+        if (expandedPath) {
+            path = expandedPath;
+            delete[] expandedPath;
+        }
 
         if (gSystem->AccessPathName(path.c_str())) {
             // AccessPathName returns non-zero (true) when the path does NOT exist
@@ -1576,6 +1584,13 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (starts_with(arg, "OSLO:")) {
         std::string path = after_prefix(arg, "OSLO:");
+        
+        // Use ROOT's ExpandPathName to resolve relative paths and canonicalize
+        char* expandedPath = gSystem->ExpandPathName(path.c_str());
+        if (expandedPath) {
+            path = expandedPath;
+            delete[] expandedPath;
+        }
 
         if (gSystem->AccessPathName(path.c_str())) {
             window->Send(connid, "Literature file not found: " + path);
@@ -1588,6 +1603,14 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (starts_with(arg, "RHO:")) {
         std::string path = after_prefix(arg, "RHO:");
+        
+        // Use ROOT's ExpandPathName to resolve relative paths and canonicalize
+        // This handles '..' segments and converts to absolute paths
+        char* expandedPath = gSystem->ExpandPathName(path.c_str());
+        if (expandedPath) {
+            path = expandedPath;
+            delete[] expandedPath;
+        }
 
         if (gSystem->AccessPathName(path.c_str())) {
             window->Send(connid, "NLD file not found: " + path);
@@ -1613,6 +1636,13 @@ void ProcessData(unsigned connid, const std::string &arg)
     }
     else if (starts_with(arg, "DISCRETE:")) {
         std::string path = after_prefix(arg, "DISCRETE:");
+        
+        // Use ROOT's ExpandPathName to resolve relative paths and canonicalize
+        char* expandedPath = gSystem->ExpandPathName(path.c_str());
+        if (expandedPath) {
+            path = expandedPath;
+            delete[] expandedPath;
+        }
 
         if (gSystem->AccessPathName(path.c_str())) {
             window->Send(connid, "Discrete levels file not found: " + path);
