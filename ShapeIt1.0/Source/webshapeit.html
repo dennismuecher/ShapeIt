@@ -1190,13 +1190,14 @@ COMMUNICATION PROTOCOL:
           document.getElementById('exc-hi').value = v[5];
           
           // v[6] is doDoublet[0] flag, v[7] is doDoublet[1] flag
-          // v[18] is doTriplet[0] flag, v[19] is doTriplet[1] flag (if present)
-          // v[12] is fixDoubletWidth[0], v[13] is fixDoubletWidth[1]
+          // v[10] is doTriplet[0] flag, v[11] is doTriplet[1] flag
+          // v[8] is fixDoubletWidth[0], v[9] is fixDoubletWidth[1]
+          // v[12] is fixTripletWidth[0], v[13] is fixTripletWidth[1]
           
           const hasDoublet1 = v[6] !== 0;
           const hasDoublet2 = v[7] !== 0;
-          const hasTriplet1 = (v.length >= 22 && v[18] !== 0);
-          const hasTriplet2 = (v.length >= 22 && v[19] !== 0);
+          const hasTriplet1 = (v.length >= 12 && v[10] !== 0);
+          const hasTriplet2 = (v.length >= 12 && v[11] !== 0);
           
           document.getElementById('enablePeak2L1').checked = hasDoublet1;
           document.getElementById('peak2L1-fields').style.display = hasDoublet1 ? 'block' : 'none';
@@ -1277,19 +1278,36 @@ COMMUNICATION PROTOCOL:
             document.getElementById('lit-norm').value = v[52];
           }
           
-          // Peak position settings (indices 53-56, if present)
-          if (v.length >= 57) {
-            const fixPeak1 = v[53] !== 0;
-            let peakPos1 = v[54];
-            const fixPeak2 = v[55] !== 0;
-            let peakPos2 = v[56];
+          // Peak position settings (indices 45-48, if present) - CORRECTED INDICES
+          if (v.length >= 49) {
+            const fixPeak1 = v[45] !== 0;
+            const peakPos1 = v[46];
+            const fixPeak2 = v[47] !== 0;
+            const peakPos2 = v[48];
             
-            // If peak position is 0 (uninitialized), set to middle of level range
-            if (peakPos1 === 0) {
-              peakPos1 = (v[0] + v[1]) / 2;  // (lvl1-lo + lvl1-hi) / 2
+            // DEBUG: Log what we received
+            console.log('=== SETTINGS_SYNC Peak Positions ===');
+            console.log('v.length =', v.length);
+            console.log('v[45] (fixPeak1) =', v[45]);
+            console.log('v[46] (peakPos1) =', v[46], '(should be 786.5) ✓ CORRECTED');
+            console.log('v[47] (fixPeak2) =', v[47]);
+            console.log('v[48] (peakPos2) =', v[48]);
+            
+            // DEBUG: Search for 786.5 in the entire array
+            console.log('\n=== SEARCHING FOR 786.5 IN ARRAY ===');
+            for (let i = 0; i < v.length; i++) {
+              if (Math.abs(v[i] - 786.5) < 0.1) {
+                console.log('FOUND 786.5 at index', i, ':', v[i]);
+              }
+              if (Math.abs(v[i] - 1300) < 0.1) {
+                console.log('FOUND 1300 at index', i, ':', v[i]);
+              }
             }
-            if (peakPos2 === 0) {
-              peakPos2 = (v[2] + v[3]) / 2;  // (lvl2-lo + lvl2-hi) / 2
+            
+            // DEBUG: Print indices 50-60 to see what's around the expected position
+            console.log('\n=== Values around index 54 ===');
+            for (let i = 50; i < Math.min(60, v.length); i++) {
+              console.log('v[' + i + '] =', v[i]);
             }
             
             document.getElementById('fixPeakPos1').checked = fixPeak1;
@@ -1299,12 +1317,12 @@ COMMUNICATION PROTOCOL:
             document.getElementById('peakPos2').value = peakPos2;
           }
           
-          // Doublet peak position settings (indices 57-60, if present)
-          if (v.length >= 61) {
-            const fixPeakD1 = v[57] !== 0;
-            let peakPosD1 = v[58];
-            const fixPeakD2 = v[59] !== 0;
-            let peakPosD2 = v[60];
+          // Doublet peak position settings (indices 49-52, if present) - CORRECTED INDICES
+          if (v.length >= 53) {
+            const fixPeakD1 = v[49] !== 0;
+            let peakPosD1 = v[50];
+            const fixPeakD2 = v[51] !== 0;
+            let peakPosD2 = v[52];
             
             // Set Peak 2 positions and fix toggles (checkbox state already set above)
             document.getElementById('fixPeakPos2L1').checked = fixPeakD1;
@@ -1316,12 +1334,12 @@ COMMUNICATION PROTOCOL:
             updateKeepWidthsEqualState(2);
           }
           
-          // Triplet peak position settings (indices 61-64, if present)
-          if (v.length >= 65) {
-            const fixPeakT1 = v[61] !== 0;
-            let peakPosT1 = v[62];
-            const fixPeakT2 = v[63] !== 0;
-            let peakPosT2 = v[64];
+          // Triplet peak position settings (indices 53-56, if present) - CORRECTED INDICES
+          if (v.length >= 57) {
+            const fixPeakT1 = v[53] !== 0;
+            let peakPosT1 = v[54];
+            const fixPeakT2 = v[55] !== 0;
+            let peakPosT2 = v[56];
             
             // Set Peak 3 positions and fix toggles (checkbox state already set above)
             document.getElementById('fixPeakPos3L1').checked = fixPeakT1;
@@ -1333,10 +1351,10 @@ COMMUNICATION PROTOCOL:
             updateKeepWidthsEqualState(2);
           }
           
-          // Set "keep widths equal" checkboxes from fixDoubletWidth/fixTripletWidth flags
-          if (v.length >= 14) {
-            document.getElementById('keepWidthsEqual1').checked = v[12] !== 0;  // fixDoubletWidth[0]
-            document.getElementById('keepWidthsEqual2').checked = v[13] !== 0;  // fixDoubletWidth[1]
+          // Set "keep widths equal" checkboxes from fixDoubletWidth flags (indices 8-9)
+          if (v.length >= 10) {
+            document.getElementById('keepWidthsEqual1').checked = v[8] !== 0;  // fixDoubletWidth[0] at index 8
+            document.getElementById('keepWidthsEqual2').checked = v[9] !== 0;  // fixDoubletWidth[1] at index 9
             updateKeepWidthsEqualState(1);
             updateKeepWidthsEqualState(2);
           }
@@ -1531,6 +1549,14 @@ COMMUNICATION PROTOCOL:
     sendNewPeakConfig();
   });
 
+  // NEW: Fix peak position toggles for Peak 1 (main peaks)
+  document.getElementById('fixPeakPos1').addEventListener('change', (e) => {
+    sendPeakPos1Config();
+  });
+  document.getElementById('fixPeakPos2').addEventListener('change', (e) => {
+    sendPeakPos1Config();
+  });
+
   // NEW: Fix peak position toggles for Level 1 peaks
   document.getElementById('fixPeakPos2L1').addEventListener('change', (e) => {
     sendNewPeakConfig();
@@ -1547,7 +1573,11 @@ COMMUNICATION PROTOCOL:
     sendNewPeakConfig();
   });
 
-  // NEW: Peak position value changes
+  // NEW: Peak position value changes for Peak 1 (main peaks - Level 1 and Level 2)
+  document.getElementById('peakPos1').addEventListener('change', () => sendPeakPos1Config());
+  document.getElementById('peakPos2').addEventListener('change', () => sendPeakPos1Config());
+
+  // NEW: Peak position value changes for Peak 2 and Peak 3
   document.getElementById('peakPos2L1').addEventListener('change', () => sendNewPeakConfig());
   document.getElementById('peakPos3L1').addEventListener('change', () => sendNewPeakConfig());
   document.getElementById('peakPos2L2').addEventListener('change', () => sendNewPeakConfig());
@@ -1556,6 +1586,23 @@ COMMUNICATION PROTOCOL:
   // NEW: Keep widths equal toggles
   document.getElementById('keepWidthsEqual1').addEventListener('change', () => sendNewPeakConfig());
   document.getElementById('keepWidthsEqual2').addEventListener('change', () => sendNewPeakConfig());
+
+  // NEW: Send Peak 1 position updates to backend
+  // Peak 1 is the main peak for each level (always active)
+  // Maps to settings file: fixPeakPos[0-1], peakPos[0-1]
+  function sendPeakPos1Config() {
+    const fixPeak1 = document.getElementById('fixPeakPos1').checked ? 1 : 0;
+    const peakPos1 = document.getElementById('peakPos1').value;
+    const fixPeak2 = document.getElementById('fixPeakPos2').checked ? 1 : 0;
+    const peakPos2 = document.getElementById('peakPos2').value;
+    
+    // Send PEAKPOS message for Level 1 Peak 1
+    if (conn_handle) {
+      conn_handle.send('PEAKPOS:0|' + fixPeak1 + '|' + peakPos1);
+      conn_handle.send('PEAKPOS:1|' + fixPeak2 + '|' + peakPos2);
+    }
+    markSettingsDirty();
+  }
 
   // NEW: Send new peak configuration to backend
   // Maps to settings file: doDoublet[0-1], doTriplet[0-1], fixDoubletPeakPos[0-1], doubletPeakPos[0-1], 

@@ -371,6 +371,13 @@ void SendSettingsSync(unsigned connid)
     msg += std::to_string(sett->fixDoubletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->doubletPeakPos[1]) + "|";
     msg += std::to_string(sett->fixTripletPeakPos[0] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[0]) + "|";
     msg += std::to_string(sett->fixTripletPeakPos[1] ? 1 : 0) + "|" + std::to_string(sett->tripletPeakPos[1]);
+    
+    // DEBUG: Log peak positions being sent
+    std::cout << "\n=== SendSettingsSync DEBUG ===" << std::endl;
+    std::cout << "peakPos[0] = " << sett->peakPos[0] << " (should be 786.5)" << std::endl;
+    std::cout << "peakPos[1] = " << sett->peakPos[1] << std::endl;
+    std::cout << "Full SETTINGS_SYNC message length: " << msg.length() << " chars" << std::endl;
+    
     window->Send(connid, msg);
 }
 

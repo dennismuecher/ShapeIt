@@ -26,20 +26,20 @@ ShapeSetting::ShapeSetting(void)
     // Initialize peak position settings
     fixPeakPos[0] = false;
     fixPeakPos[1] = false;
-    peakPos[0] = (levEne[0] + levEne[1]) / 2.0;  // Default: center of level 1 range
-    peakPos[1] = (levEne[2] + levEne[3]) / 2.0;  // Default: center of level 2 range
+    peakPos[0] = 0;
+    peakPos[1] = 0;
     
     // Initialize doublet peak position settings
     fixDoubletPeakPos[0] = false;
     fixDoubletPeakPos[1] = false;
-    doubletPeakPos[0] = (levEne_2[0] + levEne_2[1]) / 2.0;  // Default: center of doublet 1 range
-    doubletPeakPos[1] = (levEne_2[2] + levEne_2[3]) / 2.0;  // Default: center of doublet 2 range
+    doubletPeakPos[0] = 0;
+    doubletPeakPos[1] = 0;
     
     // Initialize triplet peak position settings
     fixTripletPeakPos[0] = false;
     fixTripletPeakPos[1] = false;
-    tripletPeakPos[0] = (levEne_3[0] + levEne_3[1]) / 2.0;  // Default: center of triplet 1 range
-    tripletPeakPos[1] = (levEne_3[2] + levEne_3[3]) / 2.0;  // Default: center of triplet 2 range
+    tripletPeakPos[0] = 0;
+    tripletPeakPos[1] = 0;
 }
 
 //resets the width calibration to zero
@@ -372,6 +372,66 @@ void ShapeSetting::ReadSettings() {
                 }
             }
         }
+        
+        // Backward compatibility: Calculate peak positions from levEne if not set
+        bool needsUpdate = false;
+        if (peakPos[0] == 0 && levEne[0] != 0 && levEne[1] != 0) {
+            peakPos[0] = (levEne[0] + levEne[1]) / 2.0;
+            std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            std::cout << "Peak position 1 (Level 1) was calculated from level energy range: " << peakPos[0] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (peakPos[1] == 0 && levEne[2] != 0 && levEne[3] != 0) {
+            peakPos[1] = (levEne[2] + levEne[3]) / 2.0;
+            if (!needsUpdate) {
+                std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            }
+            std::cout << "Peak position 2 (Level 2) was calculated from level energy range: " << peakPos[1] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (doubletPeakPos[0] == 0 && levEne_2[0] != 0 && levEne_2[1] != 0 && doDoublet[0]) {
+            doubletPeakPos[0] = (levEne_2[0] + levEne_2[1]) / 2.0;
+            if (!needsUpdate) {
+                std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            }
+            std::cout << "Doublet peak position 1 (Level 1, Peak 2) was calculated from level energy range: " << doubletPeakPos[0] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (doubletPeakPos[1] == 0 && levEne_2[2] != 0 && levEne_2[3] != 0 && doDoublet[1]) {
+            doubletPeakPos[1] = (levEne_2[2] + levEne_2[3]) / 2.0;
+            if (!needsUpdate) {
+                std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            }
+            std::cout << "Doublet peak position 2 (Level 2, Peak 2) was calculated from level energy range: " << doubletPeakPos[1] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (tripletPeakPos[0] == 0 && levEne_3[0] != 0 && levEne_3[1] != 0 && doTriplet[0]) {
+            tripletPeakPos[0] = (levEne_3[0] + levEne_3[1]) / 2.0;
+            if (!needsUpdate) {
+                std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            }
+            std::cout << "Triplet peak position 1 (Level 1, Peak 3) was calculated from level energy range: " << tripletPeakPos[0] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (tripletPeakPos[1] == 0 && levEne_3[2] != 0 && levEne_3[3] != 0 && doTriplet[1]) {
+            tripletPeakPos[1] = (levEne_3[2] + levEne_3[3]) / 2.0;
+            if (!needsUpdate) {
+                std::cout << "\n*** ShapeIt 1.0 compatibility mode ***" << std::endl;
+            }
+            std::cout << "Triplet peak position 2 (Level 2, Peak 3) was calculated from level energy range: " << tripletPeakPos[1] << " keV" << std::endl;
+            needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+            std::cout << "\nThese peak positions will be saved to the settings file when you save your settings." << std::endl;
+            std::cout << "Future versions will use the peak position values directly.\n" << std::endl;
+        }
+        
         if (verbose)
                 PrintSettings();
         
