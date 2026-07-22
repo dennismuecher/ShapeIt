@@ -29,6 +29,7 @@ private:
 	
 public:
 	ShapeSetting();                         //the constructor
+    ~ShapeSetting();                        //the destructor
     
 	std::string dataFileName; 				//name of file containing matrix
 	std::string matrixName;  				//name of matrix in dataFileName

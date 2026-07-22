@@ -81,6 +81,7 @@ COMMUNICATION PROTOCOL:
         <button class="menu-item" id="btn-oslo">Load gSF literature (Oslo) data...</button>
         <button class="menu-item" id="btn-rho">Load NLD literature (Oslo) data...</button>
         <button class="menu-item" id="btn-discrete">Load discrete levels data...</button>
+        <button class="menu-item" id="btn-effi">Load eff-corr file...</button>
       </div>
     </div>
     <div class="menu">
@@ -356,7 +357,14 @@ COMMUNICATION PROTOCOL:
           </div>
 
           <p style="font-size: 13px; color: #555; margin: 0 0 6px;">Efficiency correction</p>
-          <input type="number" id="eff-corr" value="1" style="width: 100px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="number" id="eff-corr" value="1" style="width: 100px;">
+          </div>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;" id="effi-file-label">
+            <input type="checkbox" id="use-effi-file" style="margin: 0;" disabled>
+            <span id="effi-file-text" style="color: #999;">Use energy-dependent file</span>
+          </label>
+          <div id="effi-filename-display" style="font-size: 11px; color: #666; margin-top: 4px; display: none;"></div>
         </div>
 
         <!-- TAB 3: Projections - View matrix, diagonal projection, or individual bins -->
@@ -678,6 +686,8 @@ COMMUNICATION PROTOCOL:
   let settingsDirty = false;        // True if settings changed since last save
   let widthCalibAvailable = false;  // True if width calibration data exists
   let pendingSavePath = null;       // Path for pending save (used by version dialog)
+  let effiFileName = '';            // Efficiency correction file path
+  let hasEffiFile = false;          // True if efficiency file is loaded
 
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -734,6 +744,40 @@ COMMUNICATION PROTOCOL:
       checkbox.checked = false;
       label.style.color = '#999';
       showBtn.disabled = true;
+    }
+  }
+
+  // Update efficiency file checkbox state based on file availability
+  function updateEffiState() {
+    const checkbox = document.getElementById('use-effi-file');
+    const label = document.getElementById('effi-file-text');
+    const constField = document.getElementById('eff-corr');
+    const filenameDisplay = document.getElementById('effi-filename-display');
+    
+    if (hasEffiFile) {
+      checkbox.disabled = false;
+      label.style.color = '';
+      
+      // Show filename
+      const filename = effiFileName.split('/').pop();
+      filenameDisplay.textContent = '📄 ' + filename;
+      filenameDisplay.style.display = 'block';
+      
+      // If checkbox is enabled, grey out constant field
+      if (checkbox.checked) {
+        constField.disabled = true;
+        constField.style.background = '#f5f5f5';
+      } else {
+        constField.disabled = false;
+        constField.style.background = '';
+      }
+    } else {
+      checkbox.disabled = true;
+      checkbox.checked = false;
+      label.style.color = '#999';
+      constField.disabled = false;
+      constField.style.background = '';
+      filenameDisplay.style.display = 'none';
     }
   }
 
@@ -1023,6 +1067,9 @@ COMMUNICATION PROTOCOL:
     } else if (mode === 'open-discrete') {
       descEl.textContent = 'Expected format: 2-column text file (Ex [keV], number_of_states_per_bin)';
       descEl.style.display = 'block';
+    } else if (mode === 'open-effi') {
+      descEl.textContent = 'Expected format: 2-column text file (Ex [keV], correction_factor)';
+      descEl.style.display = 'block';
     } else {
       descEl.style.display = 'none';
     }
@@ -1082,6 +1129,13 @@ COMMUNICATION PROTOCOL:
     }
     else if (fbMode === 'open-discrete') {
       conn_handle.send('DISCRETE:' + fullPath);
+      markSettingsDirty();
+    }
+    else if (fbMode === 'open-effi') {
+      conn_handle.send('EFFI:' + fullPath);
+      effiFileName = fullPath;
+      hasEffiFile = true;
+      updateEffiState();
       markSettingsDirty();
     }
     else if (fbMode === 'open-settings') {
@@ -1144,6 +1198,7 @@ COMMUNICATION PROTOCOL:
         setStatus('Connected.');
         embedCanvas(handle);
         updateWidthCalibState();  // Initialize width calibration state
+        updateEffiState();  // Initialize efficiency correction state
       },
       
       // Process messages from server
@@ -1350,6 +1405,18 @@ COMMUNICATION PROTOCOL:
         else if (msg.startsWith('WIDTH_CALIB_AVAILABLE:')) {
           widthCalibAvailable = (msg.slice(22) === '1');
           updateWidthCalibState();
+        }
+        
+        // Efficiency file info: EFFI_INFO:doEffi|filename
+        else if (msg.startsWith('EFFI_INFO:')) {
+          const parts = msg.slice(10).split('|');
+          const doEffi = (parts[0] === '1');
+          const filename = parts[1] || '';
+          
+          hasEffiFile = (filename !== '');
+          effiFileName = filename;
+          document.getElementById('use-effi-file').checked = doEffi;
+          updateEffiState();
         }
         
         // Marker position update (sent when markers are dragged)
@@ -1764,6 +1831,11 @@ COMMUNICATION PROTOCOL:
     closeAllMenus();
   });
   
+  document.getElementById('btn-effi').addEventListener('click', () => {
+    openFileBrowser('open-effi', 'Load efficiency correction file');
+    closeAllMenus();
+  });
+  
   document.getElementById('btn-load-settings').addEventListener('click', () => {
     openFileBrowser('open-settings', 'Open settings file');
     closeAllMenus();
@@ -1995,6 +2067,14 @@ COMMUNICATION PROTOCOL:
   }
   ['min-counts', 'gsf-scaling', 'auto-scale', 'eff-corr'].forEach(id => {
     document.getElementById(id).addEventListener('change', sendIntParams);
+  });
+
+  // Efficiency file checkbox handler
+  document.getElementById('use-effi-file').addEventListener('change', (e) => {
+    const useFile = e.target.checked ? 1 : 0;
+    if (conn_handle) conn_handle.send('DOEFFI:' + useFile);
+    updateEffiState();
+    markSettingsDirty();
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════

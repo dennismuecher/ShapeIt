@@ -15,6 +15,7 @@
 ShapeSetting::ShapeSetting(void)
 {
     ResetWidth();
+    eGraph = nullptr;  // Initialize efficiency graph pointer
     for (int i = 0; i < 6; i++) {
         ldFileName[i] = "";
         pTable[i] = 0;
@@ -40,6 +41,15 @@ ShapeSetting::ShapeSetting(void)
     fixTripletPeakPos[1] = false;
     tripletPeakPos[0] = 0;
     tripletPeakPos[1] = 0;
+}
+
+ShapeSetting::~ShapeSetting(void)
+{
+    // Clean up efficiency graph if it exists
+    if (eGraph) {
+        delete eGraph;
+        eGraph = nullptr;
+    }
 }
 
 //resets the width calibration to zero
@@ -107,29 +117,53 @@ void ShapeSetting::readEffi()
     std::ifstream inp;
     inp.open(effiFileName.c_str());
     
-    if (inp.is_open() ) {
+    if (!inp.is_open()) {
+        std::cout << "ERROR: Could not open efficiency file: " << effiFileName << std::endl;
+        return;
+    }
+    
+    // Delete old graph if it exists (prevent memory leak)
+    if (eGraph) {
+        delete eGraph;
+        eGraph = nullptr;
+    }
+    
+    double e;
+    double eff;
+    int i = 0;
+    eGraph = new TGraph();
+    
+    std::string line;
+    // Read line by line, skip comments
+    while (std::getline(inp, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#') continue;
         
-        double e;
-        double eff;
-        
-        //stores the minimum and maximum energies from the input file;
-        double emin = -1;
-        double emax = -1;
-        
-        int i = 0;
-        eGraph = new TGraph();
-        
-        while ( !inp.eof() ) {
-            inp >> e >> eff;
-            eGraph->SetPoint(i,e,eff);
+        std::istringstream iss(line);
+        if (iss >> e >> eff) {
+            eGraph->SetPoint(i, e, eff);
             i++;
             if (verbose)
-                std::cout<< i<< " " << e << " "<< eff <<std::endl;
+                std::cout << i << " " << e << " " << eff << std::endl;
         }
-        eGraph->SetMarkerStyle(4);
-        eGraph->SetMarkerColor(kRed);
-        eGraph->SetTitle("Energy dependend scaling factor; E_{#gamma} (keV); scaling factor");
     }
+    
+    inp.close();
+    
+    if (i == 0) {
+        std::cout << "WARNING: No data points read from efficiency file!" << std::endl;
+        delete eGraph;
+        eGraph = nullptr;
+        doEffi = false;
+        return;
+    }
+    
+    eGraph->SetMarkerStyle(4);
+    eGraph->SetMarkerColor(kRed);
+    eGraph->SetTitle("Energy dependend scaling factor; E_{#gamma} (keV); scaling factor");
+    
+    if (verbose)
+        std::cout << "Successfully loaded " << i << " efficiency correction points." << std::endl;
 }
 
 //returns an energy-dependend efficiency factor
@@ -137,22 +171,28 @@ double ShapeSetting::getEffCor(double ene, int level) {
 	
     double c = 1;
     
-    if (doEffi) {
-        
-        //find minimum and maximum x values of efficiency factors; add 50 keV margin 
-        double xmin = TMath::MinElement(eGraph->GetN(),eGraph->GetX()) -50;
-        double xmax = TMath::MaxElement(eGraph->GetN(),eGraph->GetX()) +50;
-        
-        if (verbose  > 1)
-            std::cout <<"Minimum and maximum values in efficiency data file: " <<xmin <<" "<<xmax <<std::endl;
-        
-        //if ene not inside graph, return 1, otherwise return interpolated value
-        if ( (ene >= xmin) && (ene <=xmax) )
-            c = eGraph->Eval(ene);
+    // Energy-dependent correction only applies to Level 2
+    if (level == 2) {
+        if (doEffi && eGraph && eGraph->GetN() > 0) {
+            // Use energy-dependent correction from file (REPLACES constant eff_corr)
+            double xmin = TMath::MinElement(eGraph->GetN(),eGraph->GetX()) -50;
+            double xmax = TMath::MaxElement(eGraph->GetN(),eGraph->GetX()) +50;
+            
+            if (verbose  > 1)
+                std::cout <<"Minimum and maximum values in efficiency data file: " <<xmin <<" "<<xmax <<std::endl;
+            
+            //if ene not inside graph, return 1, otherwise return interpolated value
+            if ( (ene >= xmin) && (ene <=xmax) )
+                c = eGraph->Eval(ene);
+            // else: c = 1.0 (no correction if outside range)
         }
-    //apply efficiency factor stored in eff_cor for level 2 in any case
-    if (level == 2)
-        c = c * eff_corr;
+        else {
+            // No file loaded or disabled: use constant efficiency correction
+            c = eff_corr;
+        }
+    }
+    // Level 1: no efficiency correction applied (always returns 1.0)
+    
     return c;
 }
 

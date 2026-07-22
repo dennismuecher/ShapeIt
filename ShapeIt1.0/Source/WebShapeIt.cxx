@@ -1592,10 +1592,16 @@ void ProcessData(unsigned connid, const std::string &arg)
                 SendNBins(connid);
                 // Enable width calibration since matrix is loaded
                 window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
+                // Send efficiency correction status
+                std::string effiMsg = "EFFI_INFO:" + std::string(sett->doEffi ? "1" : "0") + "|" + sett->effiFileName;
+                window->Send(connid, effiMsg);
             }
         } else {
             // No matrix loaded - push an empty canvas
             if (web_imp) web_imp->ForceUpdate();
+            // Still send efficiency correction status
+            std::string effiMsg = "EFFI_INFO:" + std::string(sett->doEffi ? "1" : "0") + "|" + sett->effiFileName;
+            window->Send(connid, effiMsg);
         }
         
         // Sync all settings to UI (this updates all form fields to match loaded settings)
@@ -1728,6 +1734,39 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->discreteLevelFile = path;
         window->Send(connid, "Discrete levels file set: " + path);
     }
+    else if (starts_with(arg, "EFFI:")) {
+        std::string path = after_prefix(arg, "EFFI:");
+        
+        // Use ROOT's ExpandPathName to resolve relative paths and canonicalize
+        char* expandedPath = gSystem->ExpandPathName(path.c_str());
+        if (expandedPath) {
+            path = expandedPath;
+            delete[] expandedPath;
+        }
+
+        if (gSystem->AccessPathName(path.c_str())) {
+            window->Send(connid, "Efficiency correction file not found: " + path);
+            return;
+        }
+
+        sett->effiFileName = path;
+        sett->doEffi = true;
+        sett->readEffi();  // Read the file immediately
+        
+        // Send updated status back to frontend
+        std::string msg = "EFFI_INFO:1|" + sett->effiFileName;
+        window->Send(connid, msg);
+        window->Send(connid, "Efficiency correction file loaded: " + path);
+    }
+    else if (starts_with(arg, "DOEFFI:")) {
+        int val = std::stoi(after_prefix(arg, "DOEFFI:"));
+        sett->doEffi = (val == 1);
+        
+        // Send updated status back to frontend
+        std::string msg = "EFFI_INFO:" + std::string(sett->doEffi ? "1" : "0") + "|" + sett->effiFileName;
+        window->Send(connid, msg);
+        window->Send(connid, sett->doEffi ? "Energy-dependent efficiency correction enabled" : "Constant efficiency correction enabled");
+    }
     else if (starts_with(arg, "LISTDIR:")) {
         SendDirListing(connid, after_prefix(arg, "LISTDIR:"));
     }
@@ -1750,6 +1789,7 @@ void ProcessData(unsigned connid, const std::string &arg)
         sett->osloFileName = ResolveRelativeTo(settDir, sett->osloFileName);
         sett->rhoFileName = ResolveRelativeTo(settDir, sett->rhoFileName);
         sett->discreteLevelFile = ResolveRelativeTo(settDir, sett->discreteLevelFile);
+        sett->effiFileName = ResolveRelativeTo(settDir, sett->effiFileName);
 
         DumpSettings();
 
@@ -1777,6 +1817,9 @@ void ProcessData(unsigned connid, const std::string &arg)
                 SendNBins(connid);
                 // Enable width calibration since we have a matrix loaded
                 window->Send(connid, "WIDTH_CALIB_AVAILABLE:1");
+                // Send efficiency correction status
+                std::string effiMsg = "EFFI_INFO:" + std::string(sett->doEffi ? "1" : "0") + "|" + sett->effiFileName;
+                window->Send(connid, effiMsg);
             }
             else
                 window->Send(connid, "Warning: matrix '" + sett->matrixName + "' from settings not found in " + sett->dataFileName);
