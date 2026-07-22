@@ -41,6 +41,8 @@
 #include <algorithm>
 #include <cmath>
 #include <sys/stat.h>
+#include <climits>  // for PATH_MAX
+#include <cstdlib>  // for realpath
 
 #include "ShapeSetting.C"
 #include "ShapeMatrix.C"
@@ -207,7 +209,50 @@ std::string ResolveRelativeTo(const std::string &baseDir, const std::string &may
 {
     if (maybeRelative.empty() || maybeRelative[0] == '/')
         return maybeRelative; // already absolute
-    return baseDir + "/" + maybeRelative;
+    
+    // Combine paths
+    std::string combined = baseDir + "/" + maybeRelative;
+    
+    // Use TSystem::GetWorkingDirectory() trick: temporarily prepend the absolute baseDir
+    // and let ROOT normalize the path, which will properly resolve .. components
+    TString normalized = gSystem->GetDirName(combined.c_str());
+    normalized = gSystem->GetDirName(normalized.Data());
+    normalized += "/";
+    normalized += gSystem->BaseName(combined.c_str());
+    
+    // Actually, better: use realpath-style resolution
+    // Convert to absolute path and normalize
+    char resolved[PATH_MAX];
+    if (realpath(combined.c_str(), resolved) != nullptr) {
+        return std::string(resolved);
+    }
+    
+    // If realpath fails (file doesn't exist yet), do manual normalization
+    // This handles .. and . in the path
+    std::vector<std::string> parts;
+    std::istringstream ss(combined);
+    std::string part;
+    
+    while (std::getline(ss, part, '/')) {
+        if (part.empty() || part == ".") {
+            continue; // skip empty parts and current directory
+        } else if (part == "..") {
+            if (!parts.empty() && parts.back() != "..") {
+                parts.pop_back(); // go up one directory
+            }
+        } else {
+            parts.push_back(part);
+        }
+    }
+    
+    // Reconstruct the path
+    std::string result = combined[0] == '/' ? "/" : "";
+    for (size_t i = 0; i < parts.size(); ++i) {
+        if (i > 0) result += "/";
+        result += parts[i];
+    }
+    
+    return result;
 }
 
 void DumpSettings()
@@ -585,6 +630,7 @@ struct MCState {
     std::vector<double> alphas, chi2s, exis;
     TRandom3 rng;
     unsigned connid;
+    bool stopRequested;  // Flag to indicate user requested early stop
 };
 
 MCState *gMCState = nullptr;
@@ -598,9 +644,27 @@ void MCTimerCallback();
 // Timer callback for Monte Carlo iterations - runs ONE iteration at a time with live display
 void MCTimerCallback()
 {
-    if (!gMCState || gMCState->currentIter >= gMCState->totalIters) {
+    // Check if user requested stop OR all iterations complete
+    if (!gMCState || gMCState->currentIter >= gMCState->totalIters || gMCState->stopRequested) {
         if (gMCState) {
-            std::cout << "All iterations complete, creating final display..." << std::endl;
+            // Check if we have any results at all
+            if (gMCState->alphas.empty()) {
+                std::cout << "Monte Carlo stopped with no results." << std::endl;
+                window->Send(gMCState->connid, "MC_STOPPED:No iterations completed before stop.");
+                
+                // Restore settings
+                sett->exiEne[0] = gMCState->savedExiLow;
+                sett->exiEne[1] = gMCState->savedExiHigh;
+                sett->doMC = false;
+                
+                delete gMCState->graph;
+                delete gMCState;
+                gMCState = nullptr;
+                return;
+            }
+            
+            std::string stopReason = gMCState->stopRequested ? "stopped by user" : "completed all iterations";
+            std::cout << "Monte Carlo " << stopReason << " after " << gMCState->currentIter << " iterations, creating final display..." << std::endl;
             
             // Final display with best fit marker
             canvas->cd();
@@ -686,11 +750,19 @@ void MCTimerCallback()
             sett->doMC = false;  // Disable MC mode after completion
             
             std::string msg = "MC_RESULT:" + std::to_string(bestAlpha) + "|" + std::to_string(bestChi2) 
-                              + "|" + std::to_string(bestExLow);
+                              + "|" + std::to_string(bestExLow) + "|" 
+                              + std::to_string(gMCState->currentIter) + "|"
+                              + std::to_string(gMCState->totalIters);
             window->Send(gMCState->connid, msg);
             
-            std::cout << "Monte Carlo complete. Best alpha: " << bestAlpha 
-                      << " (chi2: " << bestChi2 << ", Ex_low: " << bestExLow << " keV)" << std::endl;
+            if (gMCState->stopRequested) {
+                std::cout << "Monte Carlo stopped by user after " << gMCState->currentIter << " of " 
+                          << gMCState->totalIters << " iterations. Best alpha: " << bestAlpha 
+                          << " (chi2: " << bestChi2 << ", Ex_low: " << bestExLow << " keV)" << std::endl;
+            } else {
+                std::cout << "Monte Carlo complete. Best alpha: " << bestAlpha 
+                          << " (chi2: " << bestChi2 << ", Ex_low: " << bestExLow << " keV)" << std::endl;
+            }
             std::cout << "MC mode disabled (doMC = false)" << std::endl;
             
             delete gMCState->graph;
@@ -836,7 +908,8 @@ void RunMonteCarlo(unsigned connid, int nIterations, double exiLowMin, double ex
         {},                   // chi2s
         {},                   // exis
         TRandom3(0),          // rng
-        connid                // connid
+        connid,               // connid
+        false                 // stopRequested
     };
     
     gMCState->graph->SetTitle("MC Progress: Accumulating gSF Results;E_{#gamma} (keV);f(E_{#gamma}) (MeV^{-3})");
@@ -845,6 +918,9 @@ void RunMonteCarlo(unsigned connid, int nIterations, double exiLowMin, double ex
     gMCState->graph->SetMarkerColor(kBlue);
     gMCState->graph->Draw("AP");
     PushCanvasUpdate();
+    
+    // Tell browser that MC has started so button can change to "Stop"
+    window->Send(connid, "MC_STARTED");
     
     // Start timer to run iterations one at a time with live display
     static TTimer *mcTimer = new TTimer();
@@ -3244,6 +3320,17 @@ void ProcessData(unsigned connid, const std::string &arg)
         std::cout << "RunMonteCarlo() returned successfully" << std::endl;
         std::cout << "========================================" << std::endl;
         std::cout.flush();
+    }
+    else if (arg == "STOP_MC") {
+        std::cout << "STOP_MC command received" << std::endl;
+        if (gMCState) {
+            std::cout << "Setting stopRequested flag on MC state" << std::endl;
+            gMCState->stopRequested = true;
+            window->Send(connid, "MC_STOPPING");
+        } else {
+            std::cout << "No active MC simulation to stop" << std::endl;
+            window->Send(connid, "No active Monte Carlo simulation.");
+        }
     }
     else if (starts_with(arg, "RUN:")) {
         // expected order: lvl1_lo|lvl1_hi|lvl2_lo|lvl2_hi|exc_lo|exc_hi|

@@ -1463,13 +1463,52 @@ COMMUNICATION PROTOCOL:
           setStatus('NLD file converted from MeV to keV (max energy: ' + maxEnergy.toFixed(2) + ' MeV)');
         }
         
-        // Monte Carlo result
+        // Monte Carlo started
+        else if (msg === 'MC_STARTED') {
+          mcRunning = true;
+          mcButton.textContent = 'Stop Simulation';
+          mcButton.style.background = '#f44336';  // Red for stop
+          setStatus('Monte Carlo simulation running...');
+        }
+        
+        // Monte Carlo stopping
+        else if (msg === 'MC_STOPPING') {
+          setStatus('Stopping Monte Carlo simulation...');
+        }
+        
+        // Monte Carlo stopped early (no results or incomplete)
+        else if (msg.startsWith('MC_STOPPED:')) {
+          mcRunning = false;
+          mcButton.textContent = 'Find Best Δα';
+          mcButton.style.background = '#ff9800';  // Orange (original color)
+          const reason = msg.slice(11);
+          setStatus('Monte Carlo stopped: ' + reason);
+        }
+        
+        // Monte Carlo result (simulation complete)
         else if (msg.startsWith('MC_RESULT:')) {
+          mcRunning = false;
+          mcButton.textContent = 'Find Best Δα';
+          mcButton.style.background = '#ff9800';  // Orange (original color)
           const v = msg.slice(10).split('|').map(Number);
           const bestAlpha = v[0];
           const bestChi2 = v[1];
+          
+          // Update the input field to show the best alpha
           document.getElementById('alpha-slope').value = bestAlpha.toFixed(3);
-          setStatus('Monte Carlo complete: Best α = ' + bestAlpha.toFixed(3) + ', χ² = ' + bestChi2.toFixed(2));
+          
+          // Send alpha to backend WITHOUT triggering a redraw
+          // The backend will store this value and use it for the next ShapeIt run
+          // We send the message after a brief delay to ensure MC results are fully displayed first
+          setTimeout(() => {
+            if (conn_handle) {
+              const litNorm = document.getElementById('lit-norm').value;
+              // Send the update - this will set sett->lit_alpha but won't trigger RunShapeIt
+              conn_handle.send('ALPHA_TRANSFORM:' + bestAlpha + '|' + litNorm);
+            }
+          }, 500);  // 500ms delay ensures MC plot is fully rendered
+          
+          setStatus('Monte Carlo complete: Best α = ' + bestAlpha.toFixed(3) + ', χ² = ' + bestChi2.toFixed(2) + ' (will be applied on next ShapeIt run)');
         }
         
         // Generic status message
@@ -2001,14 +2040,25 @@ COMMUNICATION PROTOCOL:
   document.getElementById('alpha-slope').addEventListener('change', sendAlphaTransform);
   document.getElementById('lit-norm').addEventListener('change', sendAlphaTransform);
 
-  // Monte Carlo alpha search
-  document.getElementById('btn-run-mc').addEventListener('click', () => {
+  // Monte Carlo alpha search - with start/stop toggle
+  let mcRunning = false;
+  const mcButton = document.getElementById('btn-run-mc');
+  
+  mcButton.addEventListener('click', () => {
     if (!conn_handle) return;
-    const nIter = document.getElementById('mc-iterations').value;
-    const exiMin = document.getElementById('mc-exi-min').value;
-    const exiMax = document.getElementById('mc-exi-max').value;
-    conn_handle.send('RUN_MC_ALPHA:' + nIter + '|' + exiMin + '|' + exiMax);
-    setStatus('Running Monte Carlo alpha search (' + nIter + ' iterations)...');
+    
+    if (mcRunning) {
+      // Stop the running simulation
+      conn_handle.send('STOP_MC');
+      setStatus('Stopping Monte Carlo simulation...');
+    } else {
+      // Start a new simulation
+      const nIter = document.getElementById('mc-iterations').value;
+      const exiMin = document.getElementById('mc-exi-min').value;
+      const exiMax = document.getElementById('mc-exi-max').value;
+      conn_handle.send('RUN_MC_ALPHA:' + nIter + '|' + exiMin + '|' + exiMax);
+      setStatus('Running Monte Carlo alpha search (' + nIter + ' iterations)...');
+    }
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════
